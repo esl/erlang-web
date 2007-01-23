@@ -30,7 +30,7 @@
 handle_call(Format, #xmlText{value = Time}) -> 
     #xmlText{value = handle_call(Format, Time)};
 handle_call(Format, Time) ->
-    format(Format, Time, []).
+    format(Format, Time).
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
@@ -50,8 +50,8 @@ validate({Options,Input}) ->
 	true ->
 	    {ok, Input};
 	_ ->
-	    Format = proplists:get_value(format, Options, "HH:MM:SS"),
-	    case convert_input(Format, Input, []) of
+	    Format = proplists:get_value(format, Options, "HH:NN:SS"),
+	    case convert_input(Format, Input) of
 		{error, bad_format} ->
 		    {error, {bad_time_format, Input}};
 		Time ->
@@ -92,37 +92,17 @@ check_max(Options, Time) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
--spec(convert_input/3 :: (string(), string(), list(tuple())) -> 
-	     {error, bad_format} | {tuple(), tuple()}).	
-convert_input("HH" ++ Format, [I1, I2 | Input], Acc) ->
-    case catch list_to_integer([I1, I2]) of
-	{'EXIT', _} ->
-	    {error, bad_format};
-	Hour ->
-	    convert_input(Format, Input, [{hour, Hour} | Acc])
-    end;
-convert_input("MM" ++ Format, [I1, I2 | Input], Acc) ->
-    case catch list_to_integer([I1, I2]) of
-	{'EXIT', _} ->
-	    {error, bad_format};
-	Minute ->
-	    convert_input(Format, Input, [{minute, Minute} | Acc])
-    end;
-convert_input("SS" ++ Format, [I1, I2 | Input], Acc) ->
-    case catch list_to_integer([I1, I2]) of
-	{'EXIT', _} ->
-	    {error, bad_format};
-	Second ->
-	    convert_input(Format, Input, [{second, Second} | Acc])
-    end;
-convert_input([_ | Format], [_ | Input], Acc) ->
-    convert_input(Format, Input, Acc);
-convert_input([], [], Acc) ->
-    {proplists:get_value(hour, Acc, 0),
-     proplists:get_value(minute, Acc, 0),
-     proplists:get_value(second, Acc, 0)};
-convert_input(_, _, _) ->
-    {error, bad_format}.
+-spec(convert_input/2 :: (string(), string()) -> 
+	     {error, bad_format} | {integer(), integer(), integer()}).	
+convert_input(Format, Input) ->
+    case wpart_time_str:parse_input(sanitize(Format), Input) of
+        {error, bad_format} ->
+            {error, bad_format};
+        Values ->
+            {proplists:get_value(hour, Values, 0),
+             proplists:get_value(minute, Values, 0),
+             proplists:get_value(second, Values, 0)}
+    end.
 
 is_valid_time({H1,H2,H3}) ->
     Hour = if (H1 >= 0) and (H1 < 24) -> true;
@@ -141,23 +121,15 @@ is_valid_time({H1,H2,H3}) ->
 is_valid_time(_) -> false.
 
 get_time(Format, Time) ->
-    format(Format, Time, []).
+    format(Format, Time).
 
 format(Format, Time) ->
-    format(Format, Time, []).
+    wpart_time_str:format(sanitize(Format), {unused, Time}).
 
-format("HH" ++ R, {Hour, _, _} = T, Acc) ->
-    format(R, T, Acc ++ convert(Hour));
-format("MM" ++ R, {_, Min, _} = T, Acc) ->
-    format(R, T, Acc ++ convert(Min));
-format("SS" ++ R, {_, _, Sec} = T, Acc) ->
-    format(R, T, Acc ++ convert(Sec));
-format([L | R], T, Acc) ->
-    format(R, T, Acc ++ [L]);
-format([], _, Acc) ->
-    Acc.
-
-convert(N) when N < 10 ->
-    "0" ++ integer_to_list(N);
-convert(N) ->
-    integer_to_list(N).
+-spec(sanitize/1 :: (string()) -> string()).
+sanitize("MM" ++ R) ->
+    "NN" ++ sanitize(R);
+sanitize([H|T]) ->
+    [H|sanitize(T)];
+sanitize([]) ->
+    [].
