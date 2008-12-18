@@ -1,0 +1,1 @@
+<textarea name="<% slot %>" rows="<% slot %>" cols="<% slot %>" onfocus="if(this.value == 'Insert your text here...') {this.value = '';}"><% slot %></textarea>

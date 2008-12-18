@@ -1,0 +1,127 @@
+%% The contents of this file are subject to the Erlang Web Public License,
+%% Version 1.0, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Web Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang-consulting.com/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% The Initial Developer of the Original Code is Erlang Training & Consulting
+%% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2008,
+%% Erlang Training & Consulting Ltd. All Rights Reserved.
+
+%%%-------------------------------------------------------------------
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc 
+%%% Wpart responsible for pagination of the site
+%%% side effects - sets the value for the key specified by "as" atrribute or
+%%% "item" by default
+%%% sets the keys "prev_page" and "next_page" with the page numbers
+%%%
+%%% attributes of the wpart:paginate tag:
+%%% action - defines the returning value of tag expanding. By default is set to
+%%%          "page" - which narrows the list to the interesting part
+%%%          other options are "next_link" and "prev_link" which return
+%%%          the links (a href) to the next and previous page of the collection
+%%%    
+%%% list - checked only when action == "page", paginates the list held 
+%%%        under given key in e_dict (it must be manually set in the controller)
+%%%
+%%% as - checked only when action == "page", saves the part of list we are
+%%%      interested in under the given key, so it is possible to fetch the contents of
+%%%      the list inside the wpart:paginate tag
+%%%
+%%% per_page - checked only when action == "page", defines the maximum length of the list
+%%%            we pass to the inside of the tag
+%%%
+%%% text - checked only when action == "next_page | "prev_page", defines the text which should
+%%%        be displayed as the clickable link <a >TEXT</a>
+%%% @end
+%%%-------------------------------------------------------------------
+
+-module(wpart_paginate).
+
+-export([handle_call/1]).
+
+-include_lib("xmerl/include/xmerl.hrl").
+
+handle_call(E) ->
+    Action = wpart:has_attribute("attribute::action", "page", E),
+    
+    action(Action, E).
+
+action("page", E) ->
+    case wpart:has_attribute("attribute::list", E) of
+	false ->
+	    #xmlText{value = ""};
+	ListName ->
+	    List = wpart:fget(ListName),
+	    As = wpart:has_attribute("attribute::as", "item", E),
+	    PerPage = list_to_integer(wpart:has_attribute("attribute::per_page", "10", E)),
+
+	    Start = case wpart:fget("get:page_no") of
+			undefined ->
+			    1;
+			N ->
+			    list_to_integer(N)
+		    end,
+	    NewList = lists:sublist(List, (Start-1)*PerPage+1, PerPage),
+
+	    if
+		Start > 1 ->
+		    eptic:fset("prev_page", integer_to_list(Start-1));
+		true ->
+		    ok
+	    end,
+	    if
+		Start*PerPage+1 < length(List) ->
+		    eptic:fset("next_page", integer_to_list(Start+1));
+		true ->
+		    ok
+	    end,
+
+	    get_page(NewList, As, E#xmlElement.content)
+    end;
+
+action("next_link", E) ->
+    Text = wpart:has_attribute("attribute::text", "Next page", E),
+
+    case wpart:fget("next_page") of
+	undefined ->
+	    #xmlText{value = Text};
+	NextPage ->
+	    Link = modify_get_params(NextPage),
+	    #xmlText{value = "<a href=\"" ++ Link ++ "\">" ++
+		     Text ++ "</a>",
+		     type = cdata}
+    end;
+
+action("prev_link", E) ->
+    Text = wpart:has_attribute("attribute::text", "Previous page", E),
+
+    case wpart:fget("prev_page") of
+	undefined ->
+	    #xmlText{value = Text};
+	PrevPage ->
+	    Link = modify_get_params(PrevPage),
+	    #xmlText{value = "<a href=\"" ++ Link ++ "\">" ++
+		     Text ++ "</a>", 
+		     type = cdata}
+    end.
+
+get_page(List, As, Content) ->
+    wpart:fset(As, List),
+    wpart:eval(Content).
+
+modify_get_params(NewVal) ->
+    Get = wpart:fget("get"),
+    NewGet = [{"page_no", NewVal} | lists:keydelete("page_no", 1, Get)],
+    
+    Folded = lists:foldl(fun({Key, Val}, Acc) ->
+				 [$&, Key, $=, Val | Acc]
+			 end, [], NewGet),
+    [$& | Rest] = lists:flatten(Folded),
+    [$? | Rest].
