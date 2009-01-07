@@ -41,15 +41,16 @@ out(#arg{clisock = Socket, appmoddata = URL, headers = Headers} = A) ->
 	    end
     end.
 
+-spec(arg_rewrite/1 :: (tuple()) -> tuple()).	     
 arg_rewrite(#arg{req = R} = Arg) ->
     {abs_path, URL} = R#http_request.path,
     check_docroot(Arg, URL).
     
+-spec(start/0 :: () -> none()).	     
 start() ->
     application:start(yaws),
     application:start(ssl),
     application:start(sasl),
-    application:start(crypto),
     
     GC0 = yaws_config:make_default_gconf(false, "e_fe_server"),
     GC = GC0#gconf{logdir = "log"},
@@ -70,6 +71,7 @@ start() ->
     
     application:start(eptic_fe).
 
+-spec(check_docroot/2 :: (tuple(), string()) -> tuple()).	     
 check_docroot(Arg, Url) ->
 %% Add here your docroot elements resolver.
 %% If the URL matches some element from docroot, the Arg itself 
@@ -77,9 +79,11 @@ check_docroot(Arg, Url) ->
 %% Otherwise, the request will be handled by the e_fe_yaws.
     rewrite_req(Arg, Url).
 
+-spec(rewrite_req/2 :: (tuple(), string()) -> tuple()).	     
 rewrite_req(#arg{req = R} = Arg, Url) ->
     Arg#arg{req = R#http_request{path = {abs_path, "/docroot" ++ Url}}}.
 
+-spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->
 %% Here is the place where we can check, if the should skip cache
 %% and redirect the request straight to the backend server.
