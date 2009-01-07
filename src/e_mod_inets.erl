@@ -23,6 +23,7 @@
 
 -export([do/1]).
 -export([start/0]).
+-export([fe_request/2]).
 
 -include_lib("inets/src/httpd.hrl").
 
@@ -78,6 +79,17 @@ do(#mod{parsed_header = Headers} = A) ->
 		    {proceed, A#mod.data}
 	    end
     end.
+
+%% @hidden
+-spec(fe_request/2 :: (tuple(), term()) -> {term(), term()}).
+fe_request(#mod{parsed_header = Headers} = A, Session) ->
+    Cookie = proplists:get_value(?COOKIE, get_cookies(Headers), []),
+    e_session:update_session(Cookie, Session),
+    
+    Ret = do(A),
+    
+    {ok, NewSession} = e_session:get_session(Cookie),
+    {Ret, NewSession}.
 
 %%
 %% @spec start() -> none()
