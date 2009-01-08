@@ -16,19 +16,21 @@
 %%%-------------------------------------------------------------------
 %%% File    : e_cluster.erl
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% @hidden
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(e_cluster).
--export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
 
+-export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
+-export([be_request/4]).
+
+-spec(inform_fe_servers/0 :: () -> ok).	     
 inform_fe_servers() ->
     Fun = fun(Server) ->
 		  rpc:cast(Server, fe_proxy, be_register, [node()])
 	  end,
     call_servers(Fun).
 
+-spec(dispatcher_reload/0 :: () -> ok).	     
 dispatcher_reload() ->
     Conf = ets:tab2list(e_dispatcher),
 
@@ -37,14 +39,25 @@ dispatcher_reload() ->
 	  end,
     call_servers(Fun).
 
+-spec(invalidate/1 :: (list(string())) -> ok).	     
 invalidate(List) ->
     %% all dispacher keys are compiled for re module.
-    Compiled = lists:map(fun(Regexp) ->{ok,R} = re:compile(Regexp), R end, List),
+    Compiled = lists:map(fun(Regexp) ->
+				 {ok, R} = re:compile(Regexp), 
+				 R 
+			 end, List),
     Fun = fun(Server) ->
 		  rpc:call(Server, fe_cache, invalidate_handler, [Compiled])
 	  end,
     call_servers(Fun).
 
+-spec(be_request/4 :: (atom(), atom(), atom(), term()) -> {term(), term()}).	     
+be_request(M, F, A, Dict) ->
+    e_dict:init_state(Dict),
+    Return = catch apply(M, F, A),
+    {Return, e_dict:get_state()}.
+
+-spec(call_servers/1 :: (fun()) -> ok).	     
 call_servers(Fun) ->
     FEs = e_conf:fe_servers(),
     lists:foreach(Fun, FEs).

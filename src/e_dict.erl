@@ -22,16 +22,8 @@
 -module(e_dict).
 
 %% API
--export([
-	init_state/1,
-	terminate_state/0,
-	fset/2,
-	fset/3,
-	fget/1,
-	fget/2,
-	fget/3,
-        finsert/3
-]).
+-export([init_state/1, terminate_state/0, get_state/0]).
+-export([fset/2, fset/3, fget/1, fget/2, fget/3, finsert/3]).
 
 -export([start_link/0]).
 -export([init/1, terminate/2]).
@@ -48,8 +40,20 @@ start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
 %% @hidden
+init_state(Dict) when is_list(Dict) ->
+    ets:insert(?MODULE, {self(), dict:from_list(Dict)});
 init_state(Dict) ->
-    ets:insert(?MODULE, {self(), dict:from_list(Dict)}).
+    ets:insert(?MODULE, {self(), Dict}).
+
+%% @hidden
+-spec(get_state/0 :: () -> {ok, term()} | undefined).	     
+get_state() ->
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] ->
+	    {ok, Dict};
+	_ ->
+	    undefined
+    end.
 
 %% @hidden
 terminate_state() ->
