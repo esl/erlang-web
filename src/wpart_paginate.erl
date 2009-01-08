@@ -25,7 +25,9 @@
 %%% action - defines the returning value of tag expanding. By default is set to
 %%%          "page" - which narrows the list to the interesting part
 %%%          other options are "next_link" and "prev_link" which return
-%%%          the links (a href) to the next and previous page of the collection
+%%%          the links (a href) to the next and previous page of the collection.
+%%%          "numbered_links" - for list of N numbered links (for accessing the
+%%%          wanted page of the collection
 %%%    
 %%% list - checked only when action == "page", paginates the list held 
 %%%        under given key in e_dict (it must be manually set in the controller)
@@ -41,18 +43,19 @@
 %%%        be displayed as the clickable link <a >TEXT</a>
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(wpart_paginate).
 
 -export([handle_call/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
+-spec(handle_call/1 :: (tuple()) -> tuple()).	     
 handle_call(E) ->
     Action = wpart:has_attribute("attribute::action", "page", E),
     
     action(Action, E).
 
+-spec(action/2 :: (string(), tuple()) -> tuple()).	     
 action("page", E) ->
     case wpart:has_attribute("attribute::list", E) of
 	false ->
@@ -86,6 +89,40 @@ action("page", E) ->
 	    get_page(NewList, As, E#xmlElement.content)
     end;
 
+action("numbered_links", E) ->
+    case wpart:has_attribute("attribute::list", E) of
+	false ->
+	    #xmlText{value = ""};
+	ListName ->
+	    List = wpart:fget(ListName),
+	    PerPage = list_to_integer(wpart:has_attribute("attribute::per_page", "10", E)),
+	    Start = case wpart:fget("get:page_no") of
+			undefined ->
+			    1;
+			N ->
+			    list_to_integer(N)
+		    end,
+	    ListLen = length(List),
+
+	    PrevPages = if
+			    Start > 1 ->
+				lists:map(fun create_numbered_links/1,
+					  lists:seq(1, Start-1));
+			    true ->
+				[]
+			end,
+	    NextPages = if
+			    Start < ((ListLen-1) div PerPage)+1 ->
+				lists:map(fun create_numbered_links/1,
+					  lists:seq(Start+1, ((ListLen-1) div PerPage)+1));
+			    true ->
+				[]
+			end,
+
+	    #xmlText{value = PrevPages ++ integer_to_list(Start) ++ " " ++ NextPages,
+		     type = cdata}
+    end;
+
 action("next_link", E) ->
     Text = wpart:has_attribute("attribute::text", "Next page", E),
 
@@ -112,10 +149,12 @@ action("prev_link", E) ->
 		     type = cdata}
     end.
 
+-spec(get_page/3 :: (list(), string(), string()) -> string()).	     
 get_page(List, As, Content) ->
     wpart:fset(As, List),
     wpart:eval(Content).
 
+-spec(modify_get_params/1 :: (string()) -> (string())).	     
 modify_get_params(NewVal) ->
     Get = wpart:fget("get"),
     NewGet = [{"page_no", NewVal} | lists:keydelete("page_no", 1, Get)],
@@ -125,3 +164,10 @@ modify_get_params(NewVal) ->
 			 end, [], NewGet),
     [$& | Rest] = lists:flatten(Folded),
     [$? | Rest].
+
+-spec(create_numbered_links/1 :: (integer()) -> string()).	     
+create_numbered_links(N) ->
+    SN = integer_to_list(N),
+    LinkAddress = modify_get_params(SN),
+
+    "<a href=\"" ++ LinkAddress ++ "\">" ++ SN ++ "</a> ".
