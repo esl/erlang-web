@@ -20,9 +20,10 @@
 -module(e_fe_cache).
 
 -export([start_link/0, init/0, clear/0]).
--export([request/3, get_order/0]).
+-export([request/1, get_order/0]).
 -export([dispatcher_reload/1]).
 -export([invalidate_handler/1]).
+-export([ask_front_end/2, ask_back_end/4]).
 
 %% @hidden
 start_link() ->
@@ -58,18 +59,10 @@ loop({A, B}) ->
 	    loop({A, B})
     end.
 
--spec(request/3 :: (term(), string(), atom()) -> term()).	     
-request(Arg, URL, ServerMod) ->
-    BinaryURL = list_to_binary(URL),
-    Ret = case check_cache(BinaryURL) of
-	      {cached, Cached} ->
-		  Cached;
-	      not_found ->
-		  ask_back_end(Arg, BinaryURL, ServerMod)
-	  end,
-    
+-spec(request/1 :: (binary()) -> {cached, term()} | not_found).	     
+request(URL) ->
     e_fe_gc ! hit,
-    Ret.
+    check_cache(URL).
 
 -spec(invalidate_handler/1 :: (list(tuple())) -> ok).	     
 invalidate_handler(ToInv) ->
@@ -102,35 +95,49 @@ invalidate(Cache, BKey, Regexp) ->
 	    error_logger:error_msg("~p module, unknown regexp has come: ~p, error: ~p", [?MODULE, Regexp, Reason])
     end.
 
--spec(ask_back_end/2 :: (term(), binary()) -> term()).	   
-ask_back_end(Arg, URL, ServerMod) ->
-    Answer = e_fe_proxy:request(Arg, ServerMod),
+-spec(ask_front_end/2 :: (binary(), string()) -> term()).	     
+ask_front_end(URL, View) ->
+    Response = e_fe_mod_gen:view(View),
+    
+    case get_cache_type([$/ | binary_to_list(URL)]) of
+	no_cache ->
+	    ok;
+	_ ->
+	    save_persistent_cache(URL, 
+				  term_to_binary(Response))
+    end,
+    Response.
+
+-spec(ask_back_end/4 :: (binary(), atom(), atom(), list()) -> term()).	   
+ask_back_end(BURL, M, F, A) ->
+    Answer = e_fe_proxy:request(M, F, A),
+    URL = binary_to_list(BURL),
 
     case Answer of
 	[{html, _}, _] ->
-	    case get_cache_type([$/ | binary_to_list(URL)]) of
+	    case get_cache_type([$/ | URL]) of
 		normal ->
-		    save_cache(URL, 
+		    save_cache(BURL, 
 			       term_to_binary(Answer));
 		persistent ->
-		    save_persistent_cache(URL,
+		    save_persistent_cache(BURL,
 					  term_to_binary(Answer));
 		{timeout, T} ->
-		    save_timeout_cache(URL,
+		    save_timeout_cache(BURL,
 				       term_to_binary(Answer), T);
 		_ ->
 		    ok
 	    end;
 	[{content, _, _}, _] ->
-	    case get_cache_type([$/ | binary_to_list(URL)]) of
+	    case get_cache_type([$/ | URL]) of
 		normal ->
-		    save_cache(URL, 
+		    save_cache(BURL, 
 			       term_to_binary(Answer));
 		persistent ->
-		    save_persistent_cache(URL,
+		    save_persistent_cache(BURL,
 					  term_to_binary(Answer));
 		{timeout, T} ->
-		    save_timeout_cache(URL,
+		    save_timeout_cache(BURL,
 				       term_to_binary(Answer), T);
 		_ ->
 		    ok

@@ -17,7 +17,7 @@
 %%% file    : e_fe_yaws.erl
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%%-------------------------------------------------------------------
--module(e_fe_yaws).
+-module(e_fe_mod_yaws).
 
 -export([out/1, arg_rewrite/1]).
 -export([start/0]).
@@ -26,9 +26,59 @@
 -include("yaws.hrl").
 -include("eptic.hrl").
 
-out(#arg{clisock = Socket, appmoddata = URL, headers = Headers} = A) ->
-    Cookie = yaws_api:find_cookie_val("eptic_cookie", Headers#headers.cookie),
-    e_fe_session:load_session(Cookie),
+out(A) ->
+    case handle_args(#arg{headers = Headers} = A) of
+	{ok, Args} ->
+	    e_dict:init_state(Args),
+
+	    Clisock = A#arg.clisock,
+	    if
+		is_tuple(Clisock) andalso element(1, Clisock) == sslsocket ->
+		    e_dict:fset("__https", true);
+		true ->
+		    e_dict:fset("__https", false)
+	    end,
+
+            ClientCookie = cookie_up(Headers),
+            
+	    e_dict:fset("__path", A#arg.appmoddata),
+	    e_dict:fset("__cookie_key", ClientCookie),
+
+	    ControllerFun = fun() -> 
+				    case e_fe_mod_gen:handle_request([$/ | A#arg.appmoddata]) of
+					invalid_url ->
+					    enoent;
+					{view, View} ->
+					    e_fe_mod_gen:static_request({view, View})
+					{error, _Code, _Path} = Error ->
+					    e_fe_mod_gen:static_request(Error);
+					{M, F, A} ->
+					    e_fe_mod_gen:dynamic_request(M, F, A)
+				    end
+			    end,
+
+	    Result = with_formatted_error(ControllerFun),
+	    CookieHeader = cookie_bind(ClientCookie),
+	    
+	    cleanup(),
+	    [Result, CookieHeader];
+	GetMore ->
+	    GetMore
+    end.
+
+
+					{ret_view, Ret, View} ->
+					    controller_exec(Ret, View);
+					[_Status, _Html] = Error ->
+					    Error;
+					{html, _HTML} = HTML ->
+					    HTML;
+					Else ->
+					    controller_exec(Else, "")
+				    end
+			    end,
+            Result = with_formatted_error(ControllerFun),
+	    CookieHeader = cookie_bind(ClientCookie),
 
     if
 	is_tuple(Socket) andalso element(1, Socket) == sslsocket ->

@@ -21,7 +21,7 @@
 -export([start_link/0]).
 
 -export([start/0]).
--export([be_register/1, request/2, req_exec/5]).
+-export([be_register/1, request/3, req_exec/6]).
 
 -spec(start_link/0 :: () -> {ok, pid()}).	     
 start_link() ->
@@ -33,14 +33,14 @@ start_link() ->
 be_register(Name) ->
     e_fe_proxy ! {be, Name}.
 
--spec(request/2 :: (tuple(), atom()) -> term() | ok).	     
-request(A, ServerMod) ->
-    Session = e_fe_session:get_session(),
-    e_fe_proxy ! {req, A, Session, ServerMod, self()},
+-spec(request/3 :: (atom(), atom(), list()) -> term()).	     
+request(M, F, A) ->
+    Dict = e_dict:get_state(),
+    ?MODULE ! {req, M, F, A, Dict, self()},
 
     receive 
-	{res, {Res, NewSession}} ->
-	    e_fe_session:save_session(NewSession),
+	{res, {Res, NewDict}} ->
+	    e_dict:init_state(NewDict),
 	    Res;
 	error ->
 	    ok
@@ -55,7 +55,7 @@ start() ->
 wait_be() -> 
     receive 
 	{be, Name} ->
-	    io:format("~p module, got ~p~n", [?MODULE, Name]),
+	    error_logger:info_msg("~p module, got ~p~n", [?MODULE, Name]),
 	    application:set_env(eptic_fe, be_server_name, Name);
 	_ -> 
 	    wait_be()
@@ -64,23 +64,22 @@ wait_be() ->
 -spec(wait_req/0 :: () -> none()).	     
 wait_req() ->
     receive
-	{req, A, Session, ServerMod, OutPid} -> 
+	{req, M, F, A, Dict, OutPid} -> 
 	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    spawn(e_fe_proxy, req_exec, [A, Session, ServerMod, Name, OutPid]),
-	    wait_req();
+	    spawn(?MODULE, req_exec, [BackEnd, M, F, A, Dict, OutPid]);
 	{be, Name} ->
-	    application:set_env(eptic_fe, be_server_name, Name),
-	    wait_req();
+	    application:set_env(eptic_fe, be_server_name, Name);
 	_ -> 
-	    wait_req()
-    end.
+	    ok
+    end,
+    wait_req().
 
--spec(req_exec/5 :: (tuple(), term(), atom(), atom(), pid()) -> error | {res, term()}).	     
-req_exec(ServerArg, Session, ServerMod, Name, OutPid) ->
-    case rpc:call(Name, ServerMod, fe_request, [A, Session]) of
+-spec(req_exec/6 :: (atom(), atom(), atom(), atom(), term(), pid()) -> error | {res, term(), term()}).	     
+req_exec(Name, M, F, A, Dict, OutPid) ->
+    case rpc:call(Name, e_cluster, be_request, [M, F, A, Dict]) of
 	{badrpc, Error} ->
 	    error_logger:error_msg("~p module, rpc error: ~p~n", [?MODULE, Error]),
 	    OutPid ! error;
-	Res ->
-	    OutPid ! {res, Res}
+	{Res, NewDict} ->
+	    OutPid ! {res, Res, NewDict}
     end.
