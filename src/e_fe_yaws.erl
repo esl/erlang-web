@@ -24,6 +24,7 @@
 
 -include("yaws_api.hrl").
 -include("yaws.hrl").
+-include("eptic.hrl").
 
 out(#arg{clisock = Socket, appmoddata = URL, headers = Headers} = A) ->
     Cookie = yaws_api:find_cookie_val("eptic_cookie", Headers#headers.cookie),
