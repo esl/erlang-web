@@ -26,7 +26,7 @@
 -spec(inform_fe_servers/0 :: () -> ok).	     
 inform_fe_servers() ->
     Fun = fun(Server) ->
-		  rpc:cast(Server, fe_proxy, be_register, [node()])
+		  rpc:cast(Server, e_fe_proxy, be_register, [node()])
 	  end,
     call_servers(Fun).
 
@@ -35,27 +35,25 @@ dispatcher_reload() ->
     Conf = ets:tab2list(e_dispatcher),
 
     Fun = fun(Server) ->
-		  rpc:cast(Server, fe_cache, dispatcher_reload, [Conf])
+		  rpc:cast(Server, e_fe_cache, dispatcher_reload, [Conf])
 	  end,
     call_servers(Fun).
 
 -spec(invalidate/1 :: (list(string())) -> ok).	     
 invalidate(List) ->
-    %% all dispacher keys are compiled for re module.
     Compiled = lists:map(fun(Regexp) ->
 				 {ok, R} = re:compile(Regexp), 
 				 R 
 			 end, List),
     Fun = fun(Server) ->
-		  rpc:call(Server, fe_cache, invalidate_handler, [Compiled])
+		  rpc:call(Server, e_fe_cache, invalidate_handler, [Compiled])
 	  end,
     call_servers(Fun).
 
 -spec(be_request/4 :: (atom(), atom(), atom(), term()) -> {term(), term()}).	     
 be_request(M, F, A, Dict) ->
     e_dict:init_state(Dict),
-    Return = catch apply(M, F, A),
-    {Return, e_dict:get_state()}.
+    {e_mod_gen:controller(M, F, A), e_dict:get_state()}.
 
 -spec(call_servers/1 :: (fun()) -> ok).	     
 call_servers(Fun) ->

@@ -32,6 +32,7 @@
 -export([handle_request/1]).
 -export([template/3, template_file/1, error_page/2, error_page/3]).
 -export([restore_session/1, bind_session/1]).
+-export([controller/3]).
 
 -include("eptic.hrl").
 
