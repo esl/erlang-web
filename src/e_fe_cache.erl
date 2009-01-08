@@ -24,6 +24,7 @@
 -export([dispatcher_reload/1]).
 -export([invalidate_handler/1]).
 -export([ask_front_end/2, ask_back_end/4]).
+-export([save_cache/2, save_cache/3]).
 
 %% @hidden
 start_link() ->
@@ -97,56 +98,25 @@ invalidate(Cache, BKey, Regexp) ->
 
 -spec(ask_front_end/2 :: (binary(), string()) -> term()).	     
 ask_front_end(URL, View) ->
-    Response = e_fe_mod_gen:view(View),
-    
-    case get_cache_type([$/ | binary_to_list(URL)]) of
-	no_cache ->
-	    ok;
-	_ ->
-	    save_persistent_cache(URL, 
-				  term_to_binary(Response))
-    end,
-    Response.
+    e_fe_mod_gen:view(View).
 
 -spec(ask_back_end/4 :: (binary(), atom(), atom(), list()) -> term()).	   
 ask_back_end(BURL, M, F, A) ->
-    Answer = e_fe_proxy:request(M, F, A),
-    URL = binary_to_list(BURL),
+    e_fe_proxy:request(M, F, A).
 
-    case Answer of
-	[{html, _}, _] ->
-	    case get_cache_type([$/ | URL]) of
-		normal ->
-		    save_cache(BURL, 
-			       term_to_binary(Answer));
-		persistent ->
-		    save_persistent_cache(BURL,
-					  term_to_binary(Answer));
-		{timeout, T} ->
-		    save_timeout_cache(BURL,
-				       term_to_binary(Answer), T);
-		_ ->
-		    ok
-	    end;
-	[{content, _, _}, _] ->
-	    case get_cache_type([$/ | URL]) of
-		normal ->
-		    save_cache(BURL, 
-			       term_to_binary(Answer));
-		persistent ->
-		    save_persistent_cache(BURL,
-					  term_to_binary(Answer));
-		{timeout, T} ->
-		    save_timeout_cache(BURL,
-				       term_to_binary(Answer), T);
-		_ ->
-		    ok
-	    end;
-	_ ->
-	    ok
-    end,
-    
-    Answer.
+-spec(save_cache/2 :: (string(), binary()) -> ok).	     
+save_cache(URL, Cache) ->
+    save_cache(get_cache_type([$/, URL]), list_to_binary(URL), Cache).
+
+-spec(save_cache/3 :: (atom(), binary(), binary()) -> ok).
+save_cache(no_cache, _, _) ->
+    ok;
+save_cache(normal, URL, Cache) ->
+    save_normal_cache(URL, Cache);
+save_cache(persistent, URL, Cache) ->
+    save_persistent_cache(URL, Cache);
+save_cache({timeout, T}, URL, Cache) ->
+    save_timeout_cache(URL, Cache, T).
 
 -spec(get_cache_type/1 :: (string()) -> normal | {timeout, integer()} | persistent).	     
 get_cache_type(Url) ->
@@ -203,7 +173,7 @@ check_transient_cache(Key) ->
     end.					
 
 -spec(save_cache/2 :: (binary(), atom()) -> none()).	     
-save_cache(Key, Cache) ->
+save_normal_cache(Key, Cache) ->
     {First, _} = get_order(),
     ets:insert(First, {Key, Cache}).
 

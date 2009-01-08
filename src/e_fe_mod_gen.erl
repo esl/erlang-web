@@ -49,16 +49,21 @@ static_request(URL, View) ->
     BURL = list_to_binary(URL),
     case e_fe_cache:request(BURL) of
 	not_found ->
-	    e_fe_cache:ask_front_end(BURL, View);
+	    Response = e_fe_cache:ask_front_end(BURL, View),
+	    e_fe_cache:save_cache(persistent, BURL, term_to_binary(Response)),
+	    Response;
 	{cache, Cached} ->
 	    Cached
     end.
 
 dynamic_request(M, F, A) ->
     BURL = list_to_binary(URL),
-    case e_fe_cache_request(BURL) of
+    case e_fe_cache:request(BURL) of
 	not_found ->
-	    e_fe_cache:ask_back_end(BURL, M, F, A);
+	    Response = controller_exec(e_fe_cache:ask_back_end(BURL, M, F, A)),
+%% process the response, expand the template, etc.
+	    e_fe_cache:save_cache(URL, Response),
+	    Reponse;
 	{cache, Cached} ->
 	    Cached
     end.
@@ -85,6 +90,15 @@ template(File) ->
 	E ->
 	    {html, wpart_xs:process_xml(E)}
     end.
+
+controller_exec({ret_view, Ret, View}) ->
+    ok;
+controller_exec({html, HTML}) ->
+    ok;
+controller_exec([Status, HTML]) ->
+    ok;
+controller_exec(Else) ->
+    ok.
 
 -spec(sanitize_file_name/1 :: (string()) -> string()).	     
 sanitize_file_name([$.,$.|T]) ->
