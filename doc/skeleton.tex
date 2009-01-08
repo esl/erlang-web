@@ -1,0 +1,93 @@
+
+\makeatletter
+\newcommand\nlparagraph{\@startsection{paragraph}{4}{\z@}%
+  {-3.25ex\@plus -1ex \@minus -.2ex}%
+  {1.5ex \@plus .2ex}%
+  {\normalfont\normalsize\bfseries}}
+\makeatother
+
+\title{ErlangWeb Tutorial}
+\author{
+       Erlang Training \& Consulting Ltd. \\
+}
+\date{\today}
+
+\documentclass[12pt]{article}
+
+\addtolength{\textwidth}{3cm}
+\addtolength{\hoffset}{-0.5cm}
+\addtolength{\textheight}{2cm}
+\addtolength{\voffset}{-1cm}
+% page number still to close to text 
+%\usepackage[top=0.6in, bottom = 0.6in]{geometry}  %% verbatim frames badness
+
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage[pdftex]{graphicx}
+\usepackage{longtable}
+\begin{document}
+
+\maketitle
+
+\begin{center}
+{\it www.erlang-web.org}
+\end{center}
+
+\vfill
+
+\begin{center}
+\begin{abstract}
+\begin{center}
+Erlang Web 1.2 release tutorial. 
+\end{center}
+\end{abstract}
+
+\includegraphics[width=30px]{images/erlang.jpg}
+%\includegraphics[width=40px]{images/etc.jpg}
+%\includegraphics[width=35px]{images/powered.jpg}
+\end{center}
+\newpage
+\tableofcontents
+\newpage
+
+\clearpage
+\section{Erlang Inside}
+\input{erlang_inside}
+
+\clearpage
+\input{dir}
+
+\clearpage
+\input{mvc}
+
+\clearpage
+\input{philosophy}
+
+\clearpage
+\input{controller}
+
+\clearpage
+\input{model}
+
+\clearpage
+\input{view}
+
+\clearpage
+\section{Reference Manual}\label{refman}
+\input{basictypes}
+\clearpage
+\input{interesting_wparts}
+\clearpage
+\input{http_tuples}
+
+%\clearpage
+%\input{issues}
+%\clearpage
+%\section{Enhancements}\label{enh}
+%\input{enhancements}
+%
+%\clearpage
+%\section{Who's To Blame}
+%\input{blame}
+\include{blame_public}
+\end{document}

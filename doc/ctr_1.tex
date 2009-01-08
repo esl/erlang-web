@@ -1,0 +1,51 @@
+\subsection{The simplest case}
+The simplest scenario for running any dynamic content with ErlangWeb would be 
+\begin{itemize}
+  \item defining URL we want to access as static in the dispatcher (even if it is
+    dynamic, it means that request go to template instead of going to controller at first)
+  \item implement functionality in wpart\_\textit{new\_name}
+  \item create template which uses wpart mentioned earlier
+\end{itemize}
+That is all. Although that is not real controller. It is possible to have any functionality in new wpart but in
+complex projects it is not used often to display main content. Main reason is
+that we want to parametrize template to behave different in many cases and it can be done in
+controller before executing template. On the other hand, wpart in template
+takes arguments - it is all right when they are simple, short and not dynamic
+(e.g. customizable options in some select field or autocomplete field with
+10000 choices). So when it is best to use static wparts? Lets take a look at \textit{top menu} on some website.
+\begin{Verbatim}[numbers=left, fontsize=\small]
+-module(wpart_menu).
+-export([handle_call/1]).
+
+-include_lib("xmerl/include/xmerl.hrl").
+
+handle_call(_E) ->
+    Options1 = [{"/", "HOME"},
+		{"/news/", "NEWS"},
+		{"/article/", "ARTICLES"},
+		{"/blog/", "BLOGS"},
+		{"/link/", "LINKS"},
+		{"/doc.html", "DOCUMENTATION"}],
+    
+    LoggedRoot = filter:is_auth([root]),
+    LoggedOther = filter:is_auth([blogger]),
+    Options = if
+		  LoggedRoot == true ->
+		      Options1 ++ [{"/users/", "ADMIN "}];
+		  LoggedOther == true ->
+		      Options1 ++ [{"/logout/", "LOGOUT "}];
+		  true ->
+		      Options1
+	      end,
+
+    List = lists:map(fun({Link, Name}) ->
+			    whelper:prepare("list_element", [Option, Name]]);
+		     end, Options),
+    Ready = whelper:prepare("list_cover", [List]]);			
+
+    #xmlText{value=Ready, type=cdata}.
+\end{Verbatim}
+The example above is a simple version of menu. List of links is created. HTML code
+is prepared by whelper [25]. Real menu also passes e.g. id = 'active' but for
+simplicity it is cut off. Now, to use it, just type $<$wpart:menu /$>$ 
+in proper place of base template.

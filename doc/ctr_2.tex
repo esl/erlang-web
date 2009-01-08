@@ -1,0 +1,73 @@
+\subsection{Second step: data flow and new home made controller}
+There is several rules each controller has to implement
+\begin{enumerate}
+\item Every dynamic call from dispatcher (exactly
+  e\_mod\_\textit{some\_http\_server}) must return tuple, e.g. \{redirect,
+    "/save"\} or \{template,
+    "/save\_form"\}. Full list and spec available in Reference Manual.
+\item Controller must export either validate/1 or pair: dataflow/1 and
+  error/2.
+\item To follow MVC rules keep operation on DB in model - so call wtype
+\end{enumerate}
+
+What we need now is controller which handles saving information from form. 
+What to do?
+\begin{itemize}
+  \item build form in template
+  \item set proper URL as dynamic in dispatcher and make it call our new
+    function add/1
+  \item implement controller
+  \item implement model to save data
+\end{itemize}
+
+\begin{Verbatim}[frame=single,
+       framesep=2mm,
+       label=dispatcher.conf,labelposition=topline,
+       fontsize=\small]
+{dynamic, "^/save", {new_controller, save}}.
+{static, "^/save_form", "save_form.html"}.
+\end{Verbatim}
+$ $
+\begin{Verbatim}[frame=single,
+       framesep=2mm,
+       label=save\_form.html,labelposition=topline,fontsize=\small]
+ <form action="/save" method="post" accept-charset="utf-8">
+ <table>
+  <tr><td>Example</td></tr>
+  <tr><td>Your name</td>
+      <td><input type="text" name="example_name" value=""/>
+      <br/></td>
+ </tr>
+ <tr><td>City</td>
+     <td><input type="text" name="example_city"/><br/></td>
+ </tr>
+ </table>
+ <input type="submit"/>
+ <br/> 
+ </form> 
+\end{Verbatim}
+$ $
+\begin{Verbatim}[frame=single,fontsize=\small,
+       framesep=2mm,
+       label=new\_controller.erl,labelposition=topline]
+dataflow(save) -> [validate];
+
+%% ... 
+
+validate(save,_) ->
+ V1 = eptic:fget("post","example_name"),
+ V2 = eptic:fget("post","example_city"),
+ Bool1 = is_string(V1),
+ Bool2 = is_string(V2),
+ if Bool1 and Bool2 -> {ok, [V1,V2]};
+    true -> {error, bad_values}
+ end.
+
+%% ..
+error(save, bad_values) ->
+	{template, "templates/error/error_1.html"}.
+%% ..
+create(X) -> 
+        wtype_new_controller:save(X),
+        {redirect, "/save/form"}.
+\end{Verbatim}

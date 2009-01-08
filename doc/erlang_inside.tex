@@ -1,0 +1,128 @@
+\subsection{Overview} The ErlangWeb is an open source framework for applications based on HTTP protocols, giving the developer better control of content management. With ErlangWeb's simple but extensible concept of including dynamic content in pages, libraries of reusable components can be built. Currently it supports {\it INETS}\footnote{part of Erlang/OTP, see more on http://www.erlang.org/doc/apps/inets/index.html} and {\it Yaws}\footnote{see more on yaws.hyber.org} webservers, but others are planned in the future.
+
+The ErlangWeb platform has been developed by {\it Erlang Training \& Consulting Ltd.} in the past three years been used in many commercial and high profile projects.
+
+The official website of the framework is {\it http://erlang-web.org/}.
+
+\subsection{Easy start}In order to make the start of the adventure with ErlangWeb easier, there is a start-up script, which can prepare all the environment for a new project. Currently only {\it Linux}-based systems are supported by the script. 
+
+Before we will be ready to use the framework for the first time, we should compile it. To do this, we should type in the sources root directory:
+\begin{verbatim}
+bin/prepare.erl
+\end{verbatim}
+
+To create a proper directory structure, we should type 
+\begin{verbatim}
+PATH_TO_THE_ERLANG_WEB_ROOT_FOLDER/bin/start.erl
+\end{verbatim}
+inside a directory where we want to start our work. 
+
+The generated output should look like this:
+\begin{verbatim}
+erlang@erlangweb ~/dev/erlangweb/new_project/ $ /usr/lib/ew-1.2/bin/start.erl
+Element created: config
+Element created: docroot
+Element created: log
+Element created: pipes
+Element created: bin
+Element created: templates
+Element created: lib
+Element created: releases
+Element created: releases/0.1
+Element created: docroot/conf
+Element created: bin/heart
+Element created: bin/to_erl
+Element created: bin/run_erl
+Element created: bin/start
+Element created: bin/stop
+Element created: bin/connect
+Element created: bin/start_interactive
+Element created: bin/start_erl
+Element created: releases/start_erl.data
+Element created: config/dispatch.conf
+Element created: config/errors.conf
+Element created: templates/404.html
+Element created: templates/501.html
+Element created: config/project.conf
+Element created: templates/welcome.html
+Element created: releases/0.1/start.rel
+Element created: releases/0.1/start.script
+Element created: releases/0.1/start.boot
+Element created: config/yaws.conf
+Element created: docroot/conf/mime.types
+Element created: releases/0.1/sys.config
+Element created: bin/compile.erl
+Element created: bin/add.erl
+\end{verbatim}
+
+Now we must create our new application tree in {\it lib} directory and we can start a work with ErlangWeb framework!
+
+By default the main and only rule in {\it dispatch.conf} is set to render the {\it templates/welcome.html} page after entering the {\it http://localhost:8080/} address.
+
+\subsection{Compiling the project}As Erlang runs interpreted virtual machine code, we must compile and load changed parts of code to see the effects. To make it easier and faster, we can use {\it Emakefile}s - the build utility similar to {\it GNU Makefile}.
+
+In simpliest case we will need to type:
+\begin{verbatim}
+bin/compile.erl
+\end{verbatim}
+inside the root directory of our project. This command will force Erlang's make to compile updated files. 
+
+In other case, when we need to compile and create a new release (for embedded system) we will have to run:
+\begin{verbatim}
+bin/compile.erl release Vsn
+\end{verbatim}
+where {\it Vsn} is the version of our release (by default set to 0.1). 
+
+Details of the {\it bin/compile.erl} script are described after running
+\begin{verbatim}
+bin/compile.erl help
+\end{verbatim}
+
+\subsection{Adding new application}Our next goal is to create our own Erlang Web application. To do this, we should prepare the environment:
+\begin{verbatim}
+bin/add.erl 
+\end{verbatim}
+and follow the instructions displayed on the screen. This script will create the whole directory tree and update the main Emakefile file for us. 
+
+\subsection{Running the server}After creating all needed modules and preparing proper configuration files we will be ready to start our own Erlang server.
+
+There are two ways to achieve that:
+\begin{itemize}
+\item run it in embedded mode
+\item run it in interactive mode
+\end{itemize}
+Both ways are supported by created start scripts. Differences between those modes are described on {\it http://www.erlang.org/doc/}.
+
+\begin{enumerate}
+\item Embedded mode
+\begin{itemize}
+\item To run our system just type:
+\begin{verbatim}
+$ bin/start
+\end{verbatim}
+To connect to Erlang shell:
+\begin{verbatim}
+$ bin/connect
+\end{verbatim}
+To stop the system:
+\begin{verbatim}
+$ bin/stop
+\end{verbatim}
+\end{itemize}
+
+\item Interactive mode
+\begin{itemize}
+\item To start the system with interactive shell running on top of the INETS server:
+\begin{verbatim}
+$ bin/start_interactive inets
+\end{verbatim}
+or
+\begin{verbatim}
+$ bin/start_interactive
+\end{verbatim}
+In order to run it on top of the Yaws server:
+\begin{verbatim}
+$ bin/start_interactive yaws
+\end{verbatim}
+\end{itemize}
+\end{enumerate}

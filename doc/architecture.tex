@@ -1,0 +1,177 @@
+\subsection{Architecture of Types}
+\subsubsection{Overview}
+One of the first steps during building any application is the design. This is a
+point when we make the decisions on the level of abstraction represented by modules,
+functions and variables.
+MVC pattern gives developer mayor guidelines on internal structure. This
+chapter will more  describe Model part, however in general it is the result of portion of data
+required by user.
+So each choice we made on model will be mirrored directly to the final user and
+to the amount of information given to him.
+\subsubsection{Origin of a problem}
+Dynamic web services are build on the top of database. Custom types are
+represented by tables. E.g. \emph{Article} could be a custom complex type stored
+in table {\it articles}. It is complex type because it consists of basic types: {\it string}, {\it text} and {\it date}. 
+Working with Erlang on the edge of functional and declaraive world 
+ raises some issues about typing. Mnesia\footnote{DBMS included in OTP} do
+ not store data as a specific type because Erlang is dynamically typed. Building, for
+ example, HTML code of forms usually uses information from database fields
+definitions. 
+To sum up we need a mechanism on framework side to map complex types elements
+to their types with minimum storage and performance requirements. 
+\subsubsection{User friendly complex types}
+To solve an issue described in the previous paragraph, there is a nice and
+convenient way of defining your own types in ErlangWeb. Such a definintion
+consists of two records. For {\it articles} it would be \textbf{article} and
+\textbf{article\_types}. Let's look at definitions below:
+\begin{Verbatim}
+-record(article, {
+	  id,
+	  title ,
+	  text
+	 }).
+
+-record(article_types, {
+	  id = {integer, [{description, "ID"},
+			  {min, 1},
+			  {private, true}, 
+			  {primary_key}]},
+	  title = {string, [{description, "Title"},
+			    {max_length, 255},
+			    {min_length, 1},
+			    {html, []}]},
+	  text = {text, [{description, "News Content"},
+			 {max_length, 1 bsl 15},
+			 {rows, 10},
+			 {cols, 40},
+			 {html, ["u", "b", "i", "a", "h1", "h2", "h3",
+				 "ul", "ol", "li", "br", "hr", "img",
+				 "center"]}]}
+	 }). 
+\end{Verbatim}
+
+We place the record definition in {\it article\_records.hrl} file in the \textbf{include} folder of our web
+application.
+The only place we should include them is {\it wtype\_articles.erl} which represents
+the model.
+Names ended with {\it 'types'} and {\it 'records'} are obligatory for those who want to use
+generic functions of framework. \\
+Now we know what is a complex type (article) and where is its definition. 
+\newline 
+\paragraph{What kind of benefits we can expect?}   
+Thanks to {\it '\_records'} building HTML forms
+is done automatically. Validation of input values is generic. Selecting values from
+post and feeding controllers - generic. It is dynamic --- because {\it 'wtype\_'}
+implements obligatory function which returns types, this is a time and place to
+modify and prepare dynamic types. 
+\paragraph{Complex types can be nested.} To achieve that just use as a name of
+type -- newly defined type.  \newline
+
+In this tutorial we will try to explain each of those mechanisms to give
+chance to customize or improve them. Look for specification and users guide in
+Ref. Manual. \newline
+
+ \textbf{Derived} ({\it wpart\_derived}) is responsible for building forms. For
+generic validation it is \textbf{Validate} ({\it wpart\_valid}, {\it validate\_tool}). 
+\subsubsection{Deeper}
+As we could see in the source code above, record \textit{\_types} consists of
+fields which values are by default types and options of those types. E.g. 
+\begin{Verbatim}
+ title = {string, [{description, "Title"},
+                   {max_length, 255},
+	           {min_length, 1},
+	           {html, []}]},
+\end{Verbatim}
+Specification:
+\begin{verbatim}
+  Name = {Type, Options}
+  Type = atom()
+  Options = [Tuple]
+  Tuple = tuple()
+\end{verbatim}  
+  List of basic types is held in {\it basic\_types.conf}, which is loaded to ETS table at
+  the start up application or during the configuration reload. 
+  For now, it covers almost all useful types (and we can add new at any time). 
+\begin{verbatim}
+{integer, string, date, bool, enum, text, upload,
+ password, multilist, time, datetime, autocomplete, csv}.
+\end{verbatim}  
+
+ Options for basic types are handled in {\bf Wparts} application. They are in pairs
+ wtype\_\textit{name}.erl and wpart\_\textit{name}.erl. Supported  options are
+ listed in Reference Manual. 
+ {\it wpart\_valid} can be understood as a router delegating validation of declared
+ value to corresponding wtype\_\textit{name}.erl which must implement functions
+ validate/1 and, in case of user defined type, get\_record\_info/1.
+
+ Validator is called from controller with argument saying where to look
+ for definition of the complex type. Of course it goes to
+ wtype\_\textit{complex\_name}.erl (in application folder - where it
+ represents model). It must implement function validate/1 which passes 
+included types with options to validator. 
+
+ Finally, to understand it better, let's analyze use case of adding link to bookmark database
+ (URL({\it string}), title({\it string}), category({\it enum})) with option of adding our own category (not only
+ listed by enum type). Source codes of records will be shown in later examples - at
+ the moment we will focus only on the data flow.
+
+ Simplified control flow:
+
+\begin{enumerate} 
+\item Controller is asked to render form (we want to add some new link)
+
+  \begin{itemize}
+     \item \textit{wpart\_form} uses \textit{wpart\_derived} to build adequate input
+       forms
+     \item  \textit{wpart\_derived} asks \textit{wtype\_link} for complex type definition.
+     \item  \textit{wtype\_link} prepares feed for enum value from category store
+       and sends complete dynamically created types to derived. 
+     \item  \textit{wpart\_derived} calls wpart\_\textit{string}, wpart\_\textit{enum} (each of them is a basic
+       type included in link) to build HTML form tags with unique names
+  \end{itemize}
+
+\item Form is rendered, we fill it in and click {\it submit} button
+
+  \begin{itemize}
+     \item all values are sent as POST 
+     \item \textit{dispatcher} identifies function \emph{link:add} but
+       there is a validation required before calling the \emph{add} function
+     \item  controller calls \textit{wpart\_valid}
+     \item  \textit{wpart\_valid} goes to model and asks for types of link;
+       recreates uniqe names and takes the values from POST; sends them to adequate
+       \textit{wtype\_some\_basic\_type}
+     \item Every \textit{wtype\_some\_basic\_type} validates input value from
+       HTML form with build-in rules and checks, if options defined by user are
+       obeyed. On succes (true) sends response with {\it ok}. Otherwise (false) 
+       sends {\it error} with both {\it Reason} and input
+     \item When all responses are returned, \textit{wpart\_valid} prepares a
+       list with validation results and values; sends it to controller
+     \item controller uses generic tools to retrieve information from list,
+       feeds function link:add with values or builds error message
+  \end{itemize}
+
+\item Function gets arguments
+  \begin{itemize}
+     \item values can be interpreted and are send to model
+     \item  \textit{wpart\_link} knows about record definition and can save them into
+       mnesia
+  \end{itemize}
+
+\end{enumerate}
+
+   Custom types built on base of basic types are integral part of framework. Even if
+   it is more popular now to declare whole form as a Java Script with built in
+   validation, it is still usefull to have the internal check of HTML types with
+   pre-defined attributes. On the other hand, it is very simple to build and
+   add our own basic type hypothetically  \textit{JS\_form} and use it inside
+   custom type -- example of that is type \textit{autocomplete} which is fed
+   by controller with necessary values to autocomplete. 
+ 
+
+ 
+
+
+
+ 
+
+

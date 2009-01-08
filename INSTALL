@@ -1,0 +1,28 @@
+ErlangWeb 1.2 Installation Guide
+================================
+
+1. Requirements
+-Erlang/OTP R12B-5 or later
+-Yaws 1.73 or later (included in the package)
+
+2. Start
+To start working with ErlangWeb you should compile the three main applications:
+eptic, wpart and wparts. It could be easily done by typing 
+       bin/compile.erl
+in the root directory of the framework.
+You will also need one of the supported HTTP servers. To make your life easier,
+Yaws server is included in version 1.73 together with pre-compiled beams.
+
+After that you can either use generic directory builder:
+      bin/start.erl
+or create all the folders by your own.
+
+If you decided to use start.erl script, your server is ready to use and you can
+start it in an interactive mode: 
+   bin/start interactive
+and then try: 
+    http://localhost:8080/
+
+3. Details
+More details can be found in doc/tutorial.pdf file.
+
