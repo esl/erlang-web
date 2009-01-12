@@ -21,7 +21,7 @@
 -module(e_cluster).
 
 -export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
--export([be_request/4]).
+-export([be_request/4, synchronize_docroot/0]).
 
 -spec(inform_fe_servers/0 :: () -> ok).	     
 inform_fe_servers() ->
@@ -59,3 +59,8 @@ be_request(M, F, A, Dict) ->
 call_servers(Fun) ->
     FEs = e_conf:fe_servers(),
     lists:foreach(Fun, FEs).
+
+-spec(synchronize_docroot/0 :: () -> ok).
+synchronize_docroot() ->	     
+%% @todo complete the implementation
+    ok.

@@ -28,7 +28,7 @@
 -export([arg_rewrite/1]).
 -export([fe_request/2]).
 
--export([cookie_up/1, add_headers/2, cookie_bind/1, cleanup/0, handle_args/1]).
+-export([cookie_up/1, add_headers/2, cookie_bind/1, cleanup/0]).
 
 -include("yaws_api.hrl").
 -include("yaws.hrl").
@@ -148,7 +148,6 @@ check_static(Arg = #arg{req = R}, URL) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-%% @hidden
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())} | tuple()).
 handle_args(#arg{req = R} = Arg) ->
     case e_multipart_yaws:is_multipart(Arg) of

@@ -25,6 +25,9 @@
 -export([start/0]).
 -export([fe_request/2]).
 
+-export([cookie_up/1, cookie_bind/1, cleanup/0]).
+-export([parse_get/1, fetch_boundary/1, format_response/1]).
+
 -include_lib("inets/src/httpd.hrl").
 
 -include("eptic.hrl").
@@ -218,7 +221,7 @@ controller_exec(Ret, View) ->
 	    ReadyHeaders = create_headers(Headers, []),
 	    {ReadyHeaders ++ NewHeaders, ProperRet};
 	{error, Code} ->
-	    e_mod_gen:error_page(Code, e_dict:fget("__path"))
+	    format_response(e_mod_gen:error_page(Code, e_dict:fget("__path")))
     end.
 
 -spec(format_response/1 :: (term()) -> term()).	     
@@ -254,6 +257,7 @@ create_headers([{cookie, CookieName, CookieVal, CookiePath, CookieExpDate} | Res
 create_headers([_ | Rest], Acc) ->
     create_headers(Rest, Acc).
 
+%% @hidden
 -spec(parse_get/1 :: (string()) -> list(tuple())).	     
 parse_get(URL) ->
     case string:chr(URL, $?) of
@@ -280,6 +284,7 @@ parse_post(String) ->
 	    e_multipart_inets:get_multipart(String, Boundary)
     end.
 
+%% @hidden
 -spec(fetch_boundary/1 :: (string()) -> {simple, string()} | {multipart, string()}).	     
 fetch_boundary(Data) ->
     case string:str(Data, "\r\n") of
@@ -289,6 +294,7 @@ fetch_boundary(Data) ->
 	    {multipart, string:substr(Data, 1, Pos-1)}
     end.
 
+%% @hidden
 -spec(cookie_up/1 :: (list(tuple())) -> term()).	     
 cookie_up(Headers) ->
     Cookies = get_cookies(Headers),
@@ -312,11 +318,13 @@ cookie_up(Headers) ->
             end
     end.
 
+%% @hidden
 -spec(cookie_bind/1 :: (string()) -> {string(), string()}).	     
 cookie_bind(ClientCookie) ->
     e_mod_gen:bind_session(ClientCookie),
     {"Set-cookie", ?COOKIE ++ [$= | ClientCookie ++ "; path=/"]}.
 
+%% @hidden
 -spec(cleanup/0 :: () -> none()).	     
 cleanup() ->
     e_multipart_inets:terminate(),
