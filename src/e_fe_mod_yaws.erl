@@ -85,13 +85,13 @@ start() ->
     SC1 = #sconf{port = 8080,
 		 docroot = "docroot",
 		 listen = {0, 0, 0, 0},
-		 arg_rewrite_mod = e_fe_yaws,
-		 appmods = [{"docroot", e_fe_yaws}]},
+		 arg_rewrite_mod = ?MODULE,
+		 appmods = [{"app", ?MODULE}]},
     SC2 = #sconf{port = 8081,
 		 docroot = "docroot",
 		 listen = {0,0,0,0},
-		 arg_rewrite_mod = e_fe_yaws,
-		 appmods = [{"docroot", e_fe_yaws}],
+		 arg_rewrite_mod = ?MODULE,
+		 appmods = [{"app", ?MODULE}],
 		 ssl = #ssl{keyfile = "priv/keys/host.key",
 			    certfile = "priv/keys/host.cert",
 			    password = ""}},
@@ -99,17 +99,29 @@ start() ->
     
     application:start(eptic_fe).
 
--spec(check_docroot/2 :: (tuple(), string()) -> tuple()).	     
+-spec(check_docroot/2 :: (tuple(), string()) -> tuple()).	
 check_docroot(Arg, Url) ->
 %% Add here your docroot elements resolver.
 %% If the URL matches some element from docroot, the Arg itself 
 %% should be returned. 
 %% Otherwise, the request will be handled by the e_fe_yaws.
-    rewrite_req(Arg, Url).
+    check_static(Arg, Url).
+ %%   rewrite_req(Arg, Url).
+
+-spec(check_static/2 :: (tuple(), string()) -> tuple()).	     
+check_static(Arg = #arg{req = R}, [$/, $a, $p, $p | _] = URL) ->
+    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ URL}}};
+check_static(Arg = #arg{req = R}, URL) ->
+    case e_dispatcher:is_static(URL) of
+	true ->
+	    Arg;
+	false ->
+	    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ URL}}}
+    end.
 
 -spec(rewrite_req/2 :: (tuple(), string()) -> tuple()).	     
 rewrite_req(#arg{req = R} = Arg, Url) ->
-    Arg#arg{req = R#http_request{path = {abs_path, "/docroot" ++ Url}}}.
+    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ Url}}}.
 
 -spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->
@@ -122,9 +134,19 @@ is_cacheable() ->
 %% As an example, all requests replies are cached.
     false.
 
--spec(controller_exec/3 :: (term(), string(), string()) -> term()).	     
-controller_exec(Ret, View, URL) ->
+-spec(controller_exec/3 :: (term(), string(), string()) -> term()).
+controller_exec({ret_view, Ret, View}, _, URL) ->
     Response = controller_exec(Ret, View),
+    e_fe_cache:save_cache(URL, Response),
+    Response;
+controller_exec({html, _HTML} = HTML, _, URL) ->
+    e_fe_cache:save_cache(URL, HTML),
+    HTML;
+controller_exec([_Status, _HTML] = Error, _, URL) ->
+    e_fe_cache:save_cache(URL, Error),
+    Error;
+controller_exec(Else, View, URL) ->
+    Response = controller_exec(Else, View),
     e_fe_cache:save_cache(URL, Response),
     Response.
 

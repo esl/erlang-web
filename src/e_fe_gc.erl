@@ -30,7 +30,7 @@ start_link() ->
 %% @hidden
 init() ->
     timer:apply_after(60000, e_fe_gc, clear_timeout_cache, []),
-    case ets:lookup(frontend_conf, gc_mode) of
+    case ets:lookup(e_fe_conf, gc_mode) of
 	[] ->
 	    timer:apply_after(60000, e_fe_gc, collect_timeout, [60000]),
 	    timeout_loop();

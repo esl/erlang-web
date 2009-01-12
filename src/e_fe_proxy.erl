@@ -35,11 +35,11 @@ be_register(Name) ->
 
 -spec(request/3 :: (atom(), atom(), list()) -> term()).	     
 request(M, F, A) ->
-    Dict = e_dict:get_state(),
+    {ok, Dict} = e_dict:get_state(),
     ?MODULE ! {req, M, F, A, Dict, self()},
 
     receive 
-	{res, {Res, NewDict}} ->
+	{res, Res, NewDict} ->
 	    e_dict:init_state(NewDict),
 	    Res;
 	error ->
@@ -80,6 +80,6 @@ req_exec(Name, M, F, A, Dict, OutPid) ->
 	{badrpc, Error} ->
 	    error_logger:error_msg("~p module, rpc error: ~p~n", [?MODULE, Error]),
 	    OutPid ! error;
-	{Res, NewDict} ->
+	{Res, {ok, NewDict}} ->
 	    OutPid ! {res, Res, NewDict}
     end.
