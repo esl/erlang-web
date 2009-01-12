@@ -82,8 +82,11 @@ get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
 		   end,
 
     {ok, ReadyOpt_list} = regexp:split(Opt_list, "|"),
-    HtmlOpt = lists:foldl(Inserter, "", ReadyOpt_list),
-    wpart_gen:build_html(PartS, [Name, MultipleHtml, HtmlOpt]).
+    case ReadyOpt_list of
+        [[]] -> "No options loaded.";
+        _ -> HtmlOpt = lists:foldl(Inserter, "", ReadyOpt_list),
+             wpart_gen:build_html(PartS, [Name, MultipleHtml, HtmlOpt])
+    end.
 
 load_tpl() ->
     {ok, Binary} = file:read_file(filename:join([code:priv_dir(wparts),"html","select.tpl"])),
