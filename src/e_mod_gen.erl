@@ -34,6 +34,8 @@
 -export([restore_session/1, bind_session/1]).
 -export([controller/3]).
 
+-export([sanitize_file_name/1, parse_url/1]).
+
 -include("eptic.hrl").
 
 -type(controller_response() :: template | 
@@ -194,6 +196,7 @@ template_file(View) ->
 		   sanitize_file_name(View)
 		  ]).
 
+%% @hidden
 -spec(parse_url/1 :: (string()) -> {view, string()} | {atom(), atom(), string()} | {error, invalid_url}).
 parse_url(Url) ->
     case string:tokens(Url, "/") of
@@ -273,6 +276,7 @@ dataflow(Mod, Fun, [H|T], Args) ->
 	    {error, apply(Mod, error, [Fun, Reason])}
     end.
 
+%% @hidden
 -spec(sanitize_file_name/1 :: (string()) -> string()).	     
 sanitize_file_name([$.,$.|T]) ->
     sanitize_file_name([$.|T]);
