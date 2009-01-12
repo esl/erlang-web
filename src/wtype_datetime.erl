@@ -42,8 +42,12 @@ format("Stamp", {D, T}) ->
        string:join(lists:map(fun(X) -> integer_to_list(X) end,
  	                     tuple_to_list(T)), ":")
       ], " ");
+
 format(_, X) when is_list(X) ->
-    X.
+    X;
+
+format(Format,{Date, Time}) ->
+    format(Format, {Date, Time}, []).
 
 format({Date, Time}) ->
     format("YYYY-MM-DD HH:MM:SS", {Date, Time}, []).
