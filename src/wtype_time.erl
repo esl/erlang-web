@@ -25,7 +25,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 -export([handle_call/2, validate/1]).
--export([get_time/2, is_valid_time/1]).
+-export([format/2, is_valid_time/1]).
 
 handle_call(_Format, XML) -> XML.
 
@@ -191,7 +191,7 @@ is_valid_time({H1,H2,H3}) ->
 
 is_valid_time(_) -> false.
 
-get_time(Format, Time) ->
+format(Format, Time) ->
     format(Format, Time, []).
 
 format("HH" ++ R, {Hour, _, _} = T, Acc) ->
