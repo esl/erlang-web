@@ -66,7 +66,7 @@ wait_req() ->
     receive
 	{req, M, F, A, Dict, OutPid} -> 
 	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    spawn(?MODULE, req_exec, [BackEnd, M, F, A, Dict, OutPid]);
+	    spawn(?MODULE, req_exec, [Name, M, F, A, Dict, OutPid]);
 	{be, Name} ->
 	    application:set_env(eptic_fe, be_server_name, Name);
 	_ -> 

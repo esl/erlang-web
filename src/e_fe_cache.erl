@@ -23,7 +23,7 @@
 -export([request/1, get_order/0]).
 -export([dispatcher_reload/1]).
 -export([invalidate_handler/1]).
--export([ask_front_end/2, ask_back_end/4]).
+-export([ask_front_end/1, ask_back_end/3]).
 -export([save_cache/2, save_cache/3]).
 
 %% @hidden
@@ -96,12 +96,12 @@ invalidate(Cache, BKey, Regexp) ->
 	    error_logger:error_msg("~p module, unknown regexp has come: ~p, error: ~p", [?MODULE, Regexp, Reason])
     end.
 
--spec(ask_front_end/2 :: (binary(), string()) -> term()).	     
-ask_front_end(URL, View) ->
+-spec(ask_front_end/1 :: (string()) -> term()).	     
+ask_front_end(View) ->
     e_fe_mod_gen:view(View).
 
--spec(ask_back_end/4 :: (binary(), atom(), atom(), list()) -> term()).	   
-ask_back_end(BURL, M, F, A) ->
+-spec(ask_back_end/3 :: (atom(), atom(), list()) -> term()).	   
+ask_back_end(M, F, A) ->
     e_fe_proxy:request(M, F, A).
 
 -spec(save_cache/2 :: (string(), binary()) -> ok).	     
@@ -177,7 +177,7 @@ check_transient_cache(Key) ->
 	    check_cache(First, Key)
     end.					
 
--spec(save_cache/2 :: (binary(), atom()) -> none()).	     
+-spec(save_normal_cache/2 :: (binary(), atom()) -> none()).	     
 save_normal_cache(Key, Cache) ->
     {First, _} = get_order(),
     ets:insert(First, {Key, Cache}).

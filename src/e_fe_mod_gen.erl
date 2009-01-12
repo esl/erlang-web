@@ -19,9 +19,8 @@
 %%
 -module(e_fe_mod_gen).
 
--export([handle_request/2]).
+-export([handle_request/1]).
 -export([view/1]).
--export([error_page/2, error_page/3]).
 
 %%
 %% @spec handle_request(Url :: string()) -> Response :: term()
@@ -32,16 +31,16 @@
 %%
 -spec(handle_request/1 :: (string()) -> term()).	     
 handle_request("/app/" ++ URL) ->
-    case parse_url(URL) of
-	{M, F, View} -> dynamic_request(M, F, [], View);
+    case e_mod_gen:parse_url(URL) of
+	{M, F, View} -> dynamic_request(M, F, [], View, URL);
 	{view, View} -> static_request(URL, View);
 	{error, Error} -> error_request(501, Error)
     end;
 handle_request(URL) ->
     case e_dispatcher:dispatch(URL) of
-	{M, F, A} -> dynamic_request(M, F, A, []);
-	{view, View} -> static_request(URL, View);
 	{error, Code, Path} -> error_request(Code, Path);
+	{M, F, A} -> dynamic_request(M, F, A, [], URL);
+	{view, View} -> static_request(URL, View);
 	invalid_url -> enoent  
     end.
 
@@ -50,26 +49,26 @@ static_request(URL, View) ->
     BURL = list_to_binary(URL),
     case e_fe_cache:request(BURL) of
 	not_found ->
-	    Response = e_fe_cache:ask_front_end(BURL, View),
+	    Response = e_fe_cache:ask_front_end(View),
 	    e_fe_cache:save_cache(persistent, BURL, term_to_binary(Response)),
 	    {ready, Response};
 	{cache, Cached} ->
 	    {ready, Cached}
     end.
 
--spec(dynamic_request/4 :: (atom(), atom(), list(), string()) -> {ready, term()} | {not_ready, term(), string()}).	     
-dynamic_request(M, F, A, View) ->
+-spec(dynamic_request/5 :: (atom(), atom(), list(), string(), string()) -> {ready, term()} | {not_ready, term(), string()}).	     
+dynamic_request(M, F, A, View, URL) ->
     BURL = list_to_binary(URL),
     case e_fe_cache:request(BURL) of
 	not_found ->
-	    Response = controller_exec(e_fe_cache:ask_back_end(BURL, M, F, A)),
+	    Response = e_fe_cache:ask_back_end(M, F, A),
 	    {not_ready, Response, View};
 	{cache, Cached} ->
 	    {ready, Cached}
     end.
 
 error_request(Code, Path) ->
-    ok.
+    e_mod_gen:error_page(Code, Path).
 
 -spec(view/1 :: (string()) -> term()).	     
 view(View) ->
@@ -79,26 +78,14 @@ view(View) ->
 template_file(View) ->
     filename:join([
 		   e_conf:template_root(),
-		   sanitize_file_name(View)
+		   e_mod_gen:sanitize_file_name(View)
 		  ]).
 
 -spec(template/1 :: (string()) -> term()).
 template(File) ->
     case e_cache:read_file(File) of
 	{error, Error} ->
-	    error_page(404, File, {e_cache_error, Error});
+	    e_mod_gen:error_page(404, File, {e_cache_error, Error});
 	E ->
 	    {html, wpart_xs:process_xml(E)}
     end.
-
-sanitize_file_name([$.,$.|T]) ->
-    sanitize_file_name([$.|T]);
-sanitize_file_name([H|T]) ->
-    case lists:member(H, " &;'`{}!\\?<>\"()$") of
-        true ->
-            sanitize_file_name(T);
-        false ->
-            [H|sanitize_file_name(T)]
-    end;
-sanitize_file_name([]) ->
-    [].

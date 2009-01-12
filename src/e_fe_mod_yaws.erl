@@ -27,7 +27,7 @@
 -include("eptic.hrl").
 
 out(A) ->
-    case handle_args(#arg{headers = Headers} = A) of
+    case e_mod_yaws:handle_args(#arg{headers = Headers} = A) of
 	{ok, Args} ->
 	    e_dict:init_state(Args),
 

@@ -23,9 +23,9 @@
 
 %% @hidden
 start_link() ->
-    pid = spawn_link(?module, init, []),
-    register(?module, pid),
-    {ok, pid}.
+    Pid = spawn_link(?MODULE, init, []),
+    register(?MODULE, Pid),
+    {ok, Pid}.
 
 %% @hidden
 init() ->
@@ -34,11 +34,11 @@ init() ->
 	[] ->
 	    timer:apply_after(60000, e_fe_gc, collect_timeout, [60000]),
 	    timeout_loop();
-	[{_, {timeout, mins}}] ->
-	    timer:apply_after(60000 * mins, e_fe_gc, collect_timeout, [60000 * mins]),
+	[{_, {timeout, Mins}}] ->
+	    timer:apply_after(60000 * Mins, e_fe_gc, collect_timeout, [60000 * Mins]),
 	    timeout_loop();
-	[{_, {hits, hits}}] ->
-	    hits_loop(hits, hits)
+	[{_, {hits, Hits}}] ->
+	    hits_loop(Hits, Hits)
     end.
 
 -spec(timeout_loop/0 :: () -> none()).	     
@@ -49,13 +49,13 @@ timeout_loop() ->
     end.
 
 -spec(hits_loop/2 :: (integer(), integer()) -> none()).	     
-hits_loop(0, default) ->
+hits_loop(0, Default) ->
     collect(),
-    hits_loop(default, default);
-hits_loop(hits, default) ->
+    hits_loop(Default, Default);
+hits_loop(Hits, Default) ->
     receive
 	hit ->
-	    hits_loop(hits-1, default)
+	    hits_loop(Hits-1, Default)
     end.
 
 -spec(collect/0 :: () -> swap).	     

@@ -32,6 +32,10 @@
 
 %% API
 -export([start_link/0]).
+-export([load_conf/0]).
+
+%% Application callbacks
+-export([start/2, stop/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
