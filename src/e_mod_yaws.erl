@@ -28,6 +28,8 @@
 -export([arg_rewrite/1]).
 -export([fe_request/2]).
 
+-export([cookie_up/1, add_headers/2, cookie_bind/1, cleanup/0]).
+
 -include("yaws_api.hrl").
 -include("yaws.hrl").
 -include("eptic.hrl").
@@ -173,31 +175,28 @@ handle_args(#arg{req = R} = Arg) ->
 									      {redirect, string()} |
 									      {content, string(), string()} |
 									      term()).
-									      
-controller_exec(Ret, View) ->
-    case Ret of
-	template ->
-	    e_mod_gen:template(e_mod_gen:template_file(View), [], 
-			       e_conf:template_expander());
-	{redirect, URL} ->
-	    {redirect, URL};
-	{content, html, Data} ->
-	    {content, "text/html", Data};
-	{content, text, Data} ->
-	    {content, "text/plain", Data};
-	{json, Data} ->
-	    {content, "text/plain", e_json:encode(Data)};
-	{template, Template} ->
-	    e_mod_gen:template(Template, [],
-			       e_conf:template_expander());
-	{custom, Custom} ->
-	    Custom;
-	{headers, Headers, NewRet} ->
-	    [controller_exec(NewRet, View), add_headers(Headers, [])];
-	{error, Code} ->
-	    e_mod_gen:error_page(Code, e_dict:fget("__path"))
-    end.
+controller_exec(template, View) ->
+    e_mod_gen:template(e_mod_gen:template_file(View), [], 
+		       e_conf:template_expander());
+controller_exec({redirect, URL}, _) ->
+    {redirect, URL};
+controller_exec({content, html, Data}, _) ->
+    {content, "text/html", Data};
+controller_exec({content, text, Data}, _) ->
+    {content, "text/plain", Data};
+controller_exec({json, Data}, _) ->
+    {content, "text/plain", e_json:encode(Data)};
+controller_exec({template, Template}, _) ->
+    e_mod_gen:template(Template, [],
+		       e_conf:template_expander());
+controller_exec({custom, Custom}, _) ->
+    Custom;
+controller_exec({headers, Headers, NewRet}, View) ->
+    [controller_exec(NewRet, View), add_headers(Headers, [])];
+controller_exec({error, Code}, _) ->
+    e_mod_gen:error_page(Code, e_dict:fget("__path")).
 
+%% @hidden
 -spec(add_headers/2 :: (list(tuple()), list(tuple())) -> list(tuple())).	     
 add_headers([], Acc) ->
     Acc;
@@ -210,6 +209,7 @@ add_headers([{cookie, CookieName, CookieVal, CookiePath, CookieExpDate} | Rest],
 add_headers([_ | Rest], Acc) ->
     add_headers(Rest, Acc).
 	
+%% @hidden
 -spec(cookie_up/1 :: (tuple()) -> string()).	     
 cookie_up(Headers) ->
     Cookies = split_cookies(Headers#headers.cookie),
@@ -256,6 +256,7 @@ with_formatted_error(F) ->
 	    Result
     end.
 
+%% @hidden
 -spec(cookie_bind/1 :: (string()) -> tuple()).	     
 cookie_bind(ClientCookie) ->
     e_mod_gen:bind_session(ClientCookie),
@@ -271,6 +272,7 @@ set_user_cookie(CookieName, CookieVal, CookiePath) ->
 set_user_cookie(CookieName, CookieVal, CookiePath, CookieExpDate) ->
     yaws_api:setcookie(CookieName, CookieVal, CookiePath, CookieExpDate).
 
+%% @hidden
 -spec(cleanup/0 :: () -> none()).	     
 cleanup() ->
     e_multipart_yaws:terminate(),
