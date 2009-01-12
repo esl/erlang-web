@@ -108,7 +108,7 @@ ask_back_end(M, F, A) ->
 save_cache(URL, Cache) ->
     case e_dict:fget("__cacheable") of
 	true ->
-	    save_cache(get_cache_type([$/, URL]), list_to_binary(URL), Cache);
+	    save_cache(get_cache_type([$/, URL]), term_to_binary(URL), Cache);
 	false ->
 	    ok
     end.

@@ -43,13 +43,13 @@ do(#mod{parsed_header = Headers} = A) ->
 	    e_dict:fset("__cacheable", is_cacheable()),
 
 	    ControllerFun = fun() ->
-				    case e_fe_mod_gen:handle_request(URL) of
+				    case e_fe_mod_gen:handle_request(A#mod.request_uri) of
 					enoent ->
 					    enoent;
 					{ready, Ready} ->
 					    Ready;
 					{not_ready, NotReady, View} ->
-					    controller_exec(NotReady, View, URL)
+					    controller_exec(NotReady, View, A#mod.request_uri)
 				    end
 			    end,
 	    case with_formatted_error(ControllerFun) of
@@ -79,7 +79,7 @@ start() ->
 					  {httpd, filename:join(code:priv_dir(eptic_fe), "inets_https.conf")}]),
     inets:start(),
 
-    application:start(eptic_fe),
+    application:start(eptic_fe).
 
 -spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->
