@@ -27,7 +27,7 @@
 -include("eptic.hrl").
 
 out(A) ->
-    case e_mod_yaws:handle_args(#arg{headers = Headers} = A) of
+    case handle_args(#arg{headers = Headers} = A) of
 	{ok, Args} ->
 	    e_dict:init_state(Args),
 
@@ -71,7 +71,7 @@ arg_rewrite(#arg{req = R} = Arg) ->
     {abs_path, URL} = R#http_request.path,
     check_docroot(Arg, URL).
     
--spec(start/0 :: () -> none()).	     
+-spec(start/0 :: () -> ok).	     
 start() ->
     application:start(yaws),
     application:start(ssl),
@@ -79,6 +79,7 @@ start() ->
 
     application:start(eptic),
     application:start(wpart),
+    application:start(wparts),
     
     GC0 = yaws_config:make_default_gconf(false, "e_fe_server"),
     GC = GC0#gconf{logdir = "log"},
@@ -129,10 +130,38 @@ is_cacheable() ->
 %% and redirect the request straight to the backend server.
 %% 
 %% We can decide wheter hit the cache or not after we inspect the
-%% content of the session (e_fe_session:fget/1).
+%% content of the session (eptic:fget/1).
 %%
 %% As an example, all requests replies are cached.
-    false.
+    true.
+
+-spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())} | tuple()).
+handle_args(#arg{req = R} = Arg) ->
+    case e_multipart_yaws:is_multipart(Arg) of
+	true  -> 
+	    {ok, Node} = application:get_env(eptic_fe, be_server_name),
+	    case rpc:call(Node, e_multipart_yaws, parse, [Arg]) of
+		{ok, Data} ->
+		    e_cluster:synchronize_docroot(),
+		    {ok, [
+			  {"get", yaws_api:parse_query(Arg)},
+			  {"post", Data}
+			 ]};
+		{badrpc, Reason} ->
+		    error_logger:error_msg("~p module, error during multipart parse, reason: ~p~n",
+					   [?MODULE, Reason]),
+		    {ok, [{"get", yaws_api:parse_query(Arg)}]};
+		GetMore ->
+		    GetMore
+	    end;
+	false when R#http_request.method == 'POST' ->
+	    {ok, [
+		  {"get", yaws_api:parse_query(Arg)},
+		  {"post", yaws_api:parse_post(Arg)}
+		 ]};
+	false ->
+	    {ok, [{"get", yaws_api:parse_query(Arg)}]}
+    end.
 
 -spec(controller_exec/3 :: (term(), string(), string()) -> term()).
 controller_exec({ret_view, Ret, View}, _, URL) ->
@@ -178,4 +207,3 @@ with_formatted_error(F) ->
 	Result ->
 	    Result
     end.
-
