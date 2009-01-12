@@ -39,57 +39,31 @@ out(A) ->
 		    e_dict:fset("__https", false)
 	    end,
 
-            ClientCookie = cookie_up(Headers),
+            ClientCookie = e_mod_yaws:cookie_up(Headers),
             
 	    e_dict:fset("__path", A#arg.appmoddata),
 	    e_dict:fset("__cookie_key", ClientCookie),
+	    e_dict:fset("__cacheable", is_cacheable()),
 
 	    ControllerFun = fun() -> 
-				    case e_fe_mod_gen:handle_request([$/ | A#arg.appmoddata]) of
-					invalid_url ->
+				    URL = [$/ | A#arg.appmoddata],
+				    case e_fe_mod_gen:handle_request(URL) of
+					enoent ->
 					    enoent;
-					{view, View} ->
-					    e_fe_mod_gen:static_request({view, View})
-					{error, _Code, _Path} = Error ->
-					    e_fe_mod_gen:static_request(Error);
-					{M, F, A} ->
-					    e_fe_mod_gen:dynamic_request(M, F, A)
+					{ready, Ready} ->
+					    Ready;
+					{not_ready, NotReady, View} ->
+					    controller_exec(NotReady, View, URL)
 				    end
 			    end,
 
 	    Result = with_formatted_error(ControllerFun),
-	    CookieHeader = cookie_bind(ClientCookie),
+	    CookieHeader = e_mod_yaws:cookie_bind(ClientCookie),
 	    
-	    cleanup(),
+	    e_mod_yaws:cleanup(),
 	    [Result, CookieHeader];
 	GetMore ->
 	    GetMore
-    end.
-
-
-					{ret_view, Ret, View} ->
-					    controller_exec(Ret, View);
-					[_Status, _Html] = Error ->
-					    Error;
-					{html, _HTML} = HTML ->
-					    HTML;
-					Else ->
-					    controller_exec(Else, "")
-				    end
-			    end,
-            Result = with_formatted_error(ControllerFun),
-	    CookieHeader = cookie_bind(ClientCookie),
-
-    if
-	is_tuple(Socket) andalso element(1, Socket) == sslsocket ->
-	    e_fe_proxy:request(A, e_mod_yaws);
-	true ->
-	    case is_cacheable() of
-		false ->
-		    e_fe_cache:request(A, URL, e_mod_yaws);
-		true ->
-		    e_fe_proxy:request(A, e_mod_yaws)
-	    end
     end.
 
 -spec(arg_rewrite/1 :: (tuple()) -> tuple()).	     
@@ -102,6 +76,9 @@ start() ->
     application:start(yaws),
     application:start(ssl),
     application:start(sasl),
+
+    application:start(eptic),
+    application:start(wpart),
     
     GC0 = yaws_config:make_default_gconf(false, "e_fe_server"),
     GC = GC0#gconf{logdir = "log"},
@@ -144,3 +121,39 @@ is_cacheable() ->
 %%
 %% As an example, all requests replies are cached.
     false.
+
+-spec(controller_exec/3 :: (term(), string(), string()) -> term()).	     
+controller_exec(Ret, View, URL) ->
+    Response = controller_exec(Ret, View),
+    e_fe_cache:save_cache(URL, Response),
+    Response.
+
+-spec(controller_exec/2 :: (term(), string()) -> term()).	     
+controller_exec(template, View) ->
+    e_fe_mod_gen:view(View);
+controller_exec({redirect, URL}, _) ->
+    {redirect, URL};
+controller_exec({content, html, Data}, _) ->
+    {content, "text/html", Data};
+controller_exec({content, text, Data}, _) ->
+    {content, "text/plain", Data};
+controller_exec({json, Data}, _) ->
+    {content, "text/plain", e_json:encode(Data)};
+controller_exec({template, Template}, _) ->
+    e_fe_mod_gen:view(Template);
+controller_exec({custom, Custom}, _) ->
+    Custom;
+controller_exec({headers, Headers, Ret}, View) ->
+    [controller_exec(Ret, View), e_mod_yaws:add_headers(Headers, [])];
+controller_exec({error, Code}, _) ->
+    e_mod_gen:error_page(Code, e_dict:fget("__path")).
+
+-spec(with_formatted_error/1 :: (atom()) -> term()).	     
+with_formatted_error(F) ->
+    case catch F() of
+	{'EXIT', Reason} ->
+	    e_mod_gen:error_page(501, "", Reason);
+	Result ->
+	    Result
+    end.
+

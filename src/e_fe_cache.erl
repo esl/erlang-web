@@ -106,7 +106,12 @@ ask_back_end(BURL, M, F, A) ->
 
 -spec(save_cache/2 :: (string(), binary()) -> ok).	     
 save_cache(URL, Cache) ->
-    save_cache(get_cache_type([$/, URL]), list_to_binary(URL), Cache).
+    case e_dict:fget("__cacheable") of
+	true ->
+	    save_cache(get_cache_type([$/, URL]), list_to_binary(URL), Cache);
+	false ->
+	    ok
+    end.
 
 -spec(save_cache/3 :: (atom(), binary(), binary()) -> ok).
 save_cache(no_cache, _, _) ->

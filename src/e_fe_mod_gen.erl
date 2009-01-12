@@ -21,6 +21,7 @@
 
 -export([handle_request/2]).
 -export([view/1]).
+-export([error_page/2, error_page/3]).
 
 %%
 %% @spec handle_request(Url :: string()) -> Response :: term()
@@ -32,40 +33,39 @@
 -spec(handle_request/1 :: (string()) -> term()).	     
 handle_request("/app/" ++ URL) ->
     case parse_url(URL) of
-	{M, F, A} -> dynamic_request(M, F, A);
+	{M, F, View} -> dynamic_request(M, F, [], View);
 	{view, View} -> static_request(URL, View);
 	{error, Error} -> error_request(501, Error)
     end;
 handle_request(URL) ->
     case e_dispatcher:dispatch(URL) of
-	{M, F, A} -> dynamic_request(M, F, A);
+	{M, F, A} -> dynamic_request(M, F, A, []);
 	{view, View} -> static_request(URL, View);
 	{error, Code, Path} -> error_request(Code, Path);
 	invalid_url -> enoent  
     end.
 
--spec(static_request/2 :: (string(), string()) -> term()).	     
+-spec(static_request/2 :: (string(), string()) -> {ready, term()}).	     
 static_request(URL, View) ->
     BURL = list_to_binary(URL),
     case e_fe_cache:request(BURL) of
 	not_found ->
 	    Response = e_fe_cache:ask_front_end(BURL, View),
 	    e_fe_cache:save_cache(persistent, BURL, term_to_binary(Response)),
-	    Response;
+	    {ready, Response};
 	{cache, Cached} ->
-	    Cached
+	    {ready, Cached}
     end.
 
-dynamic_request(M, F, A) ->
+-spec(dynamic_request/4 :: (atom(), atom(), list(), string()) -> {ready, term()} | {not_ready, term(), string()}).	     
+dynamic_request(M, F, A, View) ->
     BURL = list_to_binary(URL),
     case e_fe_cache:request(BURL) of
 	not_found ->
 	    Response = controller_exec(e_fe_cache:ask_back_end(BURL, M, F, A)),
-%% process the response, expand the template, etc.
-	    e_fe_cache:save_cache(URL, Response),
-	    Reponse;
+	    {not_ready, Response, View};
 	{cache, Cached} ->
-	    Cached
+	    {ready, Cached}
     end.
 
 error_request(Code, Path) ->
@@ -91,16 +91,6 @@ template(File) ->
 	    {html, wpart_xs:process_xml(E)}
     end.
 
-controller_exec({ret_view, Ret, View}) ->
-    ok;
-controller_exec({html, HTML}) ->
-    ok;
-controller_exec([Status, HTML]) ->
-    ok;
-controller_exec(Else) ->
-    ok.
-
--spec(sanitize_file_name/1 :: (string()) -> string()).	     
 sanitize_file_name([$.,$.|T]) ->
     sanitize_file_name([$.|T]);
 sanitize_file_name([H|T]) ->
