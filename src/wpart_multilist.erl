@@ -81,7 +81,8 @@ get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
 		       true -> ""
 		   end,
 
-    HtmlOpt = lists:foldl(Inserter, "", Opt_list),
+    {ok, ReadyOpt_list} = regexp:split(Opt_list, "|"),
+    HtmlOpt = lists:foldl(Inserter, "", ReadyOpt_list),
     wpart_gen:build_html(PartS, [Name, MultipleHtml, HtmlOpt]).
 
 load_tpl() ->
