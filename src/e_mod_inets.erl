@@ -22,7 +22,7 @@
 -module(e_mod_inets).
 
 -export([do/1]).
--export([start/0]).
+-export([start/0, be_start/0]).
 -export([fe_request/2]).
 
 -export([cookie_up/1, cookie_bind/1, cleanup/0]).
@@ -175,6 +175,18 @@ start() ->
 %% 					   ]}]
 %% 		       ),
     inets:start(),
+
+    application:set_env(eptic, template_root, "templates").
+
+-spec(be_start/0 :: () -> ok).	     
+be_start() ->
+    application:start(ssl),
+    application:start(sasl),
+
+    application:start(eptic),
+    application:start(wpart),
+    application:start(wparts),
+    application:start(crypto),
 
     application:set_env(eptic, template_root, "templates").
 

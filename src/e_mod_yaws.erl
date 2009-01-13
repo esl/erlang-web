@@ -24,7 +24,7 @@
 -module(e_mod_yaws).
 
 -export([out/1]).
--export([start/0]).
+-export([start/0, be_start/0]).
 -export([arg_rewrite/1]).
 -export([fe_request/2]).
 
@@ -121,6 +121,18 @@ start() ->
     yaws_api:setconf(GC, [[SC1], [SC2]]),
 %%    yaws_api:setconf(GC, [[SC1]]),
    
+    application:start(wpart),
+    application:start(wparts),
+    application:start(crypto),
+
+    application:set_env(eptic, template_root, "templates").
+
+-spec(be_start/0 :: () -> ok).	     
+be_start() ->
+    application:start(ssl),
+    application:start(sasl),
+
+    application:start(eptic),
     application:start(wpart),
     application:start(wparts),
     application:start(crypto),
