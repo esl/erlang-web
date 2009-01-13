@@ -35,8 +35,7 @@ handle_call(E) ->
     Options = attribute_getter("options", "", E),
     Multiple = attribute_getter("multiple", "", E),
     
-    {ok, ReadyOptions} = regexp:split(Options, "|"),
-    #xmlText{value=get_html_tag(Name, ReadyOptions, Multiple, ""),
+    #xmlText{value=get_html_tag(Name, Options, Multiple, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
