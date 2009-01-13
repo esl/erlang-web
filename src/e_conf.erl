@@ -29,6 +29,7 @@
 -export([http_port/0, https_port/0, project_name/0]).
 -export([couchdb_address/0, dbms/0, server_root/0]).
 -export([ecomponents/0]).
+-export([get_conf/1, get_conf/2]).
 
 %%====================================================================
 %% API
@@ -357,6 +358,11 @@ server_root() ->
 ecomponents() ->
     get_conf(ecomponents, []).
 
+-spec(get_conf/1 :: (atom()) -> undefined | term()).
+get_conf(Key) ->	     
+    get_conf(Key, undefined).
+
+-spec(get_conf/2 :: (atom(), term()) -> term()).	     
 get_conf(Key, Default) ->
     case ets:lookup(e_conf, Key) of
 	[] -> Default;

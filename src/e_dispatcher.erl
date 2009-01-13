@@ -57,6 +57,10 @@
 -export([error_page/1]).
 -export([install/0, reinstall/0]).
 -export([is_static/1, dispatch/1]).
+-export([fe_dispatch/1]).
+
+-type(dispatcher_result() :: {atom(), atom(), nil()} | {view, string()} | invalid_url | {error, 404, string()}).
+-type(cache_type() :: no_cache | normal | persistent | {timeout, integer()}).
 
 %%
 %% @spec install() -> none()
@@ -67,8 +71,8 @@ install() ->
     Patterns = load(),
     {Static, Dynamic} = divide(Patterns),
 
-    ets:new(e_dispatcher, [named_table, public]),
-    ets:insert(e_dispatcher, [{dynamic, Dynamic}, {static, Static}]),
+    ets:new(?MODULE, [named_table, public]),
+    ets:insert(?MODULE, [{dynamic, Dynamic}, {static, Static}]),
     
     ets:new(e_dispatcher_errors, [named_table, public]),
     load_errors().
@@ -79,13 +83,13 @@ install() ->
 %%
 -spec(reinstall/0 :: () -> none()).	     
 reinstall() ->
-    ets:delete_all_objects(e_dispatcher),
+    ets:delete_all_objects(?MODULE),
     ets:delete_all_objects(e_dispatcher_errors),
 
     Patterns = load(),
     {Static, Dynamic} = divide(Patterns),
 
-    ets:insert(e_dispatcher, [{dynamic, Dynamic}, {static, Static}]),
+    ets:insert(?MODULE, [{dynamic, Dynamic}, {static, Static}]),
     load_errors().
 %%
 %% @spec is_static(URL :: string()) -> bool()
@@ -93,7 +97,7 @@ reinstall() ->
 %%
 -spec(is_static/1 :: (string()) -> bool()).	     
 is_static(Path) ->
-    [{static, Static}] = ets:lookup(e_dispatcher, static),
+    [{static, Static}] = ets:lookup(?MODULE, static),
     case dispatch(Path, Static) of 
 	invalid_url -> true;
 	_ -> false
@@ -113,12 +117,25 @@ is_static(Path) ->
 %% Otherwise, the error page with code 404 should be displayed.
 %% @end
 %%
--spec(dispatch/1 :: (string()) -> {atom(), atom(), nil()} | {view, string()} | invalid_url | {error, 404, string()} | true).
+-spec(dispatch/1 :: (string()) -> dispatcher_result()).
 dispatch(Path) ->
-    [{static, Static}] = ets:lookup(e_dispatcher, static),
-    [{dynamic, Dynamic}] = ets:lookup(e_dispatcher, dynamic),
+    [{static, Static}] = ets:lookup(?MODULE, static),
+    [{dynamic, Dynamic}] = ets:lookup(?MODULE, dynamic),
 
     dispatch(Path, lists:append([Dynamic, Static])).
+
+-spec(fe_dispatch/1 :: (string()) -> {cache_type(), dispatcher_result()}).
+fe_dispatch(Url) ->
+    [{static, Static}] = ets:lookup(?MODULE, static),
+    [{dynamic, Dynamic}] = ets:lookup(?MODULE, dynamic),
+
+    Selector = fun(X) -> selector(Url, X) end,
+    Action = case filter(Selector, lists:append([Dynamic, Static])) of
+		 {ok, A} -> A;
+		 nomatch -> nomatch
+	     end,
+
+    fe_process(Action, Url).
 
 %%
 %% @spec error_page(ErrorCode :: integer()) -> TemplatePath :: string() | not_found
@@ -234,7 +251,7 @@ selector_exec(Element, Regexp) ->
 	nomatch ->
 	    false;
 	{error, Reason} ->
-	    exit(Reason)
+	    exit({?MODULE, Reason})
     end.
 
 -spec(selector_exec/3 :: (string(), tuple(), list(tuple())) -> bool()).	     
@@ -264,7 +281,7 @@ selector_exec(Element, Regexp, Opts) ->
 %% article:show/2 function with parameters [author, title]): 
 %% {Module, Function, [mptaszek, using_e_dispatcher]}.
 %% In the future re module will deal with it.
--spec(process/2 :: (tuple(), string()) -> tuple() | invalid_url | true).	     
+-spec(process/2 :: (tuple(), string()) -> dispatcher_result()).	     
 process({static, _, Path}, _URL) ->
     if
 	Path == enoent -> invalid_url;
@@ -275,14 +292,28 @@ process({static, _, Path, _Opts}, _URL) ->
 	Path == enoent -> invalid_url;
 	true -> {view, Path}
     end;
-process({dynamic, delegate, _, _}, _URL) -> 
-    true;
 process({dynamic, _Regex, {Module, Function}}, _URL) ->
     {Module, Function, []};
 process({dynamic, _Regex, {Module, Function}, _Opts}, _URL) ->
     {Module, Function, []};
 process(nomatch, URL) ->
     {error, 404, URL}.
+
+-spec(fe_process/2 :: (tuple(), string()) -> {cache_type(), dispatcher_result()}).	     
+fe_process({static, _, enoent}, _) ->
+    {no_cache, invalid_url};
+fe_process({static, _, Path}, _) ->
+    {persistent, {view, Path}};
+fe_process({static, _, enoent, _}, _) ->
+    {no_cache, invalid_url};
+fe_process({static, _, Path, Opts}, _) ->
+    {proplists:get_value(cache, Opts, persistent), {view, Path}};
+fe_process({dynamic, _, {M, F}}, _) ->
+    {normal, {M, F, []}};
+fe_process({dynamic, _, {M, F}, Opts}, _) ->
+    {proplists:get_value(cache, Opts, normal), {M, F, []}};
+fe_process(nomatch, URL) ->
+    {persistent, {error, 404, URL}}.
 
 -spec(load_errors/0 :: () -> ok).	     
 load_errors() ->
