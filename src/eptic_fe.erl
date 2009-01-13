@@ -79,7 +79,7 @@ init([]) ->
 load_conf() ->
     ets:new(e_fe_conf, [public, named_table]),
 
-    case file:consult("config/frontend.conf") of
+    case file:consult("config/project_fe.conf") of
 	{ok, Tuples} ->
 	    ets:insert(e_fe_conf, Tuples);
 	{error, Reason} ->

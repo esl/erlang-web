@@ -83,14 +83,12 @@ start() ->
 
 -spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->
-%% Here is the place where we can check, if the should skip cache
-%% and redirect the request straight to the backend server.
-%% 
-%% We can decide wheter hit the cache or not after we inspect the
-%% content of the session (eptic:fget/1).
-%%
-%% As an example, all requests replies are cached.
-    true.
+    case e_conf:get_conf(is_cacheable_mod) of
+	undefined ->
+	    true;
+	Mod ->
+	    Mod:is_cacheable()
+    end.
     
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())}).	     
 handle_args(#mod{method = Method, entity_body = Post} = Mod) ->

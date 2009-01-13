@@ -24,7 +24,7 @@
 -export([dispatcher_reload/1]).
 -export([invalidate_handler/1]).
 -export([ask_front_end/1, ask_back_end/3]).
--export([save_cache/2, save_cache/3]).
+-export([save_cache/2]).
 
 %% @hidden
 start_link() ->
@@ -38,7 +38,6 @@ init() ->
     ets:new(cache_persistent, [named_table, public]),
     ets:new(cache_a, [named_table, public]),
     ets:new(cache_b, [named_table, public]),
-    ets:new(cache_dispatcher, [named_table, public]),
     ets:new(cache_timeout, [named_table, public]),
     
     loop({cache_a, cache_b}).
@@ -93,7 +92,8 @@ invalidate(Cache, BKey, Regexp) ->
 	    ets:delete(Cache, BKey),
 	    invalidate(Cache, Next, Regexp);
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, unknown regexp has come: ~p, error: ~p", [?MODULE, Regexp, Reason])
+	    error_logger:error_msg("~p module, unknown regexp has come: ~p, error: ~p", 
+				   [?MODULE, Regexp, Reason])
     end.
 
 -spec(ask_front_end/1 :: (string()) -> term()).	     
@@ -108,7 +108,7 @@ ask_back_end(M, F, A) ->
 save_cache(URL, Cache) ->
     case e_dict:fget("__cacheable") of
 	true ->
-	    save_cache(get_cache_type([$/, URL]), term_to_binary(URL), Cache);
+	    save_cache(eptic:fget("__cache_type"), term_to_binary(URL), Cache);
 	false ->
 	    ok
     end.
@@ -122,22 +122,6 @@ save_cache(persistent, URL, Cache) ->
     save_persistent_cache(URL, Cache);
 save_cache({timeout, T}, URL, Cache) ->
     save_timeout_cache(URL, Cache, T).
-
--spec(get_cache_type/1 :: (string()) -> normal | {timeout, integer()} | persistent).	     
-get_cache_type(Url) ->
-    Rules = ets:tab2list(cache_dispatcher),
-    find_first(Rules, Url).
-
--spec(find_first/2 :: (list(tuple()), string()) -> normal | {timeout, integer()} | persistent).     
-find_first([], _Url) ->
-    normal;
-find_first([{Regexp, Type} | Rest], Url) ->
-    case re:run(Url, Regexp,[{capture,first}]) of
-	{match, _} ->
-	    Type;
-	nomatch ->
-	    find_first(Rest, Url)
-    end.
 
 -spec(check_cache/1 :: (binary()) -> {cached, term()} | not_found).	     
 check_cache(Key) ->

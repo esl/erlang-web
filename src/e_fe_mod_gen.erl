@@ -32,12 +32,21 @@
 -spec(handle_request/1 :: (string()) -> term()).	     
 handle_request("/app/" ++ URL) ->
     case e_mod_gen:parse_url(URL) of
-	{M, F, View} -> dynamic_request(M, F, [], View, URL);
-	{view, View} -> static_request(URL, View);
-	{error, Error} -> error_request(501, Error)
+	{M, F, View} -> 
+	    eptic:fset("__cache_type", normal),
+	    dynamic_request(M, F, [], View, URL);
+	{view, View} -> 
+	    eptic:fset("__cache_type", persistent),
+	    static_request(URL, View);
+	{error, Error} -> 
+	    eptic:fset("__cache_type", normal),
+	    error_request(501, Error)
     end;
 handle_request(URL) ->
-    case e_dispatcher:dispatch(URL) of
+    {Type, Rule} = e_dispatcher:fe_dispatch(URL),
+    eptic:fset("__cache_type", Type),
+    
+    case Rule of
 	{error, Code, Path} -> error_request(Code, Path);
 	{M, F, A} -> dynamic_request(M, F, A, [], URL);
 	{view, View} -> static_request(URL, View);
@@ -50,7 +59,7 @@ static_request(URL, View) ->
     case e_fe_cache:request(BURL) of
 	not_found ->
 	    Response = e_fe_cache:ask_front_end(View),
-	    e_fe_cache:save_cache(persistent, BURL, term_to_binary(Response)),
+	    e_fe_cache:save_cache(BURL, term_to_binary(Response)),
 	    {ready, Response};
 	{cache, Cached} ->
 	    {ready, Cached}
