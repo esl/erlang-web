@@ -45,7 +45,7 @@ handle_call(E) ->
 			       _ ->
 				   text
 			   end,
-		    wpartlib:format(#xmlText{value = Value
-					    type = Type}, E)
+		    wpartlib:format(#xmlText{value = Value,
+					     type = Type}, E)
 	    end
     end.
