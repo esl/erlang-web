@@ -39,8 +39,13 @@ handle_call(E) ->
 		undefined ->
 		    [];
 		Value ->
-		    wpartlib:format(#xmlText{value = Value}, E)
+		    Type = case wpartlib:has_attribute("attribute::type", E) of
+			       "html" ->
+				   cdata;
+			       _ ->
+				   text
+			   end,
+		    wpartlib:format(#xmlText{value = Value
+					    type = Type}, E)
 	    end
     end.
-	
-    
