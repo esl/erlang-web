@@ -27,7 +27,8 @@
 -export([handle_call/2, validate/1]).
 -export([format/2, is_valid_time/1]).
 
-handle_call(_Format, XML) -> XML.
+handle_call(_Format, XML) -> 
+    XML.
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
@@ -43,35 +44,39 @@ validate({Types, undefined}) ->
     end;
 
 validate({Options,Input}) ->
-   case wpart_valid:is_private(Options) of
-    true ->
+    case wpart_valid:is_private(Options) of
+	true ->
 	    {ok, Input};
-    _ ->
-    Separators= [":"], 
-    
-    F = lists:keysearch(format, 1, Options),
-    
-    {value, {format,  Format}} = if F == false -> {value, {format, "HH:MM:SS"}};
-                                       true -> F
-                              end,
-    
-    Length = length(Separator = lists:filter(
-                            fun(X) -> string:str(Format, X) /= 0 
-                            end, 
-                            Separators)
+	_ ->
+	    Separators= [":"], 
+	    
+	    F = lists:keysearch(format, 1, Options),
+	    
+	    {value, {format,  Format}} = if 
+					     F == false -> 
+						 {value, {format, "HH:MM:SS"}};
+					     true -> 
+						 F
+					 end,
+	    
+	    Length = length(Separator = lists:filter(
+					  fun(X) -> 
+						  string:str(Format, X) /= 0 
+					  end, 
+					  Separators)
                    ),
-    case Length of
-	1   ->  Result = splitter(Input, Separator),
-                {R, ResList} = Result,
-                if ((R == ok) andalso (length(ResList) == 3) or (length(ResList) == 2)) ->
-                        {B,Inp} = check_limits(Options, Result, Separator, Format),
-                        if B -> {ok,Inp};
-                           true -> {error, {bad_range, Input}}
-                        end;
-                   true -> {error, {bad_time_format, Input}}
-                end;
-	_   -> {error, {bad_separator_in_time_form, Input}}
-    end
+	    case Length of
+		1   ->  Result = splitter(Input, Separator),
+			{R, ResList} = Result,
+			if ((R == ok) andalso (length(ResList) == 3) or (length(ResList) == 2)) ->
+				{B,Inp} = check_limits(Options, Result, Separator, Format),
+				if B -> {ok,Inp};
+				   true -> {error, {bad_range, Input}}
+				end;
+			   true -> {error, {bad_time_format, Input}}
+			end;
+		_   -> {error, {bad_separator_in_time_form, Input}}
+	    end
     end.
 
 %%====================================================================
