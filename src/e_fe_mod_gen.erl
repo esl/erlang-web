@@ -59,9 +59,9 @@ static_request(URL, View) ->
     case e_fe_cache:request(BURL) of
 	not_found ->
 	    Response = e_fe_cache:ask_front_end(View),
-	    e_fe_cache:save_cache(BURL, term_to_binary(Response)),
+	    e_fe_cache:save_cache(BURL, Response),
 	    {ready, Response};
-	{cache, Cached} ->
+	{cached, Cached} ->
 	    {ready, Cached}
     end.
 
