@@ -189,11 +189,10 @@ fe_servers() ->
 debug_mode() ->
     get_conf(debug_mode, false).
 
-
 %%
 %% @spec primitive_types() -> List 
 %%       List = [atom()]
-%% @doc Returns the list of user-provided primitive types.
+%% @doc Returns the list of all available primitive types.
 %% Each provided type should add at least two modules:
 %% <i>wpart_<b>Name</b></i> and <i>wtype_<b>Name</b></i>.
 %% The project.conf tuple which sets it should look like:
