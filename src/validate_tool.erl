@@ -133,10 +133,10 @@ post_get(TypeS,[H|Next],List,R,Reason_list) ->
 	    {Reason, Input} = X, 
 	    if Input == undefined -> 
                   post_get(TypeS,Next,List,R ++ [""],
-			   Reason_list ++ [atom_to_list(Reason)]);
+			   Reason_list ++ [io_lib:format("~p", [Reason])]);
 	       true ->
                   post_get(TypeS,Next,List,R ++ [Input],
-			   Reason_list ++ [atom_to_list(Reason)])
+			   Reason_list ++ [io_lib:format("~p", [Reason])])
 	    end
    end.
 
