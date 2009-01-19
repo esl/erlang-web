@@ -83,12 +83,9 @@ build_record_structure(Name, Number, Prefix) ->
     expand(Zipped, Types).
       
 expand(List, Types) ->
-    [PrimitivesT] = ets:tab2list(basic_types),
-    Primitives = tuple_to_list(PrimitivesT) ++ e_conf:primitive_types(),
-
     Zipped = lists:zip(Types, List),
     Checker = fun({{Type, _}, {Name, Val}}, Acc) ->
-		      case lists:member(Type, Primitives) of
+		      case lists:member(Type, e_conf:primitive_types()) of
 			  true ->
 			      [{Name, Val} | Acc];
 			  false ->

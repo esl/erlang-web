@@ -27,10 +27,12 @@
 -behaviour(application).
 -behaviour(supervisor).
 
+-define(?SUPERVISOR, wpart).
+
 start(_, _) ->
     ets_tables_install(),
 
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
 
 stop(_) ->
     ok.
@@ -44,10 +46,7 @@ init([]) ->
 
 ets_tables_install() ->
     {ok, Types} = file:consult(filename:join([code:priv_dir(wparts),"basic_types.conf"])),
-         
-    catch ets:delete(basic_types),    
-    ets:new(basic_types, [named_table, public]),
-    ets:insert(basic_types, Types),
+    ets:insert(e_conf, {primitive_types, tuple_to_list(Types) ++ e_conf:primitive_types()}),
     
     catch ets:delete(templates),
     ets:new(templates, [named_table, public]),

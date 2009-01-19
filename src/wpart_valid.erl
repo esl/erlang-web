@@ -38,14 +38,11 @@ part(N, Fields, TypesList, BTList, BasicFields, ComplexTypes, BasicTypes) ->
 
 %% From : ["news","person"]
 validate(Fields, Types, From) ->
-    [BasicTypes] = ets:tab2list(basic_types),
-    BTList = tuple_to_list(BasicTypes) ++ e_conf:primitive_types(),
-    
     TypesList = tuple_to_list(Types),
     [_ | TypesListTail] = TypesList,
 
     {BasicFields, Complex, Basic} = part(length(TypesList)-1, Fields, 
-					 TypesListTail, BTList,[],[],[]),
+					 TypesListTail, e_conf:primitive_types(),[],[],[]),
     LongBasicFields = lists:map(fun(X)-> string:join(From, "_") ++ 
 					     "_" ++ atom_to_list(X) end, 
 				BasicFields),
