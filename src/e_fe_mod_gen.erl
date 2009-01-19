@@ -40,14 +40,14 @@ handle_request("/app/" ++ URL) ->
 	    static_request(URL, View);
 	{error, Error} -> 
 	    eptic:fset("__cache_type", normal),
-	    error_request(501, Error)
+	    {ready, error_request(501, Error)}
     end;
 handle_request(URL) ->
     {Type, Rule} = e_dispatcher:fe_dispatch(URL),
     eptic:fset("__cache_type", Type),
     
     case Rule of
-	{error, Code, Path} -> error_request(Code, Path);
+	{error, Code, Path} -> {ready, error_request(Code, Path)};
 	{M, F, A} -> dynamic_request(M, F, A, [], URL);
 	{view, View} -> static_request(URL, View);
 	invalid_url -> enoent  
@@ -72,7 +72,7 @@ dynamic_request(M, F, A, View, URL) ->
 	not_found ->
 	    Response = e_fe_cache:ask_back_end(M, F, A),
 	    {not_ready, Response, View};
-	{cache, Cached} ->
+	{cached, Cached} ->
 	    {ready, Cached}
     end.
 
