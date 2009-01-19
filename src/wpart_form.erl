@@ -37,7 +37,7 @@ handle_call(E) ->
     end.
 
 build_form(Name, Action) ->
-    Multi = check_for_multipart(Name, load_basic_types()),
+    Multi = check_for_multipart(Name, e_conf:primitive_types()),
     
     Multipart = if 
 		    Multi == true -> "enctype=\"multipart/form-data\"";
@@ -46,10 +46,6 @@ build_form(Name, Action) ->
     
     [{_, Parts}] = ets:lookup(templates, {wpart, form}),
     wpart_gen:build_html(Parts, [Action, Multipart, Name]).
-
-load_basic_types() ->
-    [Content] = ets:tab2list(basic_types),
-    tuple_to_list(Content) ++ e_conf:primitive_types().
 
 check_for_multipart(Name, BasicTypes) ->
     Module = list_to_atom("wtype_" ++ Name),
@@ -74,4 +70,4 @@ check_for_multipart(Name, BasicTypes) ->
 
 load_tpl() ->
     wpart_gen:load_tpl(form, 
-		       filename:join([code:priv_dir(wparts),"html","form.tpl"])).
+		       filename:join([code:priv_dir(wparts), "html", "form.tpl"])).

@@ -109,10 +109,7 @@ handle_types([Field|T1], [Type|T2], Attributes, Fields, New_Types) ->
     end.
 
 build_html_tag(Type, Name, Prefix, Params, Default) ->
-    [EtsTuple] = ets:tab2list(basic_types),
-    Primitives = e_conf:primitive_types() ++ tuple_to_list(EtsTuple),
-    
-    case lists:member(Type, Primitives) of
+    case lists:member(Type, e_conf:primitive_types()) of
 	true ->
 	    Module = list_to_atom("wpart_" ++ atom_to_list(Type)),
 	    Module:build_html_tag(Name, Prefix, Params, Default);
