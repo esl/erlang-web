@@ -62,7 +62,12 @@ loop({A, B}) ->
 -spec(request/1 :: (binary()) -> {cached, term()} | not_found).	     
 request(URL) ->
     e_fe_gc ! hit,
-    check_cache(URL).
+    case e_dict:fget("__cacheable") of
+	true ->
+	    check_cache(URL);
+	false ->
+	    not_found
+    end.
 
 -spec(invalidate_handler/1 :: (list(tuple())) -> ok).	     
 invalidate_handler(ToInv) ->
