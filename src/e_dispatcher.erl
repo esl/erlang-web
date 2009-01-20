@@ -74,7 +74,6 @@ install() ->
     ets:new(?MODULE, [named_table, public]),
     ets:insert(?MODULE, [{dynamic, Dynamic}, {static, Static}]),
     
-    ets:new(e_dispatcher_errors, [named_table, public]),
     load_errors().
 
 %%
@@ -84,7 +83,6 @@ install() ->
 -spec(reinstall/0 :: () -> none()).	     
 reinstall() ->
     ets:delete_all_objects(?MODULE),
-    ets:delete_all_objects(e_dispatcher_errors),
 
     Patterns = load(),
     {Static, Dynamic} = divide(Patterns),
@@ -146,8 +144,8 @@ fe_dispatch(Url) ->
 %%
 -spec(error_page/1 :: (integer()) -> string() | not_found).	     
 error_page(Nr) ->
-    case ets:lookup(e_dispatcher_errors, Nr) of
-	[{Nr, Path}] ->
+    case ets:lookup(?MODULE, {error, Nr}) of
+	[{{error, Nr}, Path}] ->
 	    Path;
 	[] ->
 	    not_found
@@ -320,7 +318,7 @@ load_errors() ->
     ErrConf = filename:join([e_conf:server_root(), "config", "errors.conf"]),
     {ok, Tuples} = file:consult(ErrConf),
     Inserter = fun({error, Nr, Tpl}) ->
-		       ets:insert(e_dispatcher_errors, {Nr, Tpl})
+		       ets:insert(?MODULE, {{error, Nr}, Tpl})
 	       end,
     lists:foreach(Inserter, Tuples).
 
