@@ -66,9 +66,28 @@ retrive_data(["Content-Disposition: form-data; " ++ Element | Rest]) ->
     end.
 
 save_file(SFilename, Content) ->
-    Dirname = dirname(),
-    file:make_dir(Dirname),
-    Filename = filename:join([Dirname, SFilename]),
+    BaseDir = dirname(),
+    FolderCreator = fun(Element, Acc) ->
+			    Next = 
+				if Acc =/= "" ->
+					filename:join(Acc, Element);
+				   true ->
+					Element
+				end,
+			    case file:make_dir(Next) of
+				ok ->
+				    Next;
+				{error, eexist} -> 
+				    Next;
+				{error, Reason} ->
+				    error_logger:error_msg("~p module, cannot create directory ~p, reason: ~p~n",
+							   [?MODULE, Next, Reason]),
+				    ""
+			    end
+		    end,
+    lists:foldl(FolderCreator, "", filename:split(BaseDir)),
+
+    Filename = filename:join([BaseDir, SFilename]),
     
     case file:open(Filename, [write]) of
 	{ok, Fd} ->

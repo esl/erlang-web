@@ -117,9 +117,9 @@ load_conf(Filename) ->
 upload_dir() ->
     case ets:lookup(e_conf, upload_dir) of
 	[] ->
-	    filename:join([e_conf:server_root(), "docroot", "upload"]);
+	    filename:join([server_root(), "docroot", "upload"]);
 	[{upload_dir, Dir}] ->
-	    filename:join([e_conf:server_root(), "docroot", Dir])
+	    filename:join([server_root(), "docroot", Dir])
     end.
 
 %%

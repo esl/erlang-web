@@ -22,7 +22,7 @@
 
 -module(e_file).
 -export([save/2, save/3]).
--export([copy/2]).
+-export([copy/2, get_relative_name/1]).
 
 %%
 %% @spec save(Name :: string(), Content :: binary() | string()) -> string()
@@ -50,7 +50,7 @@ save(Name, Content, Path) ->
     save([Path, "/", Name], Content).
 
 %%
-%% @spec copy(Source :: string(), Destination :: string()) -> string()
+%% @spec copy(Source :: string(), Destination :: string()) -> DestinationPath :: string()
 %% @doc Copies the file from <i>Source</i> to the <i>Destination</i> in upload directory.
 %% Returns the path to the copied file.
 %% @see e_conf:upload_dir/0
@@ -65,3 +65,15 @@ copy(Src, Suffix) ->
 
     file:copy(Src, Dest),
     Dest.
+
+%%
+%% @spec get_relative_name(Filename :: string()) -> RelativeFilename :: string()
+%% @doc Returns the relative from docroot part of the filename.
+%% It is useful when the the database holds the absolute paths to the files
+%% (webservers expects the relative from the docroot site).<br/>
+%% E.g. when the absolute filename is <i>"/home/erlangweb/docroot/upload/image.png"</i>
+%% it will return <i>"/upload/image.png"</i>.
+%%
+-spec(get_relative_name/1 :: (string()) -> string()).
+get_relative_name(Filename) ->	     
+    string:sub_string(Filename, length(e_conf:server_root())+8).
