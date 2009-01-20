@@ -50,8 +50,7 @@ get_html_tag(Name, Default) ->
 	    wpart_gen:build_html(Part1, [Name, ""]);
 	true ->
 	    [{_, Part2}] = ets:lookup(templates, {wpart, upload_edit}),
-
-	    "docroot" ++ Path = Default,
+	    Path = e_file:get_relative_name(Default),
 
 	    wpart_gen:build_html(Part1, [Name,
 					 wpart_gen:build_html(Part2, [Path, Path])])
