@@ -46,18 +46,23 @@ validate(Fields, Types, From) ->
     LongBasicFields = lists:map(fun(X)-> string:join(From, "_") ++ 
 					     "_" ++ atom_to_list(X) end, 
 				BasicFields),
+
     LeafResult = if 
-		     Complex /= [] -> 
+		     Complex =/= [] -> 
 			 [[_ | Val]] = lists:map(fun({X,_}) -> 
-						 validate(X, From) 
-					 end,
-					 Complex),
+							 validate(X, From) 
+						 end,
+						 Complex),
 			 Val;
 		     true -> []
 		 end,
 
-    Fun = fun(X) -> eptic:fget("post", X) end,
-    PostInput = lists:map(Fun, LongBasicFields),
+    Fun = fun({{collection, _}, X}) -> 
+		  get_collection_fields(X);
+	     ({_, X}) ->
+		  eptic:fget("post", X)
+	  end,
+    PostInput = lists:map(Fun, lists:zip(Basic, LongBasicFields)),
 
     Final = tuple_to_list(pusher(PostInput, Basic, LongBasicFields)),
 
@@ -113,7 +118,13 @@ is_private(Params) ->
 	    false
     end.
 
-
-
-
+get_collection_fields(Name) ->
+    lists:foldl(fun({Key, Val}, Acc) ->
+			case string:str(Key, Name) of
+			    0 ->
+				Acc;
+			    _ ->
+				[{Key, Val} | Acc]
+			end
+		end, [], eptic:fget("post")).
 
