@@ -46,5 +46,44 @@ validate({Types, undefined}) ->
     end;
 
 validate({Types, Values}) ->
-    io:format("Types: ~p~n~nVals: ~p~n~n", [Types, Values]),
-    {ok, Values}.
+    case check_min_elements(Values, Types) of
+	{ok, Values} ->
+	    case check_max_elements(Values, Types) of
+		{ok, Values} ->
+		    check_type(Values, Types);
+		ErrorMax ->
+		    ErrorMax
+	    end;
+	ErrorMin ->
+	    ErrorMin
+    end.
+
+check_min_elements(Values, Types) ->
+    case lists:keysearch(min_length, 1, Types) of
+	{_, {_, N}} when length(Values) < N ->
+	    {error, {not_enough_elements, Values}};
+	_ ->
+	    {ok, Values}
+    end.
+
+check_max_elements(Values, Types) ->
+    case lists:keysearch(max_length, 1, Types) of
+	{_, {_, N}} when length(Values) > N ->
+	    {error, {too_many_elements, Values}};
+	_ ->
+	    {ok, Values}
+    end.
+
+check_type(Values, Types) ->
+    {Type, Details} = proplists:get_value(type, Types),
+    Mod = list_to_atom("wtype_" ++ atom_to_list(Type)),
+    
+    Validation = lists:map(fun({_Key, Val}) ->
+				   Mod:validate({Details, Val})
+			   end, Values),
+    case lists:keysearch(error, 1, Validation) of
+	false ->
+	    {ok, Values};
+	_ ->
+	    {error, Validation}
+    end.    

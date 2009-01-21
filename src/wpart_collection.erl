@@ -45,7 +45,9 @@ build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N, D, "", ""), Description).
+    Type = atom_to_list(element(proplists:get_value(type, Params))),
+
+    wpart_derived:surround_with_table(N, get_html_tag(N, D, Type, ""), Description).
 
 %% @todo handle default
 get_html_tag(Name, _Default, Type, Extra) ->
