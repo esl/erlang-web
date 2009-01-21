@@ -56,4 +56,4 @@ ets_tables_install() ->
     lists:foreach(fun(Type) -> 
 			  Mod = list_to_atom("wpart_" ++ atom_to_list(Type)),
 			  Mod:load_tpl() end, 
-		  TypesL ++ Additional).    
+		  Types ++ Additional).    
