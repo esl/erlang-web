@@ -78,18 +78,48 @@ load_conf() ->
 load_conf(Filename) ->
     {ok, Tuples} = file:consult(Filename),
     
-    Path = template_root(),
-    Ext = Tuples ++ [{template_root, Path}],
+    Ext = Tuples ++ [{template_root, template_root()}],
 
-    case ets:info(e_conf) of
+    Defaults = [{default_language, en},
+		{cache_dir, filename:join("templates", "cache")},
+		{host, "localhost"},
+		{fe_servers, []},
+		{debug_mode, false},
+		{primitive_types, []},
+		{http_port, 80},
+		{https_port, 443},
+		{project_name, "erlangweb"},
+		{couchdb_address, "http://localhost:5984/"},
+		{ecomponents, []}],
+
+    case ets:info(?MODULE) of
 	undefined ->
-	    ets:new(e_conf, [named_table, public]);
+	    ets:new(?MODULE, [named_table, public]);
 	_ ->
-	    ets:delete_all_objects(e_conf)
+	    ets:delete_all_objects(?MODULE)
     end,
    
-    ets:insert(e_conf, Ext),
+    ets:insert(?MODULE, Ext),
+    lists:foreach(fun({Conf, Def}) ->
+			  case ets:lookup(?MODULE, Conf) of
+			      [] ->
+				  ets:insert(?MODULE, {Conf, Def});
+			      _ ->
+				  ok
+			  end
+		  end, Defaults),
+    
+    {ok, [TypesT]} = file:consult(filename:join([code:priv_dir(wparts), "basic_types.conf"])),
+    Types = tuple_to_list(TypesT),
+    ets:insert(?MODULE, {primitive_types, Types ++ primitive_types()}),
 
+    case ets:lookup(?MODULE, upload_dir) of
+	[] ->
+	    ets:insert(?MODULE, {upload_dir, filename:join([server_root(), "docroot", "upload"])});
+	[{upload_dir, Dir}] ->
+	    ets:insert(?MODULE, {upload_dir, filename:join([server_root(), "docroot", Dir])})
+    end,
+    
     DBMS = case lists:keysearch(dbms, 1, Ext) of
 	       false ->
 		   e_db_mnesia;
@@ -115,12 +145,7 @@ load_conf(Filename) ->
 %%
 -spec(upload_dir/0 :: () -> string()).
 upload_dir() ->
-    case ets:lookup(e_conf, upload_dir) of
-	[] ->
-	    filename:join([server_root(), "docroot", "upload"]);
-	[{upload_dir, Dir}] ->
-	    filename:join([server_root(), "docroot", Dir])
-    end.
+    get_conf(upload_dir, "docroot/upload").
 
 %%
 %% @spec default_language() -> DefaultLanguage :: atom()
@@ -363,7 +388,7 @@ get_conf(Key) ->
 
 -spec(get_conf/2 :: (atom(), term()) -> term()).	     
 get_conf(Key, Default) ->
-    case ets:lookup(e_conf, Key) of
+    case ets:lookup(?MODULE, Key) of
 	[] -> Default;
 	[{_, Val}] -> Val;
 	[{_, Val} | _] -> Val
