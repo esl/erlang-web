@@ -59,14 +59,13 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 
-
 get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
     [{_, PartS}] = ets:lookup(templates, {wpart, multilist_select}),
     [{_, PartO}] = ets:lookup(templates, {wpart, multilist_option}),
     
     Inserter = fun(String, Acc) ->
 		       {ok, [Value, Desc]} = regexp:split(String, ":"),
-		       Bool = lists:member(Value,DefaultList),
+		       Bool = lists:member(Value,DefaultList) orelse Value == DefaultList,
 		       Selected = if
 				      Bool -> 
 					  "selected=\"selected\"";
