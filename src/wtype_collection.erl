@@ -83,7 +83,7 @@ check_type(Values, Types) ->
 			   end, Values),
     case lists:keysearch(error, 1, Validation) of
 	false ->
-	    {ok, Values};
+	    {ok, lists:reverse(Values)};
 	_ ->
 	    {error, Validation}
     end.    
