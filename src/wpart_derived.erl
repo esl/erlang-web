@@ -75,7 +75,8 @@ generate_long_name(Prefix, Name) ->
 
 get_description(Name, Tuples) ->
     case lists:keysearch(description, 1, Tuples) of
-	false -> atom_to_list(Name);
+	false when is_atom(Name) -> atom_to_list(Name);
+	false -> Name;
 	{value, {description, {key, Key}}} ->
 	    wpart_lang:get_translation(Key);
 	{value, {description, Desc}} -> Desc
