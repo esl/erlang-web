@@ -40,7 +40,7 @@ parse_html([], _, Opened) ->
     {error, {tags_not_closed, lists:reverse(Rest)}}.
 
 parse_html_tag(Body, [$> | Rest], Whitelist, Opened) ->
-    Tag = lists:reverse(Body),
+    Tag = string:to_lower(lists:reverse(Body)),
     case lists:member(Tag, Whitelist) of
 	true ->
 	    parse_html(Rest, Whitelist, [Tag | Opened]);
@@ -48,7 +48,7 @@ parse_html_tag(Body, [$> | Rest], Whitelist, Opened) ->
 	    {error, {tag_not_in_whitelist, Tag}}
     end;
 parse_html_tag(Body, [$/, $> | Rest], Whitelist, Opened) ->
-    Tag = lists:reverse(Body),
+    Tag = string:to_lower(lists:reverse(Body)),
     case lists:member(Tag, Whitelist) of
 	true ->
 	    parse_html(Rest, Whitelist, Opened);
@@ -56,7 +56,7 @@ parse_html_tag(Body, [$/, $> | Rest], Whitelist, Opened) ->
 	    {error, {tag_not_in_whitelist, Tag}}
     end;
 parse_html_tag(Body, [$  | Rest], Whitelist, Opened) ->
-    Tag = lists:reverse(Body),
+    Tag = string:to_lower(lists:reverse(Body)),
     case lists:member(Tag, Whitelist) of
 	true ->
 	    parse_html_tag_attr(Tag, Rest, Whitelist, Opened);
@@ -90,7 +90,7 @@ parse_html_tag_attr(Tag, [], _, _) ->
 parse_html_close_tag(_, [$< | _], _, _) ->
     {error, open_tag_inside_tag};
 parse_html_close_tag(Body, [$> | Rest], Whitelist, [H | Opened]) ->
-    Tag = lists:reverse(Body),
+    Tag = string:to_lower(lists:reverse(Body)),
     if
 	H == Tag ->
 	    parse_html(Rest, Whitelist, Opened);
