@@ -71,7 +71,7 @@ Example - string must be at most 20 characters long:
 \hline
 & \{html, Whitelist\} & check string for presence of valid XHTML tags. Only those tags, which are specified in whitelist are accepted.
 
-The following errors ({\it \{error, Reason\}} where Reason is one of the element below) are returned:
+The following errors ({\it \{error, \{not\_valid\_html, Reason\}\}} where Reason is one of the element below) are returned:
 \begin{description}
 \item[\{tags\_not\_closed, List\}]- user did not close all tags properly. Tags which are not closed are returned.
 \item[\{tag\_not\_in\_whitelist, Tag\}]- user entered a tag, which is not in whitelist. Blacklisted tag is returned.
@@ -118,7 +118,7 @@ Example - user have to enter false:
 {always, false}
 \end{verbatim}\\
 \hline
-multilist & \{option, Options\} & specifies the options which could be selected from list. {\it Options} is a string with elements separated with "\vline" character. Each element is of format value:description, e.g. "opt1:desc1\vline opt2:desc2".\\
+multilist & \{options, Options\} & specifies the options which could be selected from list. {\it Options} is a string with elements separated with "\vline" character. Each element is of format value:description, e.g. "opt1:desc1\vline opt2:desc2".\\
 \hline
 upload & {\it none} & no additional options\\
 \hline
