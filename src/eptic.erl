@@ -27,9 +27,9 @@
 -export([start/2, stop/1, reload/0]).
 -export([init/1]).
 
-%% s_dict
+%% e_dict
 -export([fget/1, fget/2, fget/3, fset/2, fset/3, finsert/3]).
-%% s_cache
+%% e_cache
 -export([read_file/1]).
 
 %%====================================================================
@@ -93,7 +93,7 @@ read_file(File) ->
 start_link() ->
     lists:foreach(fun(Mod) ->
 			  Mod:install()
-		  end, [e_dispatcher, e_conf, e_lang]),
+		  end, [e_dispatcher, e_conf, e_lang, e_component]),
 
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -105,7 +105,9 @@ init([]) ->
 	    permanent, 2000, worker, dynamic},
     Session = {e_session, {e_session, start_link, []},
 	       permanent, 2000, worker, dynamic},
-    {ok, {{one_for_one, 1, 10}, [Dict,Session]}}.
+    Components = {e_component, {e_component, start_link, []},
+		  permanent, 2000, worker, [e_component]},
+    {ok, {{one_for_one, 1, 10}, [Dict,Session,Components]}}.
 
 %%====================================================================
 %% Internal functions
