@@ -67,13 +67,14 @@
 -export([behaviour_info/1]).
 
 -export([install/0, install/1]).
--export([list/0]).
+-export([list/0, list_orphans/0]).
+-export([uninstall/0, uninstall/1]).
 
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--record(state, {running}).
+-record(state, {running, orphans}).
 
 -define(TIMEOUT, 1000).
 
@@ -87,7 +88,7 @@ start_link() ->
 %% Reason = term()
 %% @doc Installs all ecomponents declared inside the <i>project.conf</i> file.
 %% The components are installed sequentially, in order of their declaration.
-%% @see //eptic/e_conf:ecomponents/0
+%% @see e_conf:ecomponents/0
 %%
 -spec(install/0 :: () -> list({atom(), term()})).	     
 install() ->
@@ -104,11 +105,11 @@ install() ->
     end.
 
 %%
-%% @spec install({EComponentName :: atom(), Conf :: list(tuple())}) -> ok | {error, Reason :: term()}
+%% @spec install({EComponentName :: atom(), Conf :: list()}) -> ok | {error, Reason :: term()}
 %% @doc Installs the selected ecomponent and all its dependencies.
 %% If installation fails, the <i>{error, Reason}</i> is returned.
 %%
--spec(install/1 :: ({atom(), list(tuple())}) -> ok | {error, term()}).	     
+-spec(install/1 :: ({atom(), list()}) -> ok | {error, term()}).	     
 install({Name, Conf}) ->
     gen_server:call(?MODULE, {install, Name, Conf}).
 
@@ -120,10 +121,45 @@ install({Name, Conf}) ->
 -spec(list/0 :: () -> list({atom(), string(), string()})).
 list() ->	     
     gen_server:call(?MODULE, list).
+
+%%
+%% @spec list_orphans() -> OrphanComponents :: list(atom())
+%% @doc Returns a list of the orphaned components: those which application has started but the install/1 failed.
+%% User should resolve the conflict on his own since each case is 
+%% component-specific one.
+%%
+-spec(list_orphans/0 :: () -> list(atom())).	     
+list_orphans() ->
+    gen_server:call(?MODULE, list_orphans).
+
+%%
+%% @spec uninstall() -> UninstallationResult :: list({ComponentName :: atom(), Result :: term()})
+%% @doc Uninstalls all ecomponents declared in the <i>project.conf</i> file from the system.
+%% After successful uninstallation all dependencies are removed too.
+%% @see e_conf:ecomponents/0
+%%
+-spec(uninstall/0 :: () -> list({atom(), term()})).	     
+uninstall() ->
+    Ecomponents = e_conf:ecomponents(),
+    lists:zip(lists:map(fun({Name, _}) ->
+				Name
+			end, Ecomponents),
+	      lists:map(fun uninstall/1, Ecomponents)).
+
+%%
+%% @spec uninstall({Name :: atom(), Configuration :: list()}) -> ok | {error, Reason :: term()}
+%% @doc Uninstalls specified component from the system.
+%% It is possible to pass some configuration details to the component
+%% so it knows how it should be removed.
+%%
+-spec(uninstall/1 :: ({atom(), list()}) -> term()).
+uninstall({Name, Conf}) ->
+    gen_server:call(?MODULE, {uninstall, Name, Conf}).
     
 %% @hidden
 init([]) ->
-    {ok, #state{running = []}}.
+    {ok, #state{running = [], 
+		orphans = []}}.
 
 %% @hidden
 handle_call({install, Name, Conf}, _From, State) ->
@@ -131,6 +167,9 @@ handle_call({install, Name, Conf}, _From, State) ->
     {reply, Reply, NewState};
 handle_call(list, _, #state{running = Running} = State) ->
     {reply, Running, State};
+handle_call({uninstall, Name, Conf}, _From, State) ->
+    {Reply, NewState} = stop_ecomponent(Name, Conf, State),
+    {reply, Reply, NewState};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -251,7 +290,7 @@ install_ecomponent(Name, Conf, CallStack, State) ->
 
 			    {ok, State#state{running = [{Name, Vsn} | State#state.running]}};
 			AppElse ->
-			    {AppElse, State}
+			    {AppElse, State#state{orphans = [Name | State#state.orphans]}}
 		    end;
 	        Else ->
 		    {Else, State}
@@ -329,3 +368,28 @@ required_apps_started(Apps) ->
     lists:all(fun(App) ->
 		      lists:keymember(App, 1, Apps)
 	      end, [eptic, wpart, wparts]).
+
+-spec(stop_ecomponent/3 :: (atom(), list(), tuple()) -> ok | {error, term()}).	     
+stop_ecomponent(Name, Conf, State) ->
+    case lists:keymember(Name, 1, State#state.running) of
+	true ->
+	    case application:stop(Name) of
+		ok ->
+		    case catch Name:uninstall(Conf) of
+			{'EXIT', _} ->
+			    NewState = State#state{orphans = [Name | State#state.orphans],
+						   running = lists:delete(Name, State#state.running)},
+			    {{error, {application_is_not_an_ecomponent, Name}}, NewState};
+			ok ->
+			    {ok, State#state{running = lists:delete(Name, State#state.running)}};
+			{error, Reason} ->
+			    NewState = State#state{orphans = [Name | State#state.orphans],
+						   running = lists:delete(Name, State#state.running)},
+			    {{error, Reason}, NewState}
+		    end;
+		{error, Reason} ->
+		    {{error, {application_stop_failed, Reason}}, State}
+	    end;
+	false ->
+	    {{error, {not_running, Name}}, State}
+    end.
