@@ -39,7 +39,7 @@ create_start_dirs() ->
 			  {error, Reason} -> handle_error(Reason)
 		      end
 	      end,
-    Dirs = ["config", "docroot", "log", "pipes", "bin", "templates",
+    Dirs = ["config", "docroot", "log", "pipes", "templates",
 	    "lib", "releases", filename:join("releases", "0.1"),
 	    filename:join("templates", "cache"),
 	    filename:join("docroot", "conf")],
@@ -62,8 +62,14 @@ prepare_paths() ->
     ScriptName = escript:script_name(),
     {ok, Dir} = file:get_cwd(),
 
-    Splitted = filename:split(ScriptName),
-    RootDir = filename:join(Dir, filename:join(lists:sublist(Splitted, 1, length(Splitted)-2))),
+    Splitted0 = filename:split(ScriptName),
+    Splitted = lists:sublist(Splitted0, 1, length(Splitted0)-2),
+    RootDir = case length(Splitted) of
+		  0 ->
+		      Dir;
+		  _ ->
+		      lists:join([Dir | Splitted])
+	      end,
 
     {ok, Libs} = file:list_dir(filename:join(RootDir, "lib")),
 
@@ -239,7 +245,7 @@ conf_errors() ->
 	    confirm_created(Filename),
 	    
 	    ErrorPage = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-		"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
+		"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
 		"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
 		"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
 		"<head>\n"
@@ -372,15 +378,20 @@ create_sys_config_file() ->
     end.
 
 copy_escripts(RootDir) ->
-    Files = [filename:join(["bin", "compile.erl"]),
-	     filename:join(["bin", "add.erl"])],
-
-    file:copy(filename:join(RootDir, "Emakefile"), "Emakefile"),
-    confirm_created("Emakefile"),
-
-    lists:foreach(fun(File) ->
-			  file:copy(filename:join([RootDir, File]), File),
-			  file:write_file_info(File, 
-					       #file_info{mode=8#00744}),
-			  confirm_created(File)
-		  end, Files).
+    case file:get_cwd() of
+	{ok, RootDir} ->
+	    ok;
+	{ok, _} ->
+	    Files = [filename:join(["bin", "compile.erl"]),
+		     filename:join(["bin", "add.erl"])],
+	    
+	    file:copy(filename:join(RootDir, "Emakefile"), "Emakefile"),
+	    confirm_created("Emakefile"),
+	    
+	    lists:foreach(fun(File) ->
+				  file:copy(filename:join([RootDir, File]), File),
+				  file:write_file_info(File, 
+						       #file_info{mode=8#00744}),
+				  confirm_created(File)
+			  end, Files)
+    end.
