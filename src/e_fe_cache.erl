@@ -24,7 +24,7 @@
 -export([dispatcher_reload/1]).
 -export([invalidate_handler/1]).
 -export([ask_front_end/1, ask_back_end/3]).
--export([save_cache/2]).
+-export([save_cache/2, save_cache/3]).
 
 %% @hidden
 start_link() ->

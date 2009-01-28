@@ -76,6 +76,11 @@ dynamic_request(M, F, A, View, URL) ->
 	    {ready, Cached}
     end.
 
+-spec(error_request/2 :: (integer(), string()) -> term()).	     
+error_request(404, Path) ->
+    Error = e_mod_gen:error_page(404, Path),
+    e_fe_cache:save_cache(persistent, Path, Error),
+    Error;
 error_request(Code, Path) ->
     e_mod_gen:error_page(Code, Path).
 
