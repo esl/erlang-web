@@ -55,12 +55,14 @@ do(#mod{parsed_header = Headers} = A) ->
 	    case with_formatted_error(ControllerFun) of
 		{NewHeaders, Result} ->
 		    CookieHeader = e_mod_inets:cookie_bind(ClientCookie),
-		    e_mod_inets:cleanup(),
+
+		    e_dict:terminate_state(),
+		    e_fe_proxy:cleanup_backend(e_multipart_inets),
 		    
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
 		    e_mod_inets:cookie_bind(ClientCookie),
-		    e_mod_inets:cleanup(),
+		    e_dict:terminate_state(),
 
 		    {proceed, A#mod.data}
 	    end

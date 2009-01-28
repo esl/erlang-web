@@ -60,7 +60,9 @@ out(A) ->
 	    Result = with_formatted_error(ControllerFun),
 	    CookieHeader = e_mod_yaws:cookie_bind(ClientCookie),
 	    
-	    e_mod_yaws:cleanup(),
+	    e_dict:terminate_state(),
+	    e_fe_proxy:cleanup_backend(e_multipart_yaws),
+
 	    [Result, CookieHeader];
 	GetMore ->
 	    GetMore

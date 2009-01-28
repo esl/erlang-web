@@ -22,6 +22,7 @@
 
 -export([start/0]).
 -export([be_register/1, request/3, req_exec/6]).
+-export([cleanup_backend/1]).
 
 -spec(start_link/0 :: () -> {ok, pid()}).	     
 start_link() ->
@@ -80,6 +81,17 @@ req_exec(Name, M, F, A, Dict, OutPid) ->
 	{badrpc, Error} ->
 	    error_logger:error_msg("~p module, rpc error: ~p~n", [?MODULE, Error]),
 	    OutPid ! error;
-	{Res, {ok, NewDict}} ->
+	{Res, {ok, NewDict}, Pid} ->
+	    eptic:fset("__backend_pid", Pid),
 	    OutPid ! {res, Res, NewDict}
+    end.
+
+-spec(cleanup_backend/1 :: (atom()) -> none()).	     
+cleanup_backend(Mod) ->
+    case wpart:fget("__backend_pid") of
+	undefined ->
+	    ok;
+	Pid ->
+	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
+	    rpc:cast(Name, Mod, terminate, [Pid])
     end.
