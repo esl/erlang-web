@@ -53,7 +53,7 @@ invalidate(List) ->
 -spec(be_request/4 :: (atom(), atom(), atom(), term()) -> {term(), term()}).	     
 be_request(M, F, A, Dict) ->
     e_dict:init_state(Dict),
-    {e_mod_gen:controller(M, F, A), e_dict:get_state()}.
+    {e_mod_gen:controller(M, F, A), e_dict:get_state(), self()}.
 
 -spec(call_servers/1 :: (fun()) -> ok).	     
 call_servers(Fun) ->

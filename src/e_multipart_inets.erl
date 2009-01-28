@@ -22,7 +22,7 @@
 
 -module(e_multipart_inets).
 
--export([get_multipart/2, terminate/0]).
+-export([get_multipart/2, terminate/0, terminate/1]).
 
 get_multipart(Body, Boundary) ->
     Regexp = Boundary ++ "((\r\n)|(\-\-\r\n))",
@@ -105,6 +105,12 @@ dirname() ->
 
 terminate() ->
     Dirname = dirname(),
+    lists:foreach(fun file:delete/1, 
+		  filelib:wildcard(filename:join(Dirname, "*"))),
+    file:del_dir(Dirname).
+
+terminate(Pid) ->
+    Dirname = filename:join([e_conf:upload_dir(), pid_to_list(Pid)]),
     lists:foreach(fun file:delete/1, 
 		  filelib:wildcard(filename:join(Dirname, "*"))),
     file:del_dir(Dirname).

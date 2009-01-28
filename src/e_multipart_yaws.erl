@@ -22,7 +22,7 @@
 -module(e_multipart_yaws).
 
 %% API
--export([terminate/0, parse/1, is_multipart/1]).
+-export([terminate/0, parse/1, is_multipart/1, terminate/1]).
 
 -include("yaws_api.hrl").
 
@@ -31,6 +31,12 @@
 %%====================================================================
 terminate() ->
     Dirname = dirname(),
+    lists:foreach(fun file:delete/1, 
+		  filelib:wildcard(filename:join(Dirname, "*"))),
+    file:del_dir(Dirname).
+
+terminate(Pid) ->
+    Dirname = filename:join([e_conf:upload_dir(), pid_to_list(Pid)]),
     lists:foreach(fun file:delete/1, 
 		  filelib:wildcard(filename:join(Dirname, "*"))),
     file:del_dir(Dirname).
