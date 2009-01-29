@@ -31,15 +31,24 @@ action(["install", Name]) ->
 		     compressed,
 		     keep_old_files]),
     
-    io:format("~s e_component installed successfully~n", [Name]).
+    io:format("~s e_component installed successfully~n", [Name]);
+action(_) ->
+    io:format("Usage: ~n"
+	      "e_component.erl list - lists all of the components stored in the repository~n"
+	      "e_component.erl search Keyword - searches in the repository for the component having "
+	      "Keyword in its name or description~n"
+	      "e_component.erl details Keyword - prints out the detailed information about the given "
+	      "component~n"
+	      "e_component.erl install Name - downloads and installs the ecomponent into the existing "
+	      "Erlang Web project~n").
 
 write_result(Desc) ->
     [Name, Vsn, Description, _Categories, _Author] = string:tokens(Desc, "\t"),
-    io:format("~s-~s\t~s~n", [Name, Vsn, Description]).
+    io:format("~s ~s~n", [string:left(Name ++ "-" ++ Vsn, 40, $ ), Description]).
 
 write_detailed_result(Desc) ->
     [Name, Vsn, Description, Categories, Author] = string:tokens(Desc, "\t"),
-    io:format("Name: ~s\t\tVersion: ~s\t\tAuthor: ~s~n", [Name, Vsn, Author]),
+    io:format("Name: ~s Version: ~s\tAuthor: ~s~n", [string:left(Name, 30, $ ), Vsn, Author]),
     io:format("Description:~n~s~n", [Description]),
     io:format("Categories: ~s~n~n", [Categories]).
     
