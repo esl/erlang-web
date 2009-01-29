@@ -111,7 +111,7 @@ update_start_erl_data_file(RelVsn) ->
 
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    io:format(Fd, RelVsn, []),
+	    io:format(Fd, "~p ~s", RelVsn, [erlang:system_info(version)]),
 	    file:close(Fd),
 	    confirm_created(Filename);
 	{error, Reason} ->

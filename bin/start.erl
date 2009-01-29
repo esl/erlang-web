@@ -37,7 +37,7 @@ start(Server) ->
     copy_bin_files(Info),
 
     create_start_scripts(Info),
-    create_start_erl_data(),
+    create_start_erl_data(Info),
     
     create_basic_config_files(),
     create_welcome_page(),
@@ -138,7 +138,7 @@ create_script(FileName, Content) ->
 	{error, Reason} -> handle_error(Reason)
     end.
 			
-create_start_scripts({Version, Path}) ->
+create_start_scripts({_, Path}) ->
     BinStart = "#!/bin/sh\n\n"
 
 	"ROOTDIR=`pwd`\n"
@@ -157,6 +157,7 @@ create_start_scripts({Version, Path}) ->
     create_script(BinStartName, BinStart),
 
     BinStop = "#!/bin/sh\n\n"
+
 	"ROOTDIR=`pwd`\n"
 	"PID=$(ps ax | grep -E .*beam.*$ROOTDIR | grep -v grep | awk '{print $1}')\n\n"
 
@@ -212,7 +213,7 @@ create_start_scripts({Version, Path}) ->
 
 	"shift\nshift\nshift\n\n"
 
-	"ERTS_VSN=" ++ Version ++ "\n"
+	"ERTS_VSN=`awk '{print $2}' $DataFile`\n"
 	"VSN=`awk '{print $1}' $DataFile`\n\n"
 
 	"BINDIR=" ++ Path ++ "/erts-$ERTS_VSN/bin\n"
@@ -232,12 +233,12 @@ create_start_scripts({Version, Path}) ->
     FileName2 = filename:join("bin", "start_erl"),
     create_script(FileName2, FileContent2).
 
-create_start_erl_data() ->
+create_start_erl_data({Version, _}) ->
     Filename = filename:join("releases", "start_erl.data"),
 
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    io:format(Fd, "0.1", []),
+	    io:format(Fd, "0.1 ~s", [Version]),
 	    file:close(Fd),
 	    confirm_created(Filename);
 	{error, Reason} ->
