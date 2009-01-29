@@ -1,8 +1,35 @@
 #!/usr/bin/env escript
 
+%% The contents of this file are subject to the Erlang Web Public License,
+%% Version 1.0, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Web Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang-consulting.com/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% The Initial Developer of the Original Code is Erlang Training & Consulting
+%% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2009,
+%% Erlang Training & Consulting Ltd. All Rights Reserved.
+
+%%%-----------------------------------------------------------------------------
+%%% File    : start.erl
+%%% @author Michal Ptaszek <michal.ptaszek@erlang.consulting.com>
+%%% @doc A start script for the Erlang Web framework.
+%%% @end
+%%%-----------------------------------------------------------------------------
+
 -include_lib("kernel/include/file.hrl").
 
-main([]) ->
+main(["yaws"]) ->
+    start(yaws);
+main(_) ->
+    start(inets).
+
+start(Server) ->
     create_start_dirs(),
     RootDir = prepare_paths(),
 
@@ -15,10 +42,10 @@ main([]) ->
     create_basic_config_files(),
     create_welcome_page(),
     
-    create_rel_file(Info),
+    create_rel_file(Info, Server),
 
     generate_boot_file(),
-    create_sys_config_file(),
+    create_sys_config_file(Server),
     
     copy_escripts(RootDir).
 
@@ -117,7 +144,7 @@ create_start_scripts({Version, Path}) ->
 	"ROOTDIR=`pwd`\n"
 	"export TERM=xterm\n"
 	"export SHELL=/bin/bash\n"
-	"export HEART_COMMAND=\"$ROOTDIR/bin/start heart\"\n\n"
+	"export HEART_COMMAND=\"$ROOTDIR/bin/start\"\n\n"
 
 	"echo \"Starting Erlang Web\"\n"
 	"RELDIR=$ROOTDIR/releases\n"
@@ -318,13 +345,13 @@ create_welcome_page() ->
 	    handle_error(Reason)
     end.
 
-create_rel_file({Version, _}) ->
+create_rel_file({Version, _}, Server) ->
     Name = "start",
     Filename = filename:join(["releases", "0.1", Name ++ ".rel"]),
     
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    Apps = get_apps_for_release(),
+	    Apps = get_apps_for_release(Server),
 	    ReleaseInfo = {release, {Name, "0.1"}, {erts, Version},
 			   Apps},
 	    
@@ -335,11 +362,11 @@ create_rel_file({Version, _}) ->
 	    handle_error(Reason)
     end.
 
-get_apps_for_release() ->
+get_apps_for_release(Server) ->
     {ok, Dir} = file:list_dir("lib/"),
     [code:add_path("lib/" ++ D ++ "/ebin") || D <- Dir],
 
-    ToLoad = [xmerl, sasl, crypto, yaws, eptic, wpart, wparts, mnesia, ssl],
+    ToLoad = [xmerl, sasl, crypto, eptic, wpart, wparts, mnesia, ssl, Server],
     [application:load(App) || App <- ToLoad],
 
     lists:map(fun({Name, _, Vsn}) ->
@@ -357,19 +384,34 @@ generate_boot_file() ->
     
     erl_tar:extract("releases/0.1/start.tar.gz", [keep_old_files, compressed]).
 
-create_sys_config_file() ->
+create_sys_config_file(yaws) ->
     YawsConfig = "config/yaws.conf",
     file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
     confirm_created(YawsConfig),
-
-    MimeTypes = "docroot/conf/mime.types",
-    file:copy(code:priv_dir(eptic) ++ "mime.types", MimeTypes),
-    confirm_created(MimeTypes),
     
     Filename = "releases/0.1/sys.config",
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
 	    Content = [{yaws, [{conf, YawsConfig}]}],
+	    io:format(Fd, "~p.~n", [Content]),
+	    confirm_created(Filename),
+	    file:close(Fd);
+	{error, Reason} ->
+	    handle_error(Reason)
+    end;
+create_sys_config_file(inets) ->
+    MimeTypes = "docroot/conf/mime.types",
+    file:copy(code:priv_dir(eptic) ++ "mime.types", MimeTypes),
+    confirm_created(MimeTypes),
+
+    InetsConfig = "config/inets.conf",
+    file:copy(code:priv_dir(eptic) ++ "inets.conf", InetsConfig),
+    confirm_created(InetsConfig),
+
+    Filename = "releases/0.1/sys.config",
+    case file:open(Filename, [write]) of
+	{ok, Fd} ->
+	    Content = [{inets, [{services, [{httpd, InetsConfig}]}]}],
 	    io:format(Fd, "~p.~n", [Content]),
 	    confirm_created(Filename),
 	    file:close(Fd);
