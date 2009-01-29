@@ -46,6 +46,7 @@ install() ->
 %%
 %% @spec reinstall() -> none()
 %% @doc Clears the translation and reloads the translation files.
+%% @todo in case of e_ets_cache acceptance, flush all the cached files
 %%
 -spec(reinstall/0 :: () -> none()).	     
 reinstall() ->

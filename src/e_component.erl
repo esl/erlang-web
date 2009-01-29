@@ -67,14 +67,14 @@
 -export([behaviour_info/1]).
 
 -export([install/0, install/1]).
--export([list/0, list_orphans/0]).
+-export([list/0]).
 -export([uninstall/0, uninstall/1]).
 
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--record(state, {running, orphans}).
+-record(state, {running}).
 
 -define(TIMEOUT, 1000).
 
@@ -123,16 +123,6 @@ list() ->
     gen_server:call(?MODULE, list).
 
 %%
-%% @spec list_orphans() -> OrphanComponents :: list(atom())
-%% @doc Returns a list of the orphaned components: those which application has started but the install/1 failed.
-%% User should resolve the conflict on his own since each case is 
-%% component-specific one.
-%%
--spec(list_orphans/0 :: () -> list(atom())).	     
-list_orphans() ->
-    gen_server:call(?MODULE, list_orphans).
-
-%%
 %% @spec uninstall() -> UninstallationResult :: list({ComponentName :: atom(), Result :: term()})
 %% @doc Uninstalls all ecomponents declared in the <i>project.conf</i> file from the system.
 %% After successful uninstallation all dependencies are removed too.
@@ -158,8 +148,7 @@ uninstall({Name, Conf}) ->
     
 %% @hidden
 init([]) ->
-    {ok, #state{running = [], 
-		orphans = []}}.
+    {ok, #state{running = []}}.
 
 %% @hidden
 handle_call({install, Name, Conf}, _From, State) ->
@@ -282,19 +271,7 @@ install_ecomponent(Name, Conf, CallStack, State) ->
 	    
 	    {Error, State};
 	[] ->
-	    case Name:install(Conf) of
-		ok ->
-		    case application:start(Name) of
-			ok ->
-			    Vsn = get_vsn(Name),
-
-			    {ok, State#state{running = [{Name, Vsn} | State#state.running]}};
-			AppElse ->
-			    {AppElse, State#state{orphans = [Name | State#state.orphans]}}
-		    end;
-	        Else ->
-		    {Else, State}
-	    end;
+	    transactional_start(Name, Conf, State);
 	Deps ->
 	    {Result, NewState} = run_deps(Deps, CallStack, State),
 	    case no_errors(Result, []) of
@@ -373,23 +350,52 @@ required_apps_started(Apps) ->
 stop_ecomponent(Name, Conf, State) ->
     case lists:keymember(Name, 1, State#state.running) of
 	true ->
-	    case application:stop(Name) of
-		ok ->
-		    case catch Name:uninstall(Conf) of
-			{'EXIT', _} ->
-			    NewState = State#state{orphans = [Name | State#state.orphans],
-						   running = lists:delete(Name, State#state.running)},
-			    {{error, {application_is_not_an_ecomponent, Name}}, NewState};
-			ok ->
-			    {ok, State#state{running = lists:delete(Name, State#state.running)}};
-			{error, Reason} ->
-			    NewState = State#state{orphans = [Name | State#state.orphans],
-						   running = lists:delete(Name, State#state.running)},
-			    {{error, Reason}, NewState}
-		    end;
-		{error, Reason} ->
-		    {{error, {application_stop_failed, Reason}}, State}
-	    end;
+	    transactional_stop(Name, Conf, State);
 	false ->
 	    {{error, {not_running, Name}}, State}
+    end.
+
+-spec(transactional_start/3 :: (atom(), list(), tuple()) -> {term(), tuple()}).	     
+transactional_start(Name, Conf, State) ->
+    case catch Name:install(Conf) of
+	ok ->
+	    case application:start(Name) of
+		ok ->
+		    Vsn = get_vsn(Name),
+		    
+		    {ok, State#state{running = [{Name, Vsn} | State#state.running]}};
+		AppElse ->
+		    case catch Name:uninstall(Conf) of
+			ok ->
+			    error_logger:error_msg("~p module, could not install a component ~p~n"
+						   "skipping it~n", [?MODULE, Name]),
+			    
+			    {AppElse, State};
+			UnElse ->
+			    erlang:error({error, {installation_process_failed, UnElse}})
+		    end
+	    end;
+	Else ->
+	    {Else, State}
+    end.
+
+transactional_stop(Name, Conf, State) ->
+    case application:stop(Name) of
+	ok ->
+	    case catch Name:uninstall(Conf) of
+		ok ->
+		    {ok, State#state{running = proplists:delete(Name, State#state.running)}};
+		UnElse ->
+		    case application:start(Name) of
+			ok ->
+			    error_logger:error_msg("~p module, could not uninstall a component ~p~n"
+						   "skipping it~n", [?MODULE, Name]),
+			    
+			    {UnElse, State};
+			AppElse ->
+			    erlang:error({error, {uninstallation_process_failed, AppElse}})
+		    end
+	    end;
+	Else ->
+	    {Else, State}
     end.

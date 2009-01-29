@@ -22,7 +22,9 @@
 -module(e_ets_cache).
 
 -export([read_file/1, install/0]).
+-export([flush/0]).
 
+%% @hidden
 install() ->
     ets:new(?MODULE, [named_table, public]).
 
@@ -43,6 +45,16 @@ read_file(File) ->
 	CXML ->
 	    binary_to_term(CXML)
     end.
+
+%%
+%% @spec flush() -> true
+%% @doc Removes all the cache entries.
+%% Simply invalidates all the cached items.
+%% @end
+%%
+-spec(flush/0 :: () -> true).
+flush() ->	     
+    ets:delete_all_objects(?MODULE).
 
 -spec(valid_cache/1 :: (string()) -> false | binary()).	     
 valid_cache(File) ->
