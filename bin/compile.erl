@@ -2,14 +2,18 @@
 
 main([]) ->
     make_basic();
+main(["release", Vsn, "yaws"]) ->
+    make_release(Vsn, yaws);
+main(["release", Vsn, _]) ->
+    make_release(Vsn, inets);
 main(["release", Vsn]) ->
-    make_release(Vsn);
+    make_release(Vsn, inets);
 main(["rel", Vsn]) ->
-    make_release(Vsn);
+    make_release(Vsn, inets);
 main(["release"]) ->
-    make_release("0.1");
+    make_release("0.1", inets);
 main(["rel"]) ->
-    make_release("0.1");
+    make_release("0.1", inets);
 main(["clean"]) ->
     clean();
 main(_) ->
@@ -26,7 +30,7 @@ make_basic() ->
 	    io:format("There were errors during the compilation!~n")
     end.
 
-make_release(RelVsn) ->
+make_release(RelVsn, Server) ->
     make_basic(),
     
     io:format("Starting creating release ~s~n", [RelVsn]),
@@ -44,9 +48,9 @@ make_release(RelVsn) ->
 			       {Name, Vsn}
 		       end, application:loaded_applications()),
     
-    create_rel_file(RelVsn, Loaded),
+    create_rel_file(RelVsn, Loaded, Server),
     create_boot_file(RelVsn),
-    create_sys_config_file(RelVsn),
+    create_sys_config_file(RelVsn, Server),
     update_start_erl_data_file(RelVsn),
     
     io:format("Release ~s compiled~n", [RelVsn]).
@@ -60,15 +64,20 @@ check_rel_dir(RelVsn) ->
 	{error, Reason} -> handle_error(Reason)
     end.
 
-create_rel_file(RelVsn, Apps) ->
+create_rel_file(RelVsn, Apps, Server) ->
     Name = "start",
     Filename = filename:join(["releases", RelVsn, Name ++ ".rel"]),
     Version = erlang:system_info(version),
     
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    ReleaseInfo = {release, {Name, "0.1"}, {erts, Version},
-			   Apps},
+	    ReleaseInfo = {release, {Name, RelVsn}, {erts, Version},
+			   if
+			       Server == inets ->
+				   proplists:delete(yaws, Apps);
+			       true -> 
+				   proplists:delete(inets, Apps)
+			   end},
 	    
 	    io:format(Fd, "~p.~n", [ReleaseInfo]),
 	    file:close(Fd),
@@ -90,7 +99,7 @@ create_boot_file(RelVsn) ->
 
     erl_tar:extract("releases/" ++ RelVsn ++ "/start.tar.gz", [compressed]).
 
-create_sys_config_file(RelVsn) ->
+create_sys_config_file(RelVsn, yaws) ->
     YawsConfig = "config/yaws.config",
     file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
     confirm_created(YawsConfig),
@@ -104,6 +113,25 @@ create_sys_config_file(RelVsn) ->
 	    file:close(Fd);
 	{error, Reason} ->
 	    handle_error(Reason)
+    end;
+create_sys_config_file(RelVsn, inets) ->
+    MimeTypes = "docroot/conf/mime.types",
+    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
+    confirm_created(MimeTypes),
+    
+    InetsConfig = "config/inets.conf",
+    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
+    confirm_created(InetsConfig),
+    
+    Filename = "releases/" ++ RelVsn ++ "/sys.config",
+    case file:open(Filename, [write]) of
+	{ok, Fd} ->
+	    Content = [{inets, [{services, [{httpd, InetsConfig}]}]}],
+	    io:format(Fd, "~p.~n", [Content]),
+	    confirm_created(Filename),
+	    file:close(Fd);
+	{error, Reason} ->
+	    handle_error(Reason)
     end.
 
 update_start_erl_data_file(RelVsn) ->
@@ -111,7 +139,7 @@ update_start_erl_data_file(RelVsn) ->
 
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    io:format(Fd, "~p ~s", RelVsn, [erlang:system_info(version)]),
+	    io:format(Fd, "~s ~s", [RelVsn, erlang:system_info(version)]),
 	    file:close(Fd),
 	    confirm_created(Filename);
 	{error, Reason} ->
@@ -157,8 +185,9 @@ usage() ->
     io:format("Usage:~n"
 	      "bin/compile.erl - basic compile - just compiles the changed files~n"
 	      "bin/compile.erl release - the same as bin/compile.erl release 0.1~n"
-	      "bin/compile.erl release Vsn - compiles all the sources and create new release - Vsn~n"
-	      "bin/compile.erl rel [Vsn] - the same as bin/compile.erl release [Vsn]~n").
+	      "bin/compile.erl release Vsn [inets | yaws] - compiles all the sources and create new release - Vsn~n"
+	      "bin/compile.erl rel [Vsn] - the same as bin/compile.erl release [Vsn]~n"
+	      "By default the selected server is Inets~n").
 
 confirm_created(Name) ->
     io:format("Element created: ~s~n", [Name]).

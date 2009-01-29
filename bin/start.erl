@@ -402,11 +402,11 @@ create_sys_config_file(yaws) ->
     end;
 create_sys_config_file(inets) ->
     MimeTypes = "docroot/conf/mime.types",
-    file:copy(code:priv_dir(eptic) ++ "mime.types", MimeTypes),
+    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
     confirm_created(MimeTypes),
 
     InetsConfig = "config/inets.conf",
-    file:copy(code:priv_dir(eptic) ++ "inets.conf", InetsConfig),
+    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
     confirm_created(InetsConfig),
 
     Filename = "releases/0.1/sys.config",
