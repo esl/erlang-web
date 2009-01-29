@@ -222,7 +222,7 @@ controller_exec(Ret, View) ->
 	{json, Data} ->
 	    Content = e_json:encode(Data),
 	    Length = {content_length, integer_to_list(length(Content))},
-	    {[{content_type, "text/plain"}, {code, 200}, Length], Content};
+	    {[{content_type, "application/json"}, {code, 200}, Length], Content};
 	{template, Template} ->
 	    format_response(e_mod_gen:template(Template, [],
 					       e_conf:template_expander()));
