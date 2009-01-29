@@ -66,7 +66,7 @@ create_start_dirs() ->
 			  {error, Reason} -> handle_error(Reason)
 		      end
 	      end,
-    Dirs = ["config", "docroot", "log", "pipes", "templates",
+    Dirs = ["config", "docroot", "log", "pipes", "templates", "bin",
 	    "lib", "releases", filename:join("releases", "0.1"),
 	    filename:join("templates", "cache"),
 	    filename:join("docroot", "conf")],
@@ -95,7 +95,7 @@ prepare_paths() ->
 		  0 ->
 		      Dir;
 		  _ ->
-		      lists:join([Dir | Splitted])
+		      filename:join([Dir | Splitted])
 	      end,
 
     {ok, Libs} = file:list_dir(filename:join(RootDir, "lib")),
