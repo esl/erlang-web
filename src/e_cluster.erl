@@ -21,7 +21,10 @@
 -module(e_cluster).
 
 -export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
--export([be_request/4, synchronize_docroot/0]).
+-export([be_request/4, synchronize_docroot/1]).
+
+%% 1 MB
+-define(MAX_FILE_CHUNK, 1 bsl 20).
 
 -spec(inform_fe_servers/0 :: () -> ok).	     
 inform_fe_servers() ->
@@ -60,7 +63,27 @@ call_servers(Fun) ->
     FEs = e_conf:fe_servers(),
     lists:foreach(Fun, FEs).
 
--spec(synchronize_docroot/0 :: () -> ok).
-synchronize_docroot() ->	     
-%% @todo complete the implementation
+-spec(synchronize_docroot/1 :: (string()) -> ok | {error, term()}).
+synchronize_docroot(Filename) ->	     
+    case e_file:get_size(Filename) of
+	N when N < ?MAX_FILE_CHUNK ->
+	    copy_file(Filename);
+	Size ->
+	    copy_file_chunk(Filename, Size)
+    end.
+
+-spec(copy_file/1 :: (string()) -> ok | {error, term()}).	     
+copy_file(Filename) ->
+    case file:read_file(Filename) of
+	{ok, Binary} ->
+	    Fun = fun(Server) ->
+			  rpc:cast(Server, e_fe_cluster, write_file, [Filename, Binary])
+		  end,
+	    call_servers(Fun);
+	{error, Reason} ->
+	    {error, Reason}
+    end.
+    
+-spec(copy_file_chunk/2 :: (string(), integer()) -> ok | {error, term()}).	     
+copy_file_chunk(Filename, Size) ->
     ok.

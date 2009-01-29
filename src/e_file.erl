@@ -23,6 +23,7 @@
 -module(e_file).
 -export([save/2, save/3]).
 -export([copy/2, get_relative_name/1]).
+-export([get_size/1]).
 
 %%
 %% @spec save(Name :: string(), Content :: binary() | string()) -> string()
@@ -77,3 +78,17 @@ copy(Src, Suffix) ->
 -spec(get_relative_name/1 :: (string()) -> string()).
 get_relative_name(Filename) ->	     
     string:sub_string(Filename, length(e_conf:server_root())+8).
+
+%%
+%% @spec get_size(Filename :: string()) -> Size :: integer()
+%%
+-spec(get_size/1 :: (string()) -> integer()).	     
+get_size(Filename) ->
+    case file:read_file_info(Filename) of
+	{ok, #file_info{size = Size}} ->
+	    Size;
+	{error, Reason} ->
+	    error_logger:error_msg("~p module, could not stat ~p, reason ~p~n", 
+				   [?MODULE, Filename, Reason]),
+	    -1
+    end.
