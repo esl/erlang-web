@@ -119,7 +119,12 @@ build_html_tag(Type, Name, Prefix, Params, Default) ->
     end.
 
 build_html_tag(Type, Name, Prefix, Params) ->
-    Description = get_description(Name, Params),
+    Description = case get_description(Name, Params) of
+		      Name ->
+			  "";
+		      Else ->
+			  Else
+		  end,
     ListType = atom_to_list(Type),
 
     [{_, Parts}] = ets:lookup(templates, {wpart, derived}),
