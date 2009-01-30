@@ -81,6 +81,8 @@ get_relative_name(Filename) ->
 
 %%
 %% @spec get_size(Filename :: string()) -> Size :: integer()
+%% @doc Returnes the size of the file in bytes.
+%% In case of error the function shall return <i>-1</i>.
 %%
 -spec(get_size/1 :: (string()) -> integer()).	     
 get_size(Filename) ->

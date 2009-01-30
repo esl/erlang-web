@@ -16,16 +16,27 @@
 %%%-------------------------------------------------------------------
 %%% File    : e_cluster.erl
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Module responsible for managing the cluster of the Erlang Web nodes.
+%%% All the functions should be called from the backend server.
 %%% @end
 %%%-------------------------------------------------------------------
 -module(e_cluster).
 
 -export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
--export([be_request/4, synchronize_docroot/1]).
+-export([be_request/4, synchronize_docroot/1, synchronize_docroot0/1]).
 
 %% 1 MB
 -define(MAX_FILE_CHUNK, 1 bsl 20).
 
+%%
+%% @spec inform_fe_servers() -> ok
+%% @doc Announces the presence of the backend server to the all known frontends.
+%% The informing backend server becomes the main one, which all the needed
+%% requests will be forwarded to. <br/>
+%% The list of the frontend servers is retrieved from the <i>project.conf</i>
+%% file.
+%% @see e_conf:fe_servers/0
+%%
 -spec(inform_fe_servers/0 :: () -> ok).	     
 inform_fe_servers() ->
     Fun = fun(Server) ->
@@ -33,6 +44,14 @@ inform_fe_servers() ->
 	  end,
     call_servers(Fun).
 
+%%
+%% @spec dispatcher_reload() -> ok
+%% @doc Updates the dispatcher entries on the all frontend nodes.
+%% In order to keep the dispatcher rules consistent all over the Erlang
+%% Web cluster it is strongly recommended to change it only on the backend
+%% (even if it is not used there) and trigger the update by calling the
+%% <i>dispatcher_reload/0</i> function.
+%%
 -spec(dispatcher_reload/0 :: () -> ok).	     
 dispatcher_reload() ->
     Conf = ets:tab2list(e_dispatcher),
@@ -42,6 +61,17 @@ dispatcher_reload() ->
 	  end,
     call_servers(Fun).
 
+%%
+%% @spec invalidate(Entries) -> ok
+%% Entries = [Url]
+%% Url = string()
+%% @doc Removes the selected urls from the cache on all frontend servers.
+%% <i>Url</i> is a regular expression describing the URL that should be 
+%% removed from cache (as they are no longer valid, e.g. the model has
+%% changed). <br/>
+%% The regular expression must be in the PCRE format (described in the 
+%% Erlang manual - http://www.erlang.org/doc/man/re.html).
+%% 
 -spec(invalidate/1 :: (list(string())) -> ok).	     
 invalidate(List) ->
     Compiled = lists:map(fun(Regexp) ->
@@ -53,6 +83,7 @@ invalidate(List) ->
 	  end,
     call_servers(Fun).
 
+%% @hidden
 -spec(be_request/4 :: (atom(), atom(), atom(), term()) -> {term(), term()}).	     
 be_request(M, F, A, Dict) ->
     e_dict:init_state(Dict),
@@ -63,8 +94,19 @@ call_servers(Fun) ->
     FEs = e_conf:fe_servers(),
     lists:foreach(Fun, FEs).
 
--spec(synchronize_docroot/1 :: (string()) -> ok | {error, term()}).
-synchronize_docroot(Filename) ->	     
+%%
+%% @spec synchronize_docroot(Filename :: string()) -> WorkerPid :: pid()
+%% @doc Sends the file with the <i>Filename</i> to the all frontend servers.
+%% Since uploaded files are stored on the backend node this function must 
+%% be called after successful saving to synchronize the state on all nodes.
+%%
+-spec(synchronize_docroot/1 :: (string()) -> pid()).
+synchronize_docroot(Filename) ->
+    spawn(?MODULE, synchronize_docroot0, [Filename]).
+
+%% @hidden
+-spec(synchronize_docroot/1 :: (string()) -> ok | {error, term()}).	     
+synchronize_docroot0(Filename) ->
     case e_file:get_size(Filename) of
 	N when N < ?MAX_FILE_CHUNK ->
 	    copy_file(Filename);
