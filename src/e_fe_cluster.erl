@@ -1,0 +1,34 @@
+%% The contents of this file are subject to the Erlang Web Public License,
+%% Version 1.0, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Web Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang-consulting.com/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% The Initial Developer of the Original Code is Erlang Training & Consulting
+%% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2009,
+%% Erlang Training & Consulting Ltd. All Rights Reserved.
+
+%%%-------------------------------------------------------------------
+%%% File    : e_fe_cluster.erl
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Module responsible for managing the frontend nodes of the Erlang Web cluster.
+%%% All the functions should be called on the frontend server.
+%%% @end
+%%%-------------------------------------------------------------------
+-module(e_fe_cluster).
+
+-export([write_file/2]).
+
+%%
+%% @spec write_file(Filename :: string(), Content :: binary()) -> ok | {error, Reason :: atom()}
+%% @doc Saves the passed <i>Content</i> under the <i>Filename</i> on the frontend node.
+%% The previous version of the file is erased.
+%%
+-spec(write_file/2 :: (string(), binary()) -> ok | {error, atom()}).	   
+write_file(Filename, Content) ->
+    file:write_file(Filename, Content).
