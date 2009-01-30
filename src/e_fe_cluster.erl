@@ -31,4 +31,4 @@
 %%
 -spec(write_file/2 :: (string(), binary()) -> ok | {error, atom()}).	   
 write_file(Filename, Content) ->
-    file:write_file(Filename, Content).
+    file:write_file(filename:join([e_conf:server_root(), Filename]), Content).

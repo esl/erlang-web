@@ -56,8 +56,8 @@ do(#mod{parsed_header = Headers} = A) ->
 		{NewHeaders, Result} ->
 		    CookieHeader = e_mod_inets:cookie_bind(ClientCookie),
 
-		    e_dict:terminate_state(),
 		    e_fe_proxy:cleanup_backend(e_multipart_inets),
+		    e_dict:terminate_state(),
 		    
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->

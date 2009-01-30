@@ -40,7 +40,8 @@ request(M, F, A) ->
     ?MODULE ! {req, M, F, A, Dict, self()},
 
     receive 
-	{res, Res, NewDict} ->
+	{res, Res, NewDict, Pid} ->
+	    eptic:fset("__backend_pid", Pid),
 	    e_dict:init_state(NewDict),
 	    Res;
 	error ->
@@ -82,13 +83,12 @@ req_exec(Name, M, F, A, Dict, OutPid) ->
 	    error_logger:error_msg("~p module, rpc error: ~p~n", [?MODULE, Error]),
 	    OutPid ! error;
 	{Res, {ok, NewDict}, Pid} ->
-	    eptic:fset("__backend_pid", Pid),
-	    OutPid ! {res, Res, NewDict}
+	    OutPid ! {res, Res, NewDict, Pid}
     end.
 
 -spec(cleanup_backend/1 :: (atom()) -> none()).	     
 cleanup_backend(Mod) ->
-    case wpart:fget("__backend_pid") of
+    case eptic:fget("__backend_pid") of
 	undefined ->
 	    ok;
 	Pid ->
