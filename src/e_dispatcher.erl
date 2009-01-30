@@ -57,7 +57,7 @@
 -export([error_page/1]).
 -export([install/0, reinstall/0]).
 -export([is_static/1, dispatch/1]).
--export([fe_dispatch/1]).
+-export([fe_dispatch/1, add_rule/1]).
 
 -type(dispatcher_result() :: {atom(), atom(), nil()} | {view, string()} | invalid_url | {error, 404, string()}).
 -type(cache_type() :: no_cache | normal | persistent | {timeout, integer()}).
@@ -335,3 +335,17 @@ get_all_names(String, Regexp, Names) ->
 	    Name = list_to_atom(string:substr(String, Start+3, Len-3)),
 	    get_all_names(string:substr(String, Start+Len), Regexp, [Name | Names])
     end.
+
+-spec(add_rule/1 :: (tuple()) -> true).	     
+add_rule({Type, Regexp, Rule}) ->
+    add_rule(Type, Regexp, Rule, []);
+add_rule({Type, Regexp, Rule, Opts}) ->
+    add_rule(Type, Regexp, Rule, Opts).
+    
+-spec(add_rule/4 :: (static | dynamic, string(), term(), list()) -> true).	     
+add_rule(Type, Regexp, Target, Opts) ->
+    [{_, Static}] = ets:lookup(?MODULE, Type),
+    {ok, Compiled} = re:compile(Regexp),
+    
+    ets:insert(?MODULE, Type, lists:append({Type, Compiled, Target, Opts})).
+
