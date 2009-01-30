@@ -124,8 +124,8 @@ synchronize_docroot0(Filename) ->
     case e_file:get_size(Filename) of
 	N when N < ?MAX_FILE_CHUNK ->
 	    copy_file(Filename);
-	Size ->
-	    copy_file_chunk(Filename, Size)
+	_ ->
+	    copy_file_chunk(Filename)
     end.
 
 -spec(copy_file/1 :: (string()) -> ok | {error, term()}).	     
@@ -140,6 +140,33 @@ copy_file(Filename) ->
 	    {error, Reason}
     end.
     
--spec(copy_file_chunk/2 :: (string(), integer()) -> ok | {error, term()}).	     
-copy_file_chunk(Filename, Size) ->
-    ok.
+-spec(copy_file_chunk/1 :: (string()) -> ok | {error, term()}).	     
+copy_file_chunk(Filename) ->
+    case file:open(Filename, [read, raw, binary]) of
+	{ok, Fd} ->
+	    copy_file_chunk(Fd, Filename),
+	    
+	    file:close(Fd);
+	{error, Reason} ->
+	    error_logger:error_msg("~p module, could not open ~p file, reason: ~p~n", 
+				   [?MODULE, Filename, Reason])
+    end.
+
+-spec(copy_file_chunk/2 :: (term(), string()) -> ok).	     
+copy_file_chunk(Fd, Filename) ->
+    case file:read(Fd, ?MAX_FILE_CHUNK) of
+	{ok, Data} ->
+	    Fun = fun(Server) ->
+			  rpc:call(Server, e_fe_cluster, write_file_chunk, [Filename, Data])
+		  end,
+	    call_servers(Fun),
+	    
+	    copy_file_chunk(Fd, Filename);
+	eof ->
+	    ok;
+	{error, Reason} ->
+	    error_logger:error_msg("~p module, error during reading the file ~p, reason: ~p~n",
+				   [?MODULE, Filename, Reason])
+    end.
+	
+
