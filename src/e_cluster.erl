@@ -16,7 +16,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : e_cluster.erl
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% @doc Module responsible for managing the cluster of the Erlang Web nodes.
+%%% @doc Module responsible for managing the backend nodes of the Erlang Web cluster.
 %%% All the functions should be called from the backend server.
 %%% @end
 %%%-------------------------------------------------------------------
