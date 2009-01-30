@@ -36,7 +36,7 @@ handle_call(E) ->
 
 build_tag(Type) ->
     Parts = wpart_gen:tpl_get(wpart, input),
-    wpart_gen:build_html(Parts, [Type, Type, Type, Type]).
+    wpart_gen:build_html(Parts, [Type, Type, Type]).
 
 load_tpl() ->
     wpart_gen:load_tpl(input, 
