@@ -25,18 +25,25 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 handle_call(E) ->
+    Value = case wpartlib:has_attribute("attribute::submit_text", E) of
+		false ->
+		    "";
+		Text ->
+		    "value='" ++ Text ++ "' "
+	    end,
+
     case wpartlib:has_attribute("attribute::type", E) of 
 	false -> [];
 	Type -> case wpartlib:has_attribute("attribute::action", E) of
 		    false -> [];
-		    Action -> {XML, _} = xmerl_scan:string(build_form(Type, Action)),
+		    Action -> {XML, _} = xmerl_scan:string(build_form(Type, Action, Value)),
 			      Template = wpart_xs:template(XML),
 			      #xmlText{value=Template, 
 				       type=cdata}
 	end
     end.
 
-build_form(Name, Action) ->
+build_form(Name, Action, Value) ->
     Multi = check_for_multipart(Name, e_conf:primitive_types()),
     
     Multipart = if 
@@ -45,7 +52,7 @@ build_form(Name, Action) ->
 		end,
     
     [{_, Parts}] = ets:lookup(templates, {wpart, form}),
-    wpart_gen:build_html(Parts, [Action, Multipart, Name]).
+    wpart_gen:build_html(Parts, [Action, Multipart, Name, Value]).
 
 check_for_multipart(Name, BasicTypes) ->
     Module = list_to_atom("wtype_" ++ Name),
