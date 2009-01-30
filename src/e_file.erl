@@ -25,6 +25,8 @@
 -export([copy/2, get_relative_name/1]).
 -export([get_size/1]).
 
+-include_lib("kernel/include/file.hrl").
+
 %%
 %% @spec save(Name :: string(), Content :: binary() | string()) -> string()
 %% @doc Saves the <i>Content</i> into the specified path inside the upload dir.

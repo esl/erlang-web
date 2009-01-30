@@ -98,14 +98,28 @@ call_servers(Fun) ->
 %% @spec synchronize_docroot(Filename :: string()) -> WorkerPid :: pid()
 %% @doc Sends the file with the <i>Filename</i> to the all frontend servers.
 %% Since uploaded files are stored on the backend node this function must 
-%% be called after successful saving to synchronize the state on all nodes.
+%% be called after successful saving to synchronize the state on all nodes.<br/>
+%% The path to the file should be relative to the server root.
+%% @see e_conf:server_root/0
 %%
 -spec(synchronize_docroot/1 :: (string()) -> pid()).
-synchronize_docroot(Filename) ->
+synchronize_docroot(Filename0) ->
+    Filename = case lists:prefix(e_conf:server_root(), Filename0) of
+		   true ->
+		       case lists:subtract(Filename0, e_conf:server_root()) of
+			   [$/ | Rest] ->
+			       Rest;
+			   Else ->
+			       Else
+		       end;
+		   false ->
+		       Filename0
+	       end,
+
     spawn(?MODULE, synchronize_docroot0, [Filename]).
 
 %% @hidden
--spec(synchronize_docroot/1 :: (string()) -> ok | {error, term()}).	     
+-spec(synchronize_docroot0/1 :: (string()) -> ok | {error, term()}).	     
 synchronize_docroot0(Filename) ->
     case e_file:get_size(Filename) of
 	N when N < ?MAX_FILE_CHUNK ->
