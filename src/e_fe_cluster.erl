@@ -22,7 +22,7 @@
 %%%-------------------------------------------------------------------
 -module(e_fe_cluster).
 
--export([write_file/2]).
+-export([write_file/2, write_file_chunk/2]).
 
 %%
 %% @spec write_file(Filename :: string(), Content :: binary()) -> ok | {error, Reason :: atom()}
@@ -31,4 +31,21 @@
 %%
 -spec(write_file/2 :: (string(), binary()) -> ok | {error, atom()}).	   
 write_file(Filename, Content) ->
-    file:write_file(filename:join([e_conf:server_root(), Filename]), Content).
+    file:write_file(Filename, Content).
+
+%%
+%% @spec write_file_chunk(Filename :: string(), Chunk :: binary()) -> ok
+%% @doc Appends the <i>Content</i> to the end of the file specified by <i>Filename</i>.
+%% If file does not exist, it is created.
+%%
+-spec(write_file_chunk/2 :: (string, binary()) -> ok).	     
+write_file_chunk(Filename, Content) ->
+    case file:open(Filename, [append, raw]) of
+	{ok, Fd} ->
+	    file:write(Fd, Content),
+	    file:close(Fd);
+	{error, Reason} ->
+	    error_logger:error_msg("~p module, error during opening ~p file, reason: ~p~n", 
+				   [?MODULE, Filename, Reason])
+    end.
+	   
