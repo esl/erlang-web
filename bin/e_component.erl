@@ -23,10 +23,12 @@ action(["details", Name]) ->
 			  write_detailed_result(R)
 		  end, lists:sort(string:tokens(Result, "\n")));
 action(["install", Name]) ->
+    action(["path", "lib/", "install", Name]);
+action(["path", Path, "install", Name]) ->
     Result = make_request("download.py?name=" ++ Name),
 
     erl_tar:extract({binary, list_to_binary(Result)},
-		    [{cwd, "../lib/"},
+		    [{cwd, Path},
 		     verbose,
 		     compressed,
 		     keep_old_files]),
@@ -35,12 +37,18 @@ action(["install", Name]) ->
 action(_) ->
     io:format("Usage: ~n"
 	      "e_component.erl list - lists all of the components stored in the repository~n"
+
 	      "e_component.erl search Keyword - searches in the repository for the component having "
 	      "Keyword in its name or description~n"
+
 	      "e_component.erl details Keyword - prints out the detailed information about the given "
 	      "component~n"
-	      "e_component.erl install Name - downloads and installs the ecomponent into the existing "
-	      "Erlang Web project~n").
+
+	      "e_component.erl install Name - downloads and installs the ecomponent into the lib/ "
+	      "folder in the current working directory~n"
+
+	      "e_component.erl path Path install Name - downloads and installs the ecomponent into "
+	      "the Path directory~n").
 
 write_result(Desc) ->
     [Name, Vsn, Description, _Categories, _Author] = string:tokens(Desc, "\t"),
