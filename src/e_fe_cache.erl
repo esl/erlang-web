@@ -21,7 +21,7 @@
 
 -export([start_link/0, init/0, clear/0]).
 -export([request/1, get_order/0]).
--export([dispatcher_reload/1]).
+-export([dispatcher_reload/1, check_cache/1]).
 -export([invalidate_handler/1]).
 -export([ask_front_end/1, ask_back_end/3]).
 -export([save_cache/2, save_cache/3]).
