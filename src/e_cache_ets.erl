@@ -14,12 +14,12 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% File    : e_ets_cache.erl
+%%% File    : e_cache_ets.erl
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
 %%% @doc Module responsible for managing the ets cached xmerl records.
 %%% @end
 %%%-------------------------------------------------------------------
--module(e_ets_cache).
+-module(e_cache_ets).
 
 -export([read_file/1, install/0]).
 -export([flush/0]).

@@ -93,7 +93,7 @@ read_file(File) ->
 start_link() ->
     lists:foreach(fun(Mod) ->
 			  Mod:install()
-		  end, [e_dispatcher, e_conf, e_lang, e_component, e_ets_cache]),
+		  end, [e_dispatcher, e_conf, e_lang, e_component, e_cache]),
 
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 

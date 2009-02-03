@@ -28,7 +28,7 @@
 -export([primitive_types/0, debug_mode/0, fe_servers/0]).
 -export([http_port/0, https_port/0, project_name/0]).
 -export([couchdb_address/0, dbms/0, server_root/0]).
--export([ecomponents/0]).
+-export([ecomponents/0, xmerl_cache_mod/0]).
 -export([get_conf/1, get_conf/2]).
 
 %%====================================================================
@@ -119,6 +119,13 @@ load_conf(Filename) ->
 	[{upload_dir, Dir}] ->
 	    ets:insert(?MODULE, {upload_dir, filename:join([server_root(), "docroot", Dir])})
     end,
+
+    case ets:lookup(?MODULE, xmerl_cache_mod) of
+	[{_, disk}] ->
+	    ets:insert(?MODULE, {xmerl_cache_mod, e_cache_disk});
+	_ ->
+	    ets:insert(?MODULE, {xmerl_cache_mod, e_cache_ets})
+    end,
     
     DBMS = case lists:keysearch(dbms, 1, Ext) of
 	       false ->
@@ -171,9 +178,11 @@ default_language() ->
 %% ```{cache_dir, Dir}'''
 %% where <b>Dir</b> is the path to the desired cache directory.
 %% Path is relative to the server root.<br/>
-%% The default value is <i>templates/cache</i>.
+%% The default value is <i>templates/cache</i>.<br/>
+%% This option is used only if the disk cache engine is selected.
 %% @end
 %% @see e_cache
+%% @see e_cache_disk
 %%
 -spec(cache_dir/0 :: () -> string()).
 cache_dir() ->
@@ -293,7 +302,7 @@ couchdb_address() ->
 
 %%
 %% @spec dbms() -> DatabaseEngineCallbackModule :: atom()
-%% @doc Returns the name of the callback module for database engine.
+%% @doc Returns the name of the callback module for the database engine.
 %% The currently supported engines are for Mnesia and CouchDB (experimental)
 %% databases. 
 %% The project.conf tuple which sets it should look like:
@@ -312,6 +321,19 @@ couchdb_address() ->
 -spec(dbms/0 :: () -> atom()).	     
 dbms() ->
     element(2, application:get_env(eptic, dbms)).
+
+%%
+%% @spec xmerl_cache_mod() -> CacheModule :: atom()
+%% @doc Returns the name of the callback module for the xmerl records cache.
+%% Xmerl scanned files are stored either in the internal memory storage
+%% or on disk (in the directory specified by <i>cache_dir</i> option).<br/>
+%% The possible values are <i>ets</i> and <i>disk</i>.
+%% @see e_cache
+%% @see cache_dir/0
+%%
+-spec(xmerl_cache_mod/0 :: () -> atom()).	     
+xmerl_cache_mod() ->
+    get_conf(xmerl_cache_mod, e_ets_cache).
 
 %%
 %% @spec template_expander() -> TemplateExpanderCallbackModule :: atom()

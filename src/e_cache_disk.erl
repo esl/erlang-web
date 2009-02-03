@@ -14,13 +14,13 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% File    : e_cache.erl
+%%% File    : e_cache_disk.erl
 %%% @author Martin Carlson <martin@erlang-consulting.com>
-%%% @author Michal Ptaszek <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc Module responsible for managing the disk cached xmerl records.
 %%% @end
 %%%-------------------------------------------------------------------
--module(e_cache).
+-module(e_cache_disk).
 
 %% API
 -export([read_file/1]).

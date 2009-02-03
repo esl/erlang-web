@@ -344,8 +344,8 @@ add_rule({Type, Regexp, Rule, Opts}) ->
     
 -spec(add_rule/4 :: (static | dynamic, string(), term(), list()) -> true).	     
 add_rule(Type, Regexp, Target, Opts) ->
-    [{_, Static}] = ets:lookup(?MODULE, Type),
+    [{_, TypeRules}] = ets:lookup(?MODULE, Type),
     {ok, Compiled} = re:compile(Regexp),
     
-    ets:insert(?MODULE, Type, lists:append({Type, Compiled, Target, Opts})).
+    ets:insert(?MODULE, Type, lists:append({Type, Compiled, Target, Opts}, TypeRules)).
 
