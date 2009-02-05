@@ -39,9 +39,16 @@ install() ->
 %%
 -spec(read_file/1 :: (string()) -> term()).	     
 read_file(File) ->
-    case valid_cache(File) of
+    Filename = case filelib:is_file(File) of
+		   true ->
+		       File;
+		   false ->
+		       filename:join([e_conf:template_root(), File])
+	       end,
+
+    case valid_cache(Filename) of
 	false ->
-	    cache(File);
+	    cache(Filename);
 	CXML ->
 	    binary_to_term(CXML)
     end.
@@ -73,13 +80,6 @@ valid_cache(File) ->
 -spec(cache/1 :: (string()) -> term()).	     
 cache(File) ->
     XML = case xmerl_scan:file(File, []) of
-	      {error, enoent} ->
-		  case xmerl_scan:file(e_conf:template_root() ++ "/" ++ File, []) of
-		      {error, Reason} ->
-			  erlang:error({Reason, File});
-		      {XML2, _} ->
-			  XML2
-		  end;
 	      {error, Reason} ->
 		  erlang:error(Reason);
 	      {XML3, _} ->
