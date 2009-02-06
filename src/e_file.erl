@@ -79,7 +79,7 @@ copy(Src, Suffix) ->
 %%
 -spec(get_relative_name/1 :: (string()) -> string()).
 get_relative_name(Filename) ->	     
-    string:sub_string(Filename, length(e_conf:server_root())+8).
+    string:sub_string(Filename, length(e_conf:server_root())+9).
 
 %%
 %% @spec get_size(Filename :: string()) -> Size :: integer()
