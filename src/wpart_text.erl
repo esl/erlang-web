@@ -30,8 +30,9 @@ handle_call(E) ->
     Name = attribute_getter("name", "no_name_text", E),
     Rows = attribute_getter("rows", "10", E),
     Cols = attribute_getter("cols", "50", E),
+    Class = attribute_getter("class", "", E),
 
-    #xmlText{value=get_html_tag(Name, Rows, Cols, "Insert your text here..."),
+    #xmlText{value=get_html_tag(Name, Rows, Cols, Class, "Insert your text here..."),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -46,6 +47,7 @@ build_html_tag(Name, Prefix, Params, Default) ->
 	       false -> "50";
 	       {value, {cols, C}} -> integer_to_list(C)
 	   end,
+    Class = proplists:get_value(class, Params, ""),
     DefaultText = "Insert your text here...",
     D = case lists:keysearch(N, 1, Default) of
 	    {value, {_, []}} ->
@@ -57,7 +59,7 @@ build_html_tag(Name, Prefix, Params, Default) ->
 	    false -> 
 		DefaultText
 	end,
-    wpart_derived:surround_with_table(N, get_html_tag(N, Rows, Cols, D), 
+    wpart_derived:surround_with_table(N, get_html_tag(N, Rows, Cols, Class, D), 
 				      Description).
 
 attribute_getter(Name, Default, E) ->
@@ -66,9 +68,9 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 	    
-get_html_tag(Name, Rows, Cols, Default) ->
+get_html_tag(Name, Rows, Cols, Class, Default) ->
     [{_, Parts}] = ets:lookup(templates, {wpart, text}),
-    wpart_gen:build_html(Parts, [Name, Rows, Cols, Default]).
+    wpart_gen:build_html(Parts, [Name, Rows, Cols, Class, Default]).
 
 load_tpl() ->
     wpart_gen:load_tpl(text,

@@ -28,15 +28,17 @@
 
 handle_call(E) ->
     Name = attribute_getter("name", "no_name_bool", E),
+    Class = attribute_getter("class", "", E),
     
-    #xmlText{value=get_html_tag(Name, false),
+    #xmlText{value=get_html_tag(Name, Class, false),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N, D), Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
 		    
 attribute_getter(Name, Default, E) ->
     case wpartlib:has_attribute("attribute::" ++ Name, E) of
@@ -44,14 +46,14 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 
-get_html_tag(Name, Default) ->
+get_html_tag(Name, Class, Default) ->
     Checked = if
 		  Default == true -> "checked=\"checked\"";
 		  true -> ""
 	      end,
 
     [{_, Parts}] = ets:lookup(templates, {wpart, bool}),
-    wpart_gen:build_html(Parts, [Name, Name, Checked]).
+    wpart_gen:build_html(Parts, [Name, Name, Class, Checked]).
 
 load_tpl() ->
     wpart_gen:load_tpl(bool, 

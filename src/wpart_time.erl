@@ -27,21 +27,20 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 handle_call(E) ->
-    Name = case wpartlib:has_attribute("attribute::name", E) of
-	       false -> "no_name_time";
-	       Val -> Val
-	   end,
+    Name = wpartlib:attribute("attribute::name", "no_name_time", E),
+    Class = wpartlib:attribute("attribute::class", "", E),
     
-    #xmlText{value=get_html_tag(Name, time()),
+    #xmlText{value=get_html_tag(Name, Class, time()),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N, D), Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
 
-get_html_tag(Name, Default) ->
+get_html_tag(Name, Class, Default) ->
     DefaultList = tuple_to_list(Default),
     Time = if
 	       DefaultList == "" -> 
@@ -53,7 +52,7 @@ get_html_tag(Name, Default) ->
 	   end,
 
     [{_, Parts}] = ets:lookup(templates, {wpart, time}),
-    wpart_gen:build_html(Parts, [Name, Time]).
+    wpart_gen:build_html(Parts, [Name, Class, Time]).
 
 load_tpl() ->
     wpart_gen:load_tpl(time, filename:join([code:priv_dir(wparts),"html","time.tpl"])).

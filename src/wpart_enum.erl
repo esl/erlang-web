@@ -29,8 +29,9 @@
 handle_call(E) ->
     Name = attribute_getter("name", "no_name_enum", E),
     Choices = attribute_getter("choices", "", E),
+    Class = attribute_getter("class", "", E),
     
-    #xmlText{value=get_html_tag(Name, Choices, ""),
+    #xmlText{value=get_html_tag(Name, Class, Choices, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -41,7 +42,8 @@ build_html_tag(Name, Prefix, Params, Default) ->
 		  {value, {choices, List}} -> List
 	      end,
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Choices, D), 
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class, Choices, D), 
 				      Description).
 		    
 attribute_getter(Name, Default, E) ->
@@ -52,7 +54,7 @@ attribute_getter(Name, Default, E) ->
 
 %% tag should looks like:
 %% <wpart:enum name="language" choices="english:English,my:My\ Lang"\>
-get_html_tag(Name, ChoicesString, Default) ->
+get_html_tag(Name, Class, ChoicesString, Default) ->
     [{_, Part}] = ets:lookup(templates, {wpart, enum}),
 
     Inserter = fun(String, Acc) ->
@@ -62,7 +64,7 @@ get_html_tag(Name, ChoicesString, Default) ->
 					 "checked=\"checked\"";
 				     true -> ""
 				 end,
-		       Acc ++ wpart_gen:build_html(Part, [Name, Value, Checked, Desc])
+		       Acc ++ wpart_gen:build_html(Part, [Name, Class, Value, Checked, Desc])
 	       end,
 
     {ok, Choices} =  regexp:split(ChoicesString, "|"),

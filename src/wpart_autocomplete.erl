@@ -33,8 +33,9 @@
 handle_call(E) ->
     Name = attribute_getter("name", "no_name_auto", E),
     Complete = attribute_getter("complete", "", E),
+    Class = attribute_getter("class", "", E),
 
-    #xmlText{value=get_html_tag(Name, Complete, ""),
+    #xmlText{value=get_html_tag(Name, Class, Complete, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -45,7 +46,8 @@ build_html_tag(Name, Prefix, Params, Default) ->
 		  {value, {complete, List}} -> List
 	      end,
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N,Complete,D),Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N,Class,Complete,D),Description).
 		    
 attribute_getter(Name, Default, E) ->
     case wpartlib:has_attribute("attribute::" ++ Name, E) of
@@ -53,7 +55,7 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 
-get_html_tag(Name, Complete, Default) ->
+get_html_tag(Name, Class, Complete, Default) ->
     Result = if 
 		 Complete =/= "" ->
 		     Args = string:tokens(Complete, "|"),
@@ -64,7 +66,7 @@ get_html_tag(Name, Complete, Default) ->
     [{_, Parts1}] = ets:lookup(templates, {wpart, autocomplete}),
     [{_, Parts2}] = ets:lookup(templates, {wpart, autocomplete_input_id}),
     wpart_gen:build_html(Parts1, [Name, Name, Result]) ++
-	wpart_gen:build_html(Parts2, [Name, Name, Default]).
+	wpart_gen:build_html(Parts2, [Name, Class, Name, Default]).
 
 load_tpl() ->
     {ok, Binary} = file:read_file(filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),

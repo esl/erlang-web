@@ -1,3 +1,3 @@
-<select name="<% slot %>" <% slot %>>
+<select name="<% slot %>" class="<% slot %>" <% slot %>>
 	<% slot %>
 </select>

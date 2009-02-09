@@ -34,8 +34,9 @@ handle_call(E) ->
     Name = attribute_getter("name", "no_name_multilist", E),
     Options = attribute_getter("options", "", E),
     Multiple = attribute_getter("multiple", "", E),
+    Class = attribute_getter("class", "", E),
     
-    #xmlText{value=get_html_tag(Name, Options, Multiple, ""),
+    #xmlText{value=get_html_tag(Name, Class, Options, Multiple, "", []),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -49,8 +50,9 @@ build_html_tag(Name, Prefix, Params, Default) ->
 		  false -> [];
 		  {value, {multiple, List2}} -> List2
 	      end,
-    D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N,Options,Multi,D), 
+    D = io_lib:format("~p", [wpart_derived:find(N, Default)]),
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N,Class,Options,Multi,D,Params),
 				      Description).
 		    
 attribute_getter(Name, Default, E) ->
@@ -59,13 +61,15 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 
-get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
+get_html_tag(Name, Class, Opt_list, Multiple, DefaultList, Params) ->
     [{_, PartS}] = ets:lookup(templates, {wpart, multilist_select}),
     [{_, PartO}] = ets:lookup(templates, {wpart, multilist_option}),
     
     Inserter = fun(String, Acc) ->
 		       {ok, [Value, Desc]} = regexp:split(String, ":"),
-		       Bool = lists:member(Value,DefaultList) orelse Value == DefaultList,
+		       Bool = lists:member(Value, DefaultList) orelse 
+			   Value == DefaultList orelse
+			   lists:member(Value, proplists:get_value(selected, Params)),
 		       Selected = if
 				      Bool -> 
 					  "selected=\"selected\"";
@@ -75,7 +79,7 @@ get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
 		       Acc ++ wpart_gen:build_html(PartO, [Value, Selected, Desc])
 	       end,
     MultipleHtml = if 
-		       Multiple == "true" -> "multiple=\"multiple\"";
+		       Multiple == true -> "multiple=\"multiple\"";
 		       true -> ""
 		   end,
 
@@ -83,7 +87,7 @@ get_html_tag(Name, Opt_list, Multiple, DefaultList) ->
     case ReadyOpt_list of
         [[]] -> "No options loaded.";
         _ -> HtmlOpt = lists:foldl(Inserter, "", ReadyOpt_list),
-             wpart_gen:build_html(PartS, [Name, MultipleHtml, HtmlOpt])
+             wpart_gen:build_html(PartS, [Name, Class, MultipleHtml, HtmlOpt])
     end.
 
 load_tpl() ->

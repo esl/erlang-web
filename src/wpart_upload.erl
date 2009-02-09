@@ -28,31 +28,31 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 handle_call(E) ->
-    Name = case wpartlib:has_attribute("attribute::name", E) of
-	       false -> "no_name_file";
-	       X -> X
-	   end,
+    Name = wpartlib:attribute("attribute::name", "no_name_file", E),
+    Class = wpartlib:attribute("attribute::class", "", E),
 
-    #xmlText{value=get_html_tag(Name, ""),
+    #xmlText{value=get_html_tag(Name, Class, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N, D), Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
 
-get_html_tag(Name, Default) ->
+get_html_tag(Name, Class, Default) ->
     [{_, Part1}] = ets:lookup(templates, {wpart, upload}),
 
     if
 	Default == undefined orelse Default == [] ->
-	    wpart_gen:build_html(Part1, [Name, ""]);
+	    wpart_gen:build_html(Part1, [Name, Class, ""]);
 	true ->
 	    [{_, Part2}] = ets:lookup(templates, {wpart, upload_edit}),
-	    Path = e_file:get_relative_name(Default),
 
-	    wpart_gen:build_html(Part1, [Name,
+	    "docroot" ++ Path = Default,
+
+	    wpart_gen:build_html(Part1, [Name, Class,
 					 wpart_gen:build_html(Part2, [Path, Path])])
     end.
 

@@ -1,1 +1,1 @@
-<input type="file" name="<% slot %>"/><% slot %>
+<input type="file" name="<% slot %>" class="<% slot %>" /><% slot %>

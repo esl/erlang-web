@@ -27,20 +27,19 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 handle_call(E) ->
-    Name = case wpartlib:has_attribute("attribute::name", E) of
-	       false -> "no_name_csv";
-	       Val -> Val
-	   end,
+    Name = wpartlib:attribute("attribute::name", "", E),
+    Class = wpartlib:attribute("attribute::class", "", E),
 
-    #xmlText{value=get_html_tag(Name, ""), type=cdata}.
+    #xmlText{value=get_html_tag(Name, Class, ""), type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
     D = wpart_derived:find(N, Default),
-    wpart_derived:surround_with_table(N, get_html_tag(N,D), Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N,Class,D), Description).
 
-get_html_tag(Name, Default) ->
+get_html_tag(Name, Class, Default) ->
     Dict = wpart:fget(Name),
     Dis = if 
 	      Dict == "readonly" -> 
@@ -83,7 +82,7 @@ get_html_tag(Name, Default) ->
     end,
 
     [{_, Parts}] = ets:lookup(templates, {wpart, csv}),
-    wpart_gen:build_html(Parts, [Name, Dis, Ready]).
+    wpart_gen:build_html(Parts, [Name, Class, Dis, Ready]).
 
 load_tpl() ->
     wpart_gen:load_tpl(csv,

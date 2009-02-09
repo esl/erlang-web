@@ -43,22 +43,19 @@ validate({Types, undefined}) ->
 validate({Types, Input}) ->
     case wpart_valid:is_private(Types) of
 	true ->
-	    {ok, Input};
+	    one_element_check(Input);
 	false ->
 	    if 
 		Input =/= undefined ->  
-		    if 
-			Input == [] ->
-			    {ok, []};
-			is_integer(hd(Input)) ->
-			    {ok, [Input]};
-			true ->
-			    {ok, Input}
-		    end;
-		true -> 
+		    one_element_check(Input);
+               true -> 
 		    {error, {empty, Input}}
             end
     end;
 
-validate(Input) -> 
-    {error, {it_is_not_multiple_list_value, Input}}.
+validate(Input) -> {error, {it_is_not_multiple_list_value, Input}}.
+
+one_element_check([T | _] = Input) when is_list(T) ->
+    {ok, Input};
+one_element_check([T | _] = Input) when is_integer(T) ->
+    {ok, [Input]}.

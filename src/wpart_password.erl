@@ -28,14 +28,16 @@
 
 handle_call(E) ->
     Name = attribute_getter("name", "no_name_password", E),
+    Class = attribute_getter("class", "", E),
 
-    #xmlText{value=get_html_tag(Name),
+    #xmlText{value=get_html_tag(Name, Class),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, _) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
-    wpart_derived:surround_with_table(N, get_html_tag(N), Description).
+    Class = proplists:get_value(class, Params, ""),
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class), Description).
 
 attribute_getter(Name, Default, E) ->
     case wpartlib:has_attribute("attribute::" ++ Name, E) of
@@ -43,9 +45,9 @@ attribute_getter(Name, Default, E) ->
 	Val -> Val
     end.
 
-get_html_tag(Name) ->
+get_html_tag(Name, Class) ->
     [{_, Part}] = ets:lookup(templates, {wpart, password}),
-    wpart_gen:build_html(Part, [Name]).
+    wpart_gen:build_html(Part, [Name, Class]).
 
 load_tpl() ->
     wpart_gen:load_tpl(password,
