@@ -81,6 +81,7 @@ start() ->
 					  {httpd, filename:join(code:priv_dir(eptic_fe), "inets_https.conf")}]),
     inets:start(),
 
+    application:set_env(eptic, node_type, frontend),
     application:start(eptic_fe).
 
 -spec(is_cacheable/0 :: () -> bool()).	     

@@ -100,6 +100,7 @@ start() ->
 			    password = ""}},
     yaws_api:setconf(GC, [[SC1], [SC2]]),
     
+    application:set_env(eptic, node_type, frontend),
     application:start(eptic_fe).
 
 -spec(check_docroot/2 :: (tuple(), string()) -> tuple()).	
