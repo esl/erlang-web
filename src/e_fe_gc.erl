@@ -73,7 +73,7 @@ collect_timeout(T) ->
 -spec(clear_timeout_cache/2 :: (integer(), list(tuple())) -> ok).	     
 clear_timeout_cache(_, []) ->
     ok;
-clear_timeout_cache(Time, [{URL, _, MaxTime, InsertionTime} | Rest]) ->
+clear_timeout_cache(Time, [{URL, _, _, MaxTime, InsertionTime} | Rest]) ->
     Diff = timer:now_diff(Time, InsertionTime),
     if
 	Diff div 1000000 >= MaxTime ->
