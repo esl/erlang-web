@@ -24,6 +24,7 @@
 
 -export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
 -export([be_request/4, synchronize_docroot/1, synchronize_docroot0/1]).
+-export([invalidate_groups/1]).
 
 %% 1 MB
 -define(MAX_FILE_CHUNK, 1 bsl 20).
@@ -80,6 +81,20 @@ invalidate(List) ->
 			 end, List),
     Fun = fun(Server) ->
 		  rpc:call(Server, e_fe_cache, invalidate_handler, [Compiled])
+	  end,
+    call_servers(Fun).
+
+%%
+%% @spec invalidate_groups(Groups) -> ok
+%% Groups = [Group]
+%% Group = string()
+%% @doc Removes all the cache contents that belongs at least to one of the <i>Group</i>.
+%% <i>Group</i> must be a string which labels and categorizes the cache entry.
+%% 
+-spec(invalidate_groups/1 :: (list(string())) -> ok).			  
+invalidate_groups(Groups) ->
+    Fun = fun(Server) ->
+		  {e_fe_cache, Server} ! {invalidate_groups, Groups}
 	  end,
     call_servers(Fun).
 

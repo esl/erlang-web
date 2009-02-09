@@ -299,19 +299,19 @@ process(nomatch, URL) ->
 
 -spec(fe_process/2 :: (tuple(), string()) -> {cache_type(), dispatcher_result()}).	     
 fe_process({static, _, enoent}, _) ->
-    {no_cache, invalid_url};
+    {no_cache, [], invalid_url};
 fe_process({static, _, Path}, _) ->
-    {persistent, {view, Path}};
+    {persistent, ["view"], {view, Path}};
 fe_process({static, _, enoent, _}, _) ->
-    {no_cache, invalid_url};
+    {no_cache, [], invalid_url};
 fe_process({static, _, Path, Opts}, _) ->
-    {proplists:get_value(cache, Opts, persistent), {view, Path}};
+    {proplists:get_value(cache, Opts, persistent), proplists:get_value(cache_groups, Opts, ["view"]), {view, Path}};
 fe_process({dynamic, _, {M, F}}, _) ->
-    {normal, {M, F, []}};
+    {normal, ["controller"], {M, F, []}};
 fe_process({dynamic, _, {M, F}, Opts}, _) ->
-    {proplists:get_value(cache, Opts, normal), {M, F, []}};
+    {proplists:get_value(cache, Opts, normal), proplists:get_value(cache_groups, Opts, ["controller"]), {M, F, []}};
 fe_process(nomatch, URL) ->
-    {persistent, {error, 404, URL}}.
+    {persistent, ["errors"], {error, 404, URL}}.
 
 -spec(load_errors/0 :: () -> ok).	     
 load_errors() ->
