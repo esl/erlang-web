@@ -25,7 +25,7 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(DEFAULT_TIMEOUT, 10000000).
+-define(DEFAULT_TIMEOUT, 100000).
 
 process_xml(E) ->
     case application:get_env(eptic, node_type) of
@@ -38,35 +38,42 @@ process_xml(E) ->
 %% @todo add the cache group when saving
 cached_content(E) ->
     Id = wpartlib:has_attribute("attribute::id", E),
-    Groups = wpartlib:has_attribute("attribute::groups", E),
-    
+    Groups = prepare_groups(wpartlib:has_attribute("attribute::groups", E)),
+    Type = get_type(wpartlib:has_attribute("attribute::type", E)),
+
     if 
 	Id == false;
 	Groups == false ->
+	    error_logger:warning_msg("~p module, the wpart:cache tag does not have at least one"
+				     " of the mandatory attributes: id or groups~n", 
+				     [?MODULE]),
+
 	    wpart_xs:process_xml(E#xmlElement.content);
 	true ->
 	    BId = list_to_binary(Id),
 	    case e_fe_cache:check_cache(BId) of
 		not_found ->
-		    Type = case wpartlib:has_attribute("attribute::type", E) of
-			       "persistent" ->
-				   persistent;
-			       "timeout(" ++ Rest ->
-				   case catch list_to_integer(lists:reverse(tl(lists:reverse(Rest)))) of
-				       {'EXIT', _} ->
-					   normal;
-				       T ->
-					   {timeout, T}
-				   end;
-			       "timeout" ->
-				   {timeout, ?DEFAULT_TIMEOUT};
-			       _ ->
-				   normal
-			   end,
 		    Result = wpart_xs:process_xml(E#xmlElement.content),
-		    e_fe_cache:save_cache(Type, BId, term_to_binary(Result)),
+		    e_fe_cache:save_cache(Type, Groups, BId, term_to_binary(Result)),
 		    Result;
 		{cached, Cache} ->
 		    Cache
 	    end
     end.
+
+prepare_groups(Groups) ->
+    lists:map(fun string:strip/1, string:tokens(Groups, [$,])).
+
+get_type("persistent") ->
+    persistent;
+get_type("timeout(" ++ Rest) ->
+    case catch list_to_integer(lists:reverse(tl(lists:reverse(Rest)))) of
+	{'EXIT', _} ->
+	    normal;
+	T ->
+	    {timeout, T}
+    end;
+get_type("timeout") ->
+    {timeout, ?DEFAULT_TIMEOUT};
+get_type(_) ->
+    normal.
