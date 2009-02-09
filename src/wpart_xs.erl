@@ -40,7 +40,7 @@ template(#xmlElement{name = 'html'} = E) ->
      xslapply(fun template/1, E),
      "</html>\n"];
 
-template(#xmlElement{name = 'wpart:cache'}} = E) ->
+template(#xmlElement{name = 'wpart:cache'} = E) ->
     wpart_cache:process_xml(E);
 template(#xmlElement{nsinfo = {"wpart", _Operator}} = E) ->
     case wpartlib:eval(E) of
