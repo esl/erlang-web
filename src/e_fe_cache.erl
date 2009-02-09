@@ -24,7 +24,7 @@
 -export([dispatcher_reload/1, check_cache/1]).
 -export([invalidate_handler/1]).
 -export([ask_front_end/1, ask_back_end/3]).
--export([save_cache/2, save_cache/3]).
+-export([save_cache/2, save_cache/4]).
 
 %% @hidden
 start_link() ->
@@ -56,6 +56,9 @@ loop({A, B}) ->
 	    loop({B, A});
 	{invalidate, Regexp} ->
 	    invalidate(Regexp),
+	    loop({A, B});
+	{invalidate_groups, Groups} ->
+	    invalidate_groups(Groups),
 	    loop({A, B})
     end.
 
@@ -101,6 +104,46 @@ invalidate(Cache, BKey, Regexp) ->
 				   [?MODULE, Regexp, Reason])
     end.
 
+-spec(invalidate_groups/1 :: (list(string())) -> ok).	     
+invalidate_groups(Groups) ->
+    lists:foreach(fun invalidate_group/1, Groups).
+
+-spec(invalidate_group/1 :: (string()) -> ok).	     
+invalidate_group(Group) ->
+    lists:foreach(fun(Cache) ->
+			  invalidate_group(Cache, Group)
+		  end, [cache_persistent, cache_a, cache_b, cache_timeout]).
+
+-spec(invalidate_group/2 :: (atom(), string()) -> ok).
+invalidate_group(Cache, Group) ->
+    First = ets:first(Cache),
+    invalidate_group(Cache, First, Group).
+
+-spec(invalidate_group/3 :: (atom(), term(), string()) -> ok).
+invalidate_group(_, '$end_of_table', _) ->	     
+    ok;
+invalidate_group(Cache, Key, Group) ->
+    Next = ets:next(Cache, Key),
+    case ets:lookup(Cache, Key) of
+	[{_, Groups, _}] -> 
+	    case lists:member(Group, Groups) of
+		true ->
+		    ets:delete(Cache, Key);
+		false ->
+		    ok
+	    end;
+	[{_, Groups, _, _, _}] ->
+	    case lists:member(Group, Groups) of
+		true ->
+		    ets:delete(Cache, Key);
+		false ->
+		    ok
+	    end;
+	[] ->
+	    ok
+    end,
+    invalidate_group(Cache, Next, Group).
+
 -spec(ask_front_end/1 :: (string()) -> term()).	     
 ask_front_end(View) ->
     e_fe_mod_gen:view(View).
@@ -110,23 +153,24 @@ ask_back_end(M, F, A) ->
     e_fe_proxy:request(M, F, A).
 
 -spec(save_cache/2 :: (string(), binary()) -> ok).	     
-save_cache(URL, Cache) ->
+save_cache(Id, Cache) ->
     case e_dict:fget("__cacheable") of
 	true ->
-	    save_cache(eptic:fget("__cache_type"), list_to_binary(URL), term_to_binary(Cache));
+	    save_cache(eptic:fget("__cache_type"), eptic:fget("__cache_groups"), 
+		       list_to_binary(Id), term_to_binary(Cache));
 	false ->
 	    ok
     end.
 
--spec(save_cache/3 :: (atom(), binary(), binary()) -> ok).
-save_cache(no_cache, _, _) ->
+-spec(save_cache/4 :: (atom(), list(string()), binary(), binary()) -> ok).
+save_cache(no_cache, _, _, _) ->
     ok;
-save_cache(normal, URL, Cache) ->
-    save_normal_cache(URL, Cache);
-save_cache(persistent, URL, Cache) ->
-    save_persistent_cache(URL, Cache);
-save_cache({timeout, T}, URL, Cache) ->
-    save_timeout_cache(URL, Cache, T).
+save_cache(normal, Groups, Id, Cache) ->
+    save_normal_cache(Id, Groups, Cache);
+save_cache(persistent, Groups, Id, Cache) ->
+    save_persistent_cache(Id, Groups, Cache);
+save_cache({timeout, T}, Groups, Id, Cache) ->
+    save_timeout_cache(Id, Groups, Cache, T).
 
 -spec(check_cache/1 :: (binary()) -> {cached, term()} | not_found).	     
 check_cache(Key) ->
@@ -140,7 +184,7 @@ check_cache(Key) ->
 -spec(check_timeout_cache/1 :: (binary()) -> {cached, term()} | not_found).	     
 check_timeout_cache(Key) ->
     case ets:lookup(cache_timeout, Key) of
-	[{_, Bin, _, _}] ->
+	[{_, _, Bin, _, _}] ->
 	    {cached, binary_to_term(Bin)};
 	[] ->
 	    check_transient_cache(Key)
@@ -149,7 +193,7 @@ check_timeout_cache(Key) ->
 -spec(check_cache/2 :: (atom(), binary()) -> {cached, term()} | not_found).    
 check_cache(Type, Key) ->
     case ets:lookup(Type, Key) of
-	[{_, Bin}] ->
+	[{_, _, Bin}] ->
 	    {cached, binary_to_term(Bin)};
 	[] ->
 	    not_found
@@ -166,18 +210,18 @@ check_transient_cache(Key) ->
 	    check_cache(First, Key)
     end.					
 
--spec(save_normal_cache/2 :: (binary(), atom()) -> none()).	     
-save_normal_cache(Key, Cache) ->
+-spec(save_normal_cache/3 :: (binary(), list(string()), atom()) -> none()).	     
+save_normal_cache(Key, Groups, Cache) ->
     {First, _} = get_order(),
-    ets:insert(First, {Key, Cache}).
+    ets:insert(First, {Key, Groups, Cache}).
 
--spec(save_persistent_cache/2 :: (binary(), term()) -> none()).	     
-save_persistent_cache(Key, Cache) ->
-    ets:insert(cache_persistent, {Key, Cache}).
+-spec(save_persistent_cache/3 :: (binary(), list(string()), term()) -> none()).	     
+save_persistent_cache(Key, Groups, Cache) ->
+    ets:insert(cache_persistent, {Key, Groups, Cache}).
 
--spec(save_timeout_cache/3 :: (binary(), term(), integer()) -> none()).	     
-save_timeout_cache(Key, Cache, Time) ->
-    ets:insert(cache_timeout, {Key, Cache, Time, now()}).
+-spec(save_timeout_cache/4 :: (binary(), list(string()), term(), integer()) -> none()).	     
+save_timeout_cache(Key, Groups, Cache, Time) ->
+    ets:insert(cache_timeout, {Key, Groups, Cache, Time, now()}).
 
 -spec(get_order/0 :: () -> {atom(), atom()}).	     
 get_order() ->

@@ -34,17 +34,21 @@ handle_request("/app/" ++ URL) ->
     case e_mod_gen:parse_url(URL) of
 	{M, F, View} -> 
 	    eptic:fset("__cache_type", normal),
+	    eptic:fset("__cache_groups", ["controller"]),
 	    dynamic_request(M, F, [], View, URL);
 	{view, View} -> 
 	    eptic:fset("__cache_type", persistent),
+	    eptic:fset("__cache_groups", ["view"]),
 	    static_request(URL, View);
 	{error, Error} -> 
 	    eptic:fset("__cache_type", normal),
+	    eptic:fset("__cache_groups", ["errors"]),
 	    {ready, error_request(501, Error)}
     end;
 handle_request(URL) ->
-    {Type, Rule} = e_dispatcher:fe_dispatch(URL),
+    {Type, Groups, Rule} = e_dispatcher:fe_dispatch(URL),
     eptic:fset("__cache_type", Type),
+    eptic:fset("__cache_groups", Groups),
     
     case Rule of
 	{error, Code, Path} -> {ready, error_request(Code, Path)};
@@ -79,7 +83,7 @@ dynamic_request(M, F, A, View, URL) ->
 -spec(error_request/2 :: (integer(), string()) -> term()).	     
 error_request(404, Path) ->
     Error = e_mod_gen:error_page(404, Path),
-    e_fe_cache:save_cache(persistent, Path, Error),
+    e_fe_cache:save_cache(persistent, ["errors"], Path, Error),
     Error;
 error_request(Code, Path) ->
     e_mod_gen:error_page(Code, Path).
