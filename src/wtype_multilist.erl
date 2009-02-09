@@ -45,10 +45,20 @@ validate({Types, Input}) ->
 	true ->
 	    {ok, Input};
 	false ->
-            %TODO: make actual validation
-	    if Input =/= undefined ->  {ok, Input};
-               true -> {error, {empty, Input}}
+	    if 
+		Input =/= undefined ->  
+		    if 
+			Input == [] ->
+			    {ok, []};
+			is_integer(hd(Input)) ->
+			    {ok, [Input]};
+			true ->
+			    {ok, Input}
+		    end;
+		true -> 
+		    {error, {empty, Input}}
             end
     end;
 
-validate(Input) -> {error, {it_is_not_multiple_list_value, Input}}.
+validate(Input) -> 
+    {error, {it_is_not_multiple_list_value, Input}}.
