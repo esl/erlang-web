@@ -25,16 +25,16 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-%% @todo - change the checking method for frontend/backend
+-define(DEFAULT_TIMEOUT, 10000000).
+
 process_xml(E) ->
-    case lists:keymember(eptic_fe, 1, application:which_applications()) of
-	true ->
+    case application:get_env(eptic, node_type) of
+	{ok, frontend} ->
 	    cached_content(E);
-	false ->
+	_ ->
 	    wpart_xs:process_xml(E#xmlElement.content)
     end.
 
-%% @todo change the save cache type
 %% @todo add the cache group when saving
 cached_content(E) ->
     Id = wpartlib:has_attribute("attribute::id", E),
@@ -48,8 +48,23 @@ cached_content(E) ->
 	    BId = list_to_binary(Id),
 	    case e_fe_cache:check_cache(BId) of
 		not_found ->
+		    Type = case wpartlib:has_attribute("attribute::type", E) of
+			       "persistent" ->
+				   persistent;
+			       "timeout(" ++ Rest ->
+				   case catch list_to_integer(lists:reverse(tl(lists:reverse(Rest)))) of
+				       {'EXIT', _} ->
+					   normal;
+				       T ->
+					   {timeout, T}
+				   end;
+			       "timeout" ->
+				   {timeout, ?DEFAULT_TIMEOUT};
+			       _ ->
+				   normal
+			   end,
 		    Result = wpart_xs:process_xml(E#xmlElement.content),
-		    e_fe_cache:save_cache(normal, BId, term_to_binary(Result)),
+		    e_fe_cache:save_cache(Type, BId, term_to_binary(Result)),
 		    Result;
 		{cached, Cache} ->
 		    Cache
