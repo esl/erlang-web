@@ -21,11 +21,42 @@
 %%%-------------------------------------------------------------------
 -module(wtype_html).
 -export([handle_call/2, parse_html/3]).
+-export([htmlize/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
 handle_call(_, E) ->
     E#xmlText{type = cdata}.
+
+%%
+%% taken from yaws_api module
+%%
+htmlize(Bin) when binary(Bin) ->
+    list_to_binary(htmlize_l(binary_to_list(Bin)));
+htmlize(List) when list(List) ->
+    htmlize_l(List).
+
+htmlize_l(List) ->
+    htmlize_l(List, []).
+
+htmlize_l([], Acc) -> 
+    lists:reverse(Acc);
+htmlize_l([$>|Tail], Acc) ->
+    htmlize_l(Tail, [$;,$t,$g,$&|Acc]);
+htmlize_l([$<|Tail], Acc) ->
+    htmlize_l(Tail, [$;,$t,$l,$&|Acc]);
+htmlize_l([$&|Tail], Acc) ->
+    htmlize_l(Tail, [$;,$p,$m,$a,$&|Acc]);
+htmlize_l([34|Tail], Acc) -> %% $"
+    htmlize_l(Tail, [$; , $t, $o,  $u,  $q  ,$&|Acc]);
+htmlize_l([X|Tail], Acc) when integer(X) ->
+    htmlize_l(Tail, [X|Acc]);
+htmlize_l([X|Tail], Acc) when binary(X) ->
+    X2 = htmlize_l(binary_to_list(X)),
+    htmlize_l(Tail, [X2|Acc]);
+htmlize_l([X|Tail], Ack) when list(X) ->
+    X2 = htmlize_l(X),
+    htmlize_l(Tail, [X2|Ack]).
 
 parse_html([$<, $/ | Rest], Whitelist, Opened) ->
     parse_html_close_tag([], Rest, Whitelist, Opened);

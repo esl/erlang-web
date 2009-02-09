@@ -59,7 +59,7 @@ build_html_tag(Name, Prefix, Params, Default) ->
 	    false -> 
 		DefaultText
 	end,
-    wpart_derived:surround_with_table(N, get_html_tag(N, Rows, Cols, Class, D), 
+    wpart_derived:surround_with_table(N, get_html_tag(N, Rows, Cols, Class, wtype_html:htmlize(D)), 
 				      Description).
 
 attribute_getter(Name, Default, E) ->
