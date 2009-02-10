@@ -68,6 +68,8 @@ request(URL) ->
     case e_dict:fget("__cacheable") of
 	true ->
 	    check_cache(URL);
+	{true, Id} ->
+	    check_cache(Id);
 	false ->
 	    not_found
     end.
@@ -158,6 +160,9 @@ save_cache(Id, Cache) ->
 	true ->
 	    save_cache(eptic:fget("__cache_type"), eptic:fget("__cache_groups"), 
 		       list_to_binary(Id), term_to_binary(Cache));
+	{true, NewId} ->
+	    save_cache(eptic:fget("__cache_type"), eptic:fget("__cache_groups"), 
+		       list_to_binary(NewId), term_to_binary(Cache));
 	false ->
 	    ok
     end.
