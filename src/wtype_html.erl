@@ -29,7 +29,9 @@ handle_call(_, E) ->
     E#xmlText{type = cdata}.
 
 %%
-%% taken from yaws_api module
+%% Taken from yaws_api module
+%% The whole license could be found in root directory of attached yaws
+%% application.
 %%
 htmlize(Bin) when binary(Bin) ->
     list_to_binary(htmlize_l(binary_to_list(Bin)));

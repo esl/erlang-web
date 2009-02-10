@@ -38,7 +38,7 @@ build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
     Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, D), Description).
+    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
 
 get_html_tag(Name, Class, Default) when is_integer(Default) ->
     get_html_tag(Name, Class, integer_to_list(Default));
