@@ -69,7 +69,7 @@ get_html_tag(Name, Class, Opt_list, Multiple, DefaultList, Params) ->
 		       {ok, [Value, Desc]} = regexp:split(String, ":"),
 		       Bool = lists:member(Value, DefaultList) orelse 
 			   Value == DefaultList orelse
-			   lists:member(Value, proplists:get_value(selected, Params), []),
+			   lists:member(Value, proplists:get_value(selected, Params, [])),
 		       Selected = if
 				      Bool -> 
 					  "selected=\"selected\"";
