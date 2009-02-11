@@ -14,8 +14,8 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author Michal Zajda <info@erlang-consulting.com>
+%%% @since 1.3
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
