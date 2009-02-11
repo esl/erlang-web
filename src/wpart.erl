@@ -23,7 +23,8 @@
 -module(wpart).
 
 %% API
--export([fget/1, 
+-export([
+	 fget/1, 
 	 fset/2, 
 	 select/2, 
 	 has_attribute/2, 
