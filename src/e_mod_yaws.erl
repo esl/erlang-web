@@ -29,6 +29,7 @@
 -export([fe_request/2]).
 
 -export([cookie_up/1, add_headers/2, cookie_bind/1, cleanup/0]).
+-export([get_url/1]).
 
 -include("yaws_api.hrl").
 -include("yaws.hrl").
@@ -52,12 +53,13 @@ out(A) ->
 	    end,
 
             ClientCookie = cookie_up(Headers),
+	    URL = get_url(A#arg.appmoddata),
             
-	    e_dict:fset("__path", A#arg.appmoddata),
+	    e_dict:fset("__path", URL),
 	    e_dict:fset("__cookie_key", ClientCookie),
 
 	    ControllerFun = fun() -> 
-				    case e_mod_gen:handle_request([$/ | A#arg.appmoddata]) of
+				    case e_mod_gen:handle_request([$/ | URL]) of
 					{ret_view, Ret, View} ->
 					    controller_exec(Ret, View);
 					[_Status, _Html] = Error ->
@@ -288,3 +290,8 @@ set_user_cookie(CookieName, CookieVal, CookiePath, CookieExpDate) ->
 cleanup() ->
     e_multipart_yaws:terminate(),
     e_dict:terminate_state().
+
+%% @hidden
+-spec(get_url/1 :: (string()) -> string()).	     
+get_url([$/ | Url]) -> Url;
+get_url(Url)        -> Url.
