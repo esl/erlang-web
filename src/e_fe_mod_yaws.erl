@@ -40,13 +40,14 @@ out(A) ->
 	    end,
 
             ClientCookie = e_mod_yaws:cookie_up(Headers),
+	    URL = e_mod_yaws:get_url(A#arg.appmoddata),
             
-	    e_dict:fset("__path", A#arg.appmoddata),
+	    e_dict:fset("__path", URL),
 	    e_dict:fset("__cookie_key", ClientCookie),
 	    e_dict:fset("__cacheable", is_cacheable()),
 
 	    ControllerFun = fun() -> 
-				    URL = [$/ | A#arg.appmoddata],
+				    URL = [$/ | URL],
 				    case e_fe_mod_gen:handle_request(URL) of
 					enoent ->
 					    enoent;
