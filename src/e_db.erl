@@ -22,8 +22,8 @@
 %%% @see e_conf:db/0
 %%% @see e_db_couchdb
 %%% @see e_db_mnesia
-
 -module(e_db).
+
 -export([install/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
