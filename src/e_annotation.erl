@@ -45,6 +45,7 @@
 -export([parse_transform/2]).
 
 -define(INVALIDATOR_VAR_NAME, '__INVALIDATOR').
+-define(GROUP_INVALIDATOR_VAR_NAME, '__G_INVALIDATOR').
 -define(NODE_VAR_NAME, '__NODE_NAME').
 -define(RPC_ERROR_NAME, '__RPC_ERROR').
 -define(RPC_RESULT, '__RPC_RESULT').
@@ -63,6 +64,8 @@ remove_annotations([{attribute, _, backend_call, Fun} | Rest], Tree, Annotations
     remove_annotations(Rest, Tree, [{backend_call, Fun} | Annotations]);
 remove_annotations([{attribute, _, invalidate, {Fun, Regexps}} | Rest], Tree, Annotations) ->
     remove_annotations(Rest, Tree, [{invalidator, Fun, Regexps} | Annotations]);
+remove_annotations([{attribute, _, invalidate_groups, {Fun, Groups}} | Rest], Tree, Annotations) ->
+    remove_annotations(Rest, Tree, [{group_invalidator, Fun, Groups} | Annotations]);
 remove_annotations([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
     put(module_name, Name),
     remove_annotations(Rest, [A | Tree], Annotations);
@@ -106,7 +109,9 @@ transform_function1({function, Line, Name, Arity, Clauses0}, Annotations) ->
 transform_clause({backend_call, _}, {Name, C}) ->
     {Name, transform_backend_call(C, Name)};
 transform_clause({invalidator, _, Regexps}, {Name, C}) ->
-    {Name, transform_invalidator(C, Regexps)}.
+    {Name, transform_invalidator(C, Regexps)};
+transform_clause({group_invalidator, _, Groups}, {Name, C}) ->
+    {Name, transform_group_invalidator(C, Groups)}.
 
 -spec(transform_backend_call/2 :: (tuple(), atom()) -> tuple()).	     
 transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
@@ -211,6 +216,25 @@ transform_invalidator({clause, Line, Args, Guards, Body}, Regexps) ->
 	       },
 	       {var, LastLine, ?INVALIDATOR_VAR_NAME}],
 
+    {clause, Line, Args, Guards, NewBody}.
+
+-spec(transform_group_invalidator/2 :: (tuple(), list(string())) -> tuple()).	     
+transform_group_invalidator({clause, Line, Args, Guards, Body}, Groups) ->
+    FirstLine = element(2, hd(Body)),
+    LastLine = element(2, hd(lists:reverse(Body))),
+    
+    NewBody = [{match, FirstLine, 
+		{var, FirstLine, ?GROUP_INVALIDATOR_VAR_NAME},
+		{block, FirstLine, Body}
+	       },
+	       {call, LastLine, 
+		{remote, LastLine,
+		 {atom, LastLine, e_cluster},
+		 {atom, LastLine, invalidate_groups}},
+		[prepare_list_of_strings(Groups, LastLine)]
+	       },
+	       {var, LastLine, ?GROUP_INVALIDATOR_VAR_NAME}],
+    
     {clause, Line, Args, Guards, NewBody}.
 
 -spec(prepare_arguments_list/2 :: (list(tuple()), integer()) -> tuple()).	     
