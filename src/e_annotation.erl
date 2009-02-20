@@ -45,6 +45,9 @@
 -export([parse_transform/2]).
 
 -define(INVALIDATOR_VAR_NAME, '__INVALIDATOR').
+-define(NODE_VAR_NAME, '__NODE_NAME').
+-define(RPC_ERROR_NAME, '__RPC_ERROR').
+-define(RPC_RESULT, '__RPC_RESULT').
 
 -spec(parse_transform/2 :: (list(tuple()), list()) -> list(tuple())).	     
 parse_transform(Tree, _Options) ->
@@ -60,6 +63,9 @@ remove_annotations([{attribute, _, backend_call, Fun} | Rest], Tree, Annotations
     remove_annotations(Rest, Tree, [{backend_call, Fun} | Annotations]);
 remove_annotations([{attribute, _, invalidate, {Fun, Regexps}} | Rest], Tree, Annotations) ->
     remove_annotations(Rest, Tree, [{invalidator, Fun, Regexps} | Annotations]);
+remove_annotations([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
+    put(module_name, Name),
+    remove_annotations(Rest, [A | Tree], Annotations);
 remove_annotations([Element | Rest], Tree, Annotations) ->
     remove_annotations(Rest, [Element | Tree], Annotations);
 remove_annotations([], Tree, Annotations) ->
@@ -89,20 +95,104 @@ transform_function({function, _, Name, Arity, _} = F, Annotations0) ->
     end.
 
 -spec(transform_function1/2 :: (tuple(), list(tuple())) -> tuple()).
-transform_function1(F, [{backend_call, _} | Rest]) ->
-    transform_function1(transform_backend_call(F), Rest);
-transform_function1({function, Line, Name, Arity, Clauses0}, [{invalidator, _, Regexps} | Rest]) ->
+transform_function1({function, Line, Name, Arity, Clauses0}, Annotations) ->
     Clauses = lists:map(fun(Clause) ->
-				transform_invalidator(Clause, Regexps)
+				element(2, lists:foldl(fun transform_clause/2, {Name, Clause}, Annotations))
 			end, Clauses0),
 
-    transform_function1({function, Line, Name, Arity, Clauses}, Rest);
-transform_function1(F, []) ->
-    F.
+    {function, Line, Name, Arity, Clauses}.
 
--spec(transform_backend_call/1 :: (tuple()) -> tuple()).	     
-transform_backend_call({function, _Line, _Name, _Arity, _Clauses} = F) ->
-    F.
+-spec(transform_clause/2 :: (tuple(), list(tuple())) -> tuple()).	     
+transform_clause({backend_call, _}, {Name, C}) ->
+    {Name, transform_backend_call(C, Name)};
+transform_clause({invalidator, _, Regexps}, {Name, C}) ->
+    {Name, transform_invalidator(C, Regexps)}.
+
+-spec(transform_backend_call/2 :: (tuple(), atom()) -> tuple()).	     
+transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
+    FirstLine = element(2, hd(Body)),
+    
+    NewBody = [{'case', FirstLine,
+		{call, FirstLine,
+		 {remote, FirstLine, 
+		  {atom, FirstLine, application},
+		  {atom, FirstLine, get_env}
+		 },
+		 [{atom, FirstLine, eptic},
+		  {atom, FirstLine, node_type}]
+		},
+		[{clause, FirstLine, 
+		  [{tuple, FirstLine, 
+		    [{atom, FirstLine, ok},
+		     {atom, FirstLine, frontend}]
+		   }],
+		  [],
+ 		  [{match, FirstLine, 
+ 		    {tuple, FirstLine,
+ 		     [{atom, FirstLine, ok},
+ 		      {var, FirstLine, ?NODE_VAR_NAME}]
+ 		    },
+ 		    {call, FirstLine, 
+ 		     {remote, FirstLine, 
+ 		      {atom, FirstLine, application},
+ 		      {atom, FirstLine, get_env}
+ 		     },
+ 		     [{atom, FirstLine, eptic_fe},
+ 		      {atom, FirstLine, be_server_name}]
+ 		    }
+ 		   },
+		   {'case', FirstLine, 
+ 		    {call, FirstLine,
+ 		     {remote, FirstLine,
+ 		      {atom, FirstLine, rpc},
+ 		      {atom, FirstLine, call}
+ 		     },
+ 		     [{var, FirstLine, ?NODE_VAR_NAME},
+ 		      {atom, FirstLine, get(module_name)},
+ 		      {atom, FirstLine, FunName},
+ 		      prepare_arguments_list(Args, FirstLine)]
+ 		    },
+ 		    [{clause, FirstLine, 
+ 		      [{tuple, FirstLine, 
+ 			[{atom, FirstLine, badrpc},
+ 			 {var, FirstLine, ?RPC_ERROR_NAME}]
+ 		       }],
+ 		      [],
+ 		      [{call, FirstLine, 
+ 			{remote, FirstLine, 
+ 			 {atom, FirstLine, error_logger},
+ 			 {atom, FirstLine, error_msg}
+ 			},
+ 			[{string, FirstLine, "~p module, error during RPC call to backend, reason: ~p~n"},
+ 			 {cons, FirstLine, 
+ 			  {atom, FirstLine, get(module_name)},
+ 			  {cons, FirstLine, 
+ 			   {var, FirstLine, ?RPC_ERROR_NAME},
+ 			   {nil, FirstLine}
+ 			  }
+ 			 }]
+ 		       },
+ 		       {tuple, FirstLine, 
+ 			[{atom, FirstLine, badrpc},
+ 			 {var, FirstLine, ?RPC_ERROR_NAME}]
+ 		       }]
+ 		     },
+ 		     {clause, FirstLine, 
+ 		      [{var, FirstLine, ?RPC_RESULT}],
+ 		      [],
+		      [{var, FirstLine, ?RPC_RESULT}]
+ 		     }]
+ 		   }
+		  ]
+		 },
+		 {clause, FirstLine, 
+		  [{var, FirstLine, '_'}],
+		  [],
+		  Body
+		 }]
+		}],
+    
+    {clause, Line, Args, Guards, NewBody}.
 
 -spec(transform_invalidator/2 :: (tuple(), list(string())) -> tuple()).	     
 transform_invalidator({clause, Line, Args, Guards, Body}, Regexps) ->
@@ -122,6 +212,14 @@ transform_invalidator({clause, Line, Args, Guards, Body}, Regexps) ->
 	       {var, LastLine, ?INVALIDATOR_VAR_NAME}],
 
     {clause, Line, Args, Guards, NewBody}.
+
+-spec(prepare_arguments_list/2 :: (list(tuple()), integer()) -> tuple()).	     
+prepare_arguments_list([H | R], Line) ->
+    {cons, Line,
+     H,
+     prepare_arguments_list(R, Line)};
+prepare_arguments_list([], Line) ->
+    {nil, Line}.
 
 -spec(prepare_list_of_strings/2 :: (list(string()), integer()) -> tuple()).	     
 prepare_list_of_strings([H | R], Line) ->
