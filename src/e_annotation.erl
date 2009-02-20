@@ -26,13 +26,20 @@
 %% be invoked on the backend node, so the necessary RPC 
 %% (which is transparent from the user and developer side of view)
 %% will be called.</li>
-%% <li><i>-invalidate({Fun/Arity, [Regexp]})</i> - defines, that
+%% <li><i>-invalidate({Fun/Arity, [Regexp]})</i> - defines that
 %% right after the function execution, the invalidation of the 
 %% regexps should be processed (always! - without inspecting the
 %% result of the function). The called function is 
 %% e_cluster:invalidate/1</li>
 %% <li><i>-invalidate_groups({Fun/Arity, [Group]})</i> - the same
 %% as <i>invalidate</i> but invalidating groups instead of ids.</li>
+%% <li><i>-invalidate({Fun/Arity, [Regexp], PredFun})</i> - defines
+%% that right after execution of the <i>Fun</i>, the predicate 
+%% function (<i>PredFun</i>) will be triggered. If the returning value
+%% of the predicate function is <i>true</i> then the regular
+%% expression invalidation happens.</i>
+%% <li><i>-invalidate_groups({Fun/Arity}, [Group], PredFun)</i> - the
+%% same as <i>invalidate</i> above.</li>
 %% </ul>
 %% In order to use the annotations, the precompiler directive
 %% <pre>
@@ -64,8 +71,12 @@ remove_annotations([{attribute, _, backend_call, Fun} | Rest], Tree, Annotations
     remove_annotations(Rest, Tree, [{backend_call, Fun} | Annotations]);
 remove_annotations([{attribute, _, invalidate, {Fun, Regexps}} | Rest], Tree, Annotations) ->
     remove_annotations(Rest, Tree, [{invalidator, Fun, Regexps} | Annotations]);
+remove_annotations([{attribute, _, invalidate, {Fun, Regexps, Pred}} | Rest], Tree, Annotations) ->
+    remove_annotations(Rest, Tree, [{cond_invalidator, Fun, Regexps, Pred} | Annotations]);
 remove_annotations([{attribute, _, invalidate_groups, {Fun, Groups}} | Rest], Tree, Annotations) ->
     remove_annotations(Rest, Tree, [{group_invalidator, Fun, Groups} | Annotations]);
+remove_annotations([{attribute, _, invalidate_groups, {Fun, Groups, Pred}} | Rest], Tree, Annotations) ->
+    remove_annotations(Rest, Tree, [{cond_group_invalidator, Fun, Groups, Pred} | Annotations]);
 remove_annotations([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
     put(module_name, Name),
     remove_annotations(Rest, [A | Tree], Annotations);
@@ -111,7 +122,11 @@ transform_clause({backend_call, _}, {Name, C}) ->
 transform_clause({invalidator, _, Regexps}, {Name, C}) ->
     {Name, transform_invalidator(C, Regexps)};
 transform_clause({group_invalidator, _, Groups}, {Name, C}) ->
-    {Name, transform_group_invalidator(C, Groups)}.
+    {Name, transform_group_invalidator(C, Groups)};
+transform_clause({cond_invalidator, _, Regexps, Pred}, {Name, C}) ->
+    {Name, transform_invalidator(C, Regexps, Pred)};
+transform_clause({cond_group_invalidator, _, Groups, Pred}, {Name, C}) ->
+    {Name, transform_group_invalidator(C, Groups, Pred)}.
 
 -spec(transform_backend_call/2 :: (tuple(), atom()) -> tuple()).	     
 transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
@@ -199,44 +214,85 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
     
     {clause, Line, Args, Guards, NewBody}.
 
--spec(transform_invalidator/2 :: (tuple(), list(string())) -> tuple()).	     
-transform_invalidator({clause, Line, Args, Guards, Body}, Regexps) ->
+-spec(transform_invalidator/2 :: (tuple(), list(tuple())) -> tuple()).	     
+transform_invalidator(Clause, Regexps) ->
+    transform_gen_invalidator(Clause, invalidate, ?INVALIDATOR_VAR_NAME, Regexps).
+
+-spec(transform_group_invalidator/2 :: (tuple(), list(tuple())) -> tuple()).	
+transform_group_invalidator(Clause, Groups) ->
+    transform_gen_invalidator(Clause, invalidate_groups, ?GROUP_INVALIDATOR_VAR_NAME, Groups).
+
+-spec(transform_invalidator/3 :: (tuple(), list(tuple()), atom() | {atom(), atom()}) -> tuple()).	     
+transform_invalidator(Clause, Regexps, Pred) ->
+    transform_gen_invalidator(Clause, invalidate, ?INVALIDATOR_VAR_NAME, Regexps, Pred).
+
+-spec(transform_group_invalidator/3 :: (tuple(), list(tuple()), atom() | {atom(), atom()}) -> tuple()).	
+transform_group_invalidator(Clause, Groups, Pred) ->
+    transform_gen_invalidator(Clause, invalidate_groups, ?GROUP_INVALIDATOR_VAR_NAME, Groups, Pred).
+
+
+-spec(transform_gen_invalidator/4 :: (tuple(), atom(), atom(), list(string())) -> tuple()).	     
+transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps) ->
     FirstLine = element(2, hd(Body)),
     LastLine = element(2, hd(lists:reverse(Body))),
     
     NewBody = [{match, FirstLine, 
-		{var, FirstLine, ?INVALIDATOR_VAR_NAME},
+		{var, FirstLine, Var},
 		{block, FirstLine, Body}
 	       },
 	       {call, LastLine, 
 		{remote, LastLine,
 		 {atom, LastLine, e_cluster},
-		 {atom, LastLine, invalidate}},
+		 {atom, LastLine, Fun}},
 		[prepare_list_of_strings(Regexps, LastLine)]
 	       },
-	       {var, LastLine, ?INVALIDATOR_VAR_NAME}],
+	       {var, LastLine, Var}],
 
     {clause, Line, Args, Guards, NewBody}.
 
--spec(transform_group_invalidator/2 :: (tuple(), list(string())) -> tuple()).	     
-transform_group_invalidator({clause, Line, Args, Guards, Body}, Groups) ->
+-spec(transform_gen_invalidator/5 :: (tuple(), atom(), atom(), list(string()), atom() | {atom(), atom()}) -> tuple()).
+transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps, Pred) ->
     FirstLine = element(2, hd(Body)),
     LastLine = element(2, hd(lists:reverse(Body))),
-    
+
     NewBody = [{match, FirstLine, 
-		{var, FirstLine, ?GROUP_INVALIDATOR_VAR_NAME},
+		{var, FirstLine, Var},
 		{block, FirstLine, Body}
 	       },
-	       {call, LastLine, 
-		{remote, LastLine,
-		 {atom, LastLine, e_cluster},
-		 {atom, LastLine, invalidate_groups}},
-		[prepare_list_of_strings(Groups, LastLine)]
+	       {'case', LastLine,
+		{call, LastLine,
+		 case Pred of
+		     {M, F} when is_atom(M), is_atom(F) ->
+			 {remote, LastLine,
+			  {atom, LastLine, M},
+			  {atom, LastLine, F}
+			 };
+		     _ when is_atom(Pred) ->
+			 {atom, LastLine, Pred}
+		 end,
+		 [{var, LastLine, Var}]
+		},
+		[{clause, LastLine,
+		  [{atom, LastLine, true}],
+		  [],
+		  [{call, LastLine, 
+		    {remote, LastLine,
+		     {atom, LastLine, e_cluster},
+		     {atom, LastLine, Fun}
+		    },
+		    [prepare_list_of_strings(Regexps, LastLine)]
+		   }]
+		 },
+		 {clause, LastLine,
+		  [{var, LastLine, '_'}],
+		  [],
+		  [{atom, LastLine, ok}]
+		 }]
 	       },
-	       {var, LastLine, ?GROUP_INVALIDATOR_VAR_NAME}],
+	       {var, LastLine, Var}],
     
     {clause, Line, Args, Guards, NewBody}.
-
+		
 -spec(prepare_arguments_list/2 :: (list(tuple()), integer()) -> tuple()).	     
 prepare_arguments_list([H | R], Line) ->
     {cons, Line,
