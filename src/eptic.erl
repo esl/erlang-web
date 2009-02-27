@@ -49,9 +49,9 @@ stop(_) ->
 %%
 -spec(reload/0 :: () -> none()).	     
 reload() ->
-	make:all([load]),
-	e_dispatcher:reinstall(),
-        e_conf:install().
+    make:all([load]),
+    e_dispatcher:reinstall(),
+    e_conf:reinstall().
 
 %%====================================================================
 %% API for s_dict
