@@ -20,7 +20,6 @@
 -module(e_fe_mod_yaws).
 
 -export([out/1, arg_rewrite/1]).
--export([start/0]).
 
 -include("yaws_api.hrl").
 -include("yaws.hrl").
@@ -74,36 +73,6 @@ arg_rewrite(#arg{req = R} = Arg) ->
     {abs_path, URL} = R#http_request.path,
     check_docroot(Arg, URL).
     
--spec(start/0 :: () -> ok).	     
-start() ->
-    application:start(yaws),
-    application:start(ssl),
-    application:start(sasl),
-
-    application:start(eptic),
-    application:start(wpart),
-    application:start(wparts),
-    
-    GC0 = yaws_config:make_default_gconf(false, "e_fe_server"),
-    GC = GC0#gconf{logdir = "log"},
-    SC1 = #sconf{port = 8080,
-		 docroot = "docroot",
-		 listen = {0, 0, 0, 0},
-		 arg_rewrite_mod = ?MODULE,
-		 appmods = [{"app", ?MODULE}]},
-    SC2 = #sconf{port = 8081,
-		 docroot = "docroot",
-		 listen = {0,0,0,0},
-		 arg_rewrite_mod = ?MODULE,
-		 appmods = [{"app", ?MODULE}],
-		 ssl = #ssl{keyfile = "priv/keys/host.key",
-			    certfile = "priv/keys/host.cert",
-			    password = ""}},
-    yaws_api:setconf(GC, [[SC1], [SC2]]),
-    
-    application:set_env(eptic, node_type, frontend),
-    application:start(eptic_fe).
-
 -spec(check_docroot/2 :: (tuple(), string()) -> tuple()).	
 check_docroot(Arg, Url) ->
 %% Add here your docroot elements resolver.
@@ -123,10 +92,6 @@ check_static(Arg = #arg{req = R}, URL) ->
 	false ->
 	    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ URL}}}
     end.
-
--spec(rewrite_req/2 :: (tuple(), string()) -> tuple()).	     
-rewrite_req(#arg{req = R} = Arg, Url) ->
-    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ Url}}}.
 
 -spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->

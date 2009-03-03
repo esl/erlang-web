@@ -48,7 +48,7 @@ request(M, F, A) ->
 	    ok
     end.
 
--spec(start/0 :: () -> none()).	     
+-spec(start/0 :: () -> none()).
 start() ->
     wait_be(),
     wait_req().

@@ -19,7 +19,7 @@
 %%%-------------------------------------------------------------------
 -module(e_fe_mod_inets).
 
--export([do/1, start/0]).
+-export([do/1]).
 
 -include_lib("inets/src/httpd.hrl").
 
@@ -67,22 +67,6 @@ do(#mod{parsed_header = Headers} = A) ->
 		    {proceed, A#mod.data}
 	    end
     end.
-
--spec(start/0 :: () -> ok).	     
-start() ->
-    application:start(ssl),
-    application:start(sasl),
-    
-    application:start(eptic),
-    application:start(wpart),
-    application:start(wparts),
-
-    application:set_env(inets, services, [{httpd, filename:join(code:priv_dir(eptic_fe), "inets.conf")},
-					  {httpd, filename:join(code:priv_dir(eptic_fe), "inets_https.conf")}]),
-    inets:start(),
-
-    application:set_env(eptic, node_type, frontend),
-    application:start(eptic_fe).
 
 -spec(is_cacheable/0 :: () -> bool()).	     
 is_cacheable() ->
