@@ -186,7 +186,7 @@ create_start_scripts({_, Path}) ->
 
 	"start_yaws()\n"
 	"{\n"
-	"\terl -pa lib/*/ebin -yaws embedded true -s e_mod_yaws\n"
+	"\terl -pa lib/*/ebin -s e_mod_yaws\n"
 	"}\n\n"
 
 	"start_inets()\n"
