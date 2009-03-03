@@ -182,25 +182,46 @@ create_start_scripts({_, Path}) ->
     BinConnectName = filename:join("bin", "connect"),
     create_script(BinConnectName, BinConnect),
 
-    BinStartInteractive = "#!/bin/bash\n\n"
+    BinStartInteractive = "#!/bin/sh\n\n"
 
-	"start_yaws()\n"
-	"{\n"
-	"\terl -pa lib/*/ebin -s e_mod_yaws\n"
-	"}\n\n"
+"if [ $# -eq 0 ]
+then
+    SERVER=inets
+    NODE_TYPE=single_node
+elif [ $# -eq 1 ]
+then
+    case $1 in
+	yaws)
+	    SERVER=yaws
+	    ;;
+	*)
+	    SERVER=inets
+    esac
+    NODE_TYPE=single_node
+else
+    case $1 in
+	yaws)
+	    SERVER=yaws
+	    ;;
+	*)
+	    SERVER=inets
+    esac
+    case $2 in
+	frontend)
+	    NODE_TYPE=frontend
+	    ;;
+	backend)
+	    NODE_TYPE=backend
+	    ;;
+	single_node_with_cache)
+	    NODE_TYPE=single_node_with_cache
+	    ;;
+	*)
+	    NODE_TYPE=single_node
+    esac
+fi
 
-	"start_inets()\n"
-	"{\n"
-	"\terl -pa lib/*/ebin -s e_mod_inets\n"
-	"}\n\n"
-
-	"case $1 in \n"
-	"  yaws)\n"
-	"\tstart_yaws\n"
-	"  ;;\n"
-	"  *)\n"
-	"\tstart_inets\n"
-	"esac\n",
+erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER",
     
     BinStartInteractiveName = filename:join("bin", "start_interactive"),
     create_script(BinStartInteractiveName, BinStartInteractive),
