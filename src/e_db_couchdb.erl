@@ -22,9 +22,8 @@
 %%% @see e_db
 %%% @end
 %%%-----------------------------------------------------------------------------
-
 -module(e_db_couchdb).
--export([install/0]).
+-export([install/0, start/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
 %%
@@ -40,8 +39,6 @@
 %%
 -spec(install/0 :: () -> none()).	     
 install() ->
-    application:start(inets),
-
     Name = e_conf:project_name(),
     Address = e_conf:couchdb_address(),
 
@@ -86,6 +83,14 @@ install() ->
 	{error, Reason} ->
 	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", [?MODULE, Reason])
     end.
+
+%%
+%% @spec start() -> ok | {error, Reason :: term()}
+%% @doc Starts the inets application so it is possible to make the request to the CouchDB instance.
+%%
+-spec(start/0 :: () -> ok | {error, term()}).	     
+start() ->
+    application:start(inets).
 
 %%
 %% @spec read(Type :: atom()) -> [Element] | {error, Reason}

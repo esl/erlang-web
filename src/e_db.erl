@@ -25,16 +25,26 @@
 -module(e_db).
 
 -export([install/0]).
+-export([start/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> any()
 %% @doc Sets up the environment for the selected database.
 %%
--spec(install/0 :: () -> none()).
+-spec(install/0 :: () -> any()).
 install() ->
     Mod = e_conf:dbms(),
     Mod:install().
+
+%%
+%% @spec start() -> ok | {error, Reason :: term()}
+%% @doc Starts the DBMS.
+%%
+-spec(start/0 :: () -> ok | {error, term()}).
+start() ->	     
+    Mod = e_conf:dbms(),
+    Mod:start().
 
 %%
 %% @spec read(Type :: atom()) -> [Element] | {error, Reason}

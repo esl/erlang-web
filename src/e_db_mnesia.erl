@@ -25,7 +25,7 @@
 %%%-------------------------------------------------------------------
 
 -module(e_db_mnesia).
--export([install/0]).
+-export([install/0, start/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
 -include_lib("stdlib/include/qlc.hrl").
@@ -42,6 +42,13 @@ install() ->
     mnesia:create_table(ids_tab, [{attributes, record_info(fields, id)},
 				  {disc_copies, [node()]}]).
 
+%%
+%% @spec start() -> ok | {error, Reason :: term()}
+%% @doc Starts the mnesia application.
+%%
+-spec(start/0 :: () -> ok | {error, term()}).	     
+start() ->
+    application:start(mnesia).
 
 %%
 %% @spec read(Type :: atom()) -> [Element] | {error, Reason}
