@@ -21,29 +21,27 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(e_cluster).
+-behaviour(gen_server).
 
--export([inform_fe_servers/0, dispatcher_reload/0, invalidate/1]).
--export([be_request/4, synchronize_docroot/1, synchronize_docroot0/1]).
+-export([start_link/0]).
+-export([init/1, handle_call/3, handle_cast/2]).
+-export([handle_info/2, terminate/2, code_change/3]).
+
+-export([dispatcher_reload/0, invalidate/1]).
+-export([be_request/4, synchronize_docroot/1, synchronize_docroot0/2]).
 -export([invalidate_groups/1]).
+-export([connect_to_fe0/2]).
 
 %% 1 MB
--define(MAX_FILE_CHUNK, 1 bsl 20).
+-define(MAX_FILE_CHUNK, 1048576).
+
+-record(state, {fe_servers, 
+		ping_timeout,
+		workers}).
 
 %%
-%% @spec inform_fe_servers() -> ok
-%% @doc Announces the presence of the backend server to the all known frontends.
-%% The informing backend server becomes the main one, which all the needed
-%% requests will be forwarded to. <br/>
-%% The list of the frontend servers is retrieved from the <i>project.conf</i>
-%% file.
-%% @see e_conf:fe_servers/0
+%% API
 %%
--spec(inform_fe_servers/0 :: () -> ok).	     
-inform_fe_servers() ->
-    Fun = fun(Server) ->
-		  rpc:cast(Server, e_fe_proxy, be_register, [node()])
-	  end,
-    call_servers(Fun).
 
 %%
 %% @spec dispatcher_reload() -> ok
@@ -55,12 +53,7 @@ inform_fe_servers() ->
 %%
 -spec(dispatcher_reload/0 :: () -> ok).	     
 dispatcher_reload() ->
-    Conf = ets:tab2list(e_dispatcher),
-
-    Fun = fun(Server) ->
-		  rpc:cast(Server, e_fe_cache, dispatcher_reload, [Conf])
-	  end,
-    call_servers(Fun).
+    gen_server:cast(?MODULE, dispatcher_reload).
 
 %%
 %% @spec invalidate(Entries) -> ok
@@ -75,14 +68,7 @@ dispatcher_reload() ->
 %% 
 -spec(invalidate/1 :: (list(string())) -> ok).	     
 invalidate(List) ->
-    Compiled = lists:map(fun(Regexp) ->
-				 {ok, R} = re:compile(Regexp), 
-				 R 
-			 end, List),
-    Fun = fun(Server) ->
-		  rpc:call(Server, e_fe_cache, invalidate_handler, [Compiled])
-	  end,
-    call_servers(Fun).
+    gen_server:cast(?MODULE, {invalidate, List}).
 
 %%
 %% @spec invalidate_groups(Groups) -> ok
@@ -93,21 +79,13 @@ invalidate(List) ->
 %% 
 -spec(invalidate_groups/1 :: (list(string())) -> ok).			  
 invalidate_groups(Groups) ->
-    Fun = fun(Server) ->
-		  {e_fe_cache, Server} ! {invalidate_groups, Groups}
-	  end,
-    call_servers(Fun).
+    gen_server:cast(?MODULE, {invalidate_groups, Groups}).
 
 %% @hidden
 -spec(be_request/4 :: (atom(), atom(), atom(), term()) -> {term(), term()}).	     
 be_request(M, F, A, Dict) ->
     e_dict:init_state(Dict),
     {e_mod_gen:controller(M, F, A), e_dict:get_state(), self()}.
-
--spec(call_servers/1 :: (fun()) -> ok).	     
-call_servers(Fun) ->
-    FEs = e_conf:fe_servers(),
-    lists:foreach(Fun, FEs).
 
 %%
 %% @spec synchronize_docroot(Filename :: string()) -> WorkerPid :: pid()
@@ -133,33 +111,171 @@ synchronize_docroot(Filename0) ->
 
     spawn(?MODULE, synchronize_docroot0, [Filename]).
 
+%%
+%% GEN_SERVER CALLBACK FUNCTIONS
+%%
+
 %% @hidden
--spec(synchronize_docroot0/1 :: (string()) -> ok | {error, term()}).	     
-synchronize_docroot0(Filename) ->
-    case e_file:get_size(Filename) of
-	N when N < ?MAX_FILE_CHUNK ->
-	    copy_file(Filename);
-	_ ->
-	    copy_file_chunk(Filename)
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+%% @hidden
+init(_) ->
+    FeServers = e_conf:fe_servers(),
+    PingTmout = e_conf:get_conf(fe_ping_timeout, 1000),
+
+    process_flag(trap_exit, true),
+
+    Pids = [connect_to_fe(Server, PingTmout) || Server <- FeServers],
+
+    {ok, #state{fe_servers = FeServers,
+		ping_timeout = PingTmout,
+		workers = lists:zip(Pids, FeServers)}}.
+
+
+%% @hidden
+handle_call(_Msg, _From, State) ->
+    {reply, ok, State}.
+
+
+%% @hidden
+handle_cast({fe_node_up, Node, Worker}, State) ->
+    case catch erlang:monitor_node(Node, true) of
+	{'EXIT', _} ->
+	    Pid = connect_to_fe(Node, State#state.ping_timeout),
+	    {ok, State#state{workers = [{Pid, Node} | lists:keydelete(Worker, 1, State#state.workers)]}};
+	true ->
+	    rpc:cast(Node, e_fe_proxy, be_register, [node()]),
+	    {ok, State#state{workers = lists:keydelete(Worker, 1, State#state.workers)}}
+    end;
+
+handle_cast(dispatcher_reload, State) ->
+    Conf = ets:tab2list(e_dispatcher),
+
+    Fun = fun(Server) ->
+		  rpc:cast(Server, e_fe_cache, dispatcher_reload, [Conf])
+	  end,
+    lists:foreach(Fun, State#state.fe_servers),
+
+    {ok, State};
+
+handle_cast({invalidate, List}, State) ->
+    Compiled = lists:map(fun(Regexp) ->
+				 {ok, R} = re:compile(Regexp),
+				 R
+			 end, List),
+    Fun = fun(Server) ->
+		  {e_fe_cache, Server} ! {invalidate, Compiled}
+	  end,
+    lists:foreach(Fun, State#state.fe_servers),
+
+    {ok, State};
+
+handle_cast({invalidate_groups, Groups}, State) ->
+    Fun = fun(Server) ->
+		  {e_fe_cache, Server} ! {invalidate_groups, Groups}
+	  end,
+    lists:foreach(Fun, State#state.fe_servers),
+    
+    {ok, State};
+
+handle_cast({synchronize_docroot, Filename0}, State) ->
+    Filename = case lists:prefix(e_conf:server_root(), Filename0) of
+		   true ->
+		       case lists:subtract(Filename0, e_conf:server_root()) of
+			   [$/ | Rest] ->
+			       Rest;
+			   Else ->
+			       Else
+		       end;
+		   false ->
+		       Filename0
+	       end,
+    
+    spawn(?MODULE, synchronize_docroot0, [Filename, State#state.fe_servers]),
+
+    {ok, State};
+
+handle_cast(Else, State) ->
+    error_logger:info_msg("~p module, unknown cast: ~p~nstate: ~p~n~n", 
+			  [?MODULE, Else, State]),
+    
+    {ok, State}.
+
+
+%% @hidden
+handle_info({nodedown, Node}, State) ->
+    connect_to_fe(Node, State#state.ping_timeout),
+
+    {ok, State};
+
+handle_info({'EXIT', From, _}, State) ->
+    Node = proplists:get_value(From, State#state.workers),
+    Pid = connect_to_fe(Node, State#state.ping_timeout),
+    
+    {ok, State#state{workers = [{Pid, Node} | lists:keydelete(From, 1, State#state.workers)]}}.
+
+
+%% @hidden
+terminate(_, State) ->
+    lists:foreach(fun({Pid, _}) ->
+			  exit(Pid, {terminate, ?MODULE})
+		  end, State#state.workers).
+
+
+%% @hidden
+code_change(_, State, _) ->
+    {ok, State}.
+
+%%
+%% HELPER FUNCTIONS
+%%
+-spec(connect_to_fe/2 :: (atom(), integer()) -> pid()).	     
+connect_to_fe(Node, Timeout) ->
+    spawn_link(?MODULE, connect_to_fe0, [Node, Timeout]).
+
+%% @hidden
+-spec(connect_to_fe0/2 :: (atom(), integer()) -> any()).	     
+connect_to_fe0(Node, Timeout) ->
+    receive
+	after Timeout ->
+		ok
+	end,
+
+    case net_adm:ping(Node) of
+	pong ->
+	    gen_server:cast(?MODULE, {fe_node_up, Node, self()});
+	pang ->
+	    connect_to_fe0(Node, Timeout)
     end.
 
--spec(copy_file/1 :: (string()) -> ok | {error, term()}).	     
-copy_file(Filename) ->
+%% @hidden
+-spec(synchronize_docroot0/2 :: (string(), list(atom())) -> ok | {error, term()}).	     
+synchronize_docroot0(Filename, Servers) ->
+    case e_file:get_size(Filename) of
+	N when N < ?MAX_FILE_CHUNK ->
+	    copy_file(Filename, Servers);
+	_ ->
+	    copy_file_chunk(Filename, Servers)
+    end.
+
+-spec(copy_file/2 :: (string(), list(atom())) -> ok | {error, term()}).	     
+copy_file(Filename, Servers) ->
     case file:read_file(Filename) of
 	{ok, Binary} ->
 	    Fun = fun(Server) ->
 			  rpc:cast(Server, e_fe_cluster, write_file, [Filename, Binary])
 		  end,
-	    call_servers(Fun);
+	    lists:foreach(Fun, Servers);
 	{error, Reason} ->
 	    {error, Reason}
     end.
     
--spec(copy_file_chunk/1 :: (string()) -> ok | {error, term()}).	     
-copy_file_chunk(Filename) ->
+-spec(copy_file_chunk/2 :: (string(), list(atom())) -> ok | {error, term()}).	     
+copy_file_chunk(Filename, Servers) ->
     case file:open(Filename, [read, raw, binary]) of
 	{ok, Fd} ->
-	    copy_file_chunk(Fd, Filename),
+	    copy_file_chunk(Fd, Filename, Servers),
 	    
 	    file:close(Fd);
 	{error, Reason} ->
@@ -167,16 +283,16 @@ copy_file_chunk(Filename) ->
 				   [?MODULE, Filename, Reason])
     end.
 
--spec(copy_file_chunk/2 :: (term(), string()) -> ok).	     
-copy_file_chunk(Fd, Filename) ->
+-spec(copy_file_chunk/3 :: (term(), string(), list(atom())) -> ok).	     
+copy_file_chunk(Fd, Filename, Servers) ->
     case file:read(Fd, ?MAX_FILE_CHUNK) of
 	{ok, Data} ->
 	    Fun = fun(Server) ->
 			  rpc:call(Server, e_fe_cluster, write_file_chunk, [Filename, Data])
 		  end,
-	    call_servers(Fun),
+	    lists:foreach(Fun, Servers),
 	    
-	    copy_file_chunk(Fd, Filename);
+	    copy_file_chunk(Fd, Filename, Servers);
 	eof ->
 	    ok;
 	{error, Reason} ->
