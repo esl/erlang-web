@@ -24,7 +24,6 @@
 -module(e_mod_yaws).
 
 -export([out/1]).
--export([start/0, be_start/0]).
 -export([arg_rewrite/1]).
 -export([fe_request/2]).
 
@@ -89,57 +88,6 @@ fe_request(#arg{headers = Headers} = A, Session) ->
     
     {ok, NewSession} = e_session:get_session(Cookie),
     {Ret, NewSession}.
-
-%%
-%% @spec start() -> none()
-%% @doc The framework interactive mode starting function. 
-%% This function will start all required applications (including three main framework ones: eptic, wpart and wparts). 
-%% Moreover, it will set up Yaws server to listen to the port specified in project.conf file.
-%%
--spec(start/0 :: () -> none()).	     
-start() ->
-    application:start(yaws),
-    application:start(ssl),
-    application:start(sasl),
-
-    application:start(eptic),
-
-    GC0 = yaws_config:make_default_gconf(false, localhost),
-    GC = GC0#gconf{logdir = "log"},
-    SC1 = #sconf{port = list_to_integer(e_conf:http_port()),
-		 docroot = "docroot",
-		 listen = {0, 0, 0, 0},
-		 arg_rewrite_mod = e_mod_yaws,
-		 appmods = [{"app", e_mod_yaws}]},
-    SC2 = #sconf{port = 8081,
-		 docroot = "docroot",
-		 listen = {0, 0, 0, 0},
-		 arg_rewrite_mod = e_mod_yaws,
-		 appmods = [{"app", e_mod_yaws}],
-		 ssl = #ssl{keyfile = "priv/keys/host.key",
-			    certfile = "priv/keys/host.cert",
-			    password = ""}},
-  
-    yaws_api:setconf(GC, [[SC1], [SC2]]),
-%%    yaws_api:setconf(GC, [[SC1]]),
-   
-    application:start(wpart),
-    application:start(wparts),
-    application:start(crypto),
-
-    application:set_env(eptic, template_root, "templates").
-
--spec(be_start/0 :: () -> ok).	     
-be_start() ->
-    application:start(ssl),
-    application:start(sasl),
-
-    application:start(eptic),
-    application:start(wpart),
-    application:start(wparts),
-    application:start(crypto),
-
-    application:set_env(eptic, template_root, "templates").
 
 %% @hidden
 -spec(arg_rewrite/1 :: (tuple()) -> tuple()).	     
