@@ -121,17 +121,22 @@ start_link() ->
 
 %% @hidden
 init(_) ->
-    FeServers = e_conf:fe_servers(),
-    PingTmout = e_conf:get_conf(fe_ping_timeout, 1000),
+    case application:get_env(eptic, node_type) of
+	{ok, backend} ->
+	    FeServers = e_conf:fe_servers(),
+	    PingTmout = e_conf:get_conf(fe_ping_timeout, 1000),
 
-    process_flag(trap_exit, true),
-
-    Pids = [connect_to_fe(Server, PingTmout) || Server <- FeServers],
-
-    {ok, #state{fe_servers = FeServers,
-		ping_timeout = PingTmout,
-		workers = lists:zip(Pids, FeServers)}}.
-
+	    process_flag(trap_exit, true),
+	    
+	    Pids = [connect_to_fe(Server, PingTmout) || Server <- FeServers],
+	    
+	    {ok, #state{fe_servers = FeServers,
+			ping_timeout = PingTmout,
+			workers = lists:zip(Pids, FeServers)}};
+	_ ->
+	    {ok, #state{fe_servers = [node()],
+			workers = []}}
+    end.
 
 %% @hidden
 handle_call(_Msg, _From, State) ->
@@ -143,10 +148,10 @@ handle_cast({fe_node_up, Node, Worker}, State) ->
     case catch erlang:monitor_node(Node, true) of
 	{'EXIT', _} ->
 	    Pid = connect_to_fe(Node, State#state.ping_timeout),
-	    {ok, State#state{workers = [{Pid, Node} | lists:keydelete(Worker, 1, State#state.workers)]}};
+	    {noreply, State#state{workers = [{Pid, Node} | lists:keydelete(Worker, 1, State#state.workers)]}};
 	true ->
-	    rpc:cast(Node, e_fe_proxy, be_register, [node()]),
-	    {ok, State#state{workers = lists:keydelete(Worker, 1, State#state.workers)}}
+	    {e_fe_proxy, Node} ! {be, node()},
+	    {noreply, State#state{workers = lists:keydelete(Worker, 1, State#state.workers)}}
     end;
 
 handle_cast(dispatcher_reload, State) ->
@@ -157,7 +162,7 @@ handle_cast(dispatcher_reload, State) ->
 	  end,
     lists:foreach(Fun, State#state.fe_servers),
 
-    {ok, State};
+    {noreply, State};
 
 handle_cast({invalidate, List}, State) ->
     Compiled = lists:map(fun(Regexp) ->
@@ -169,7 +174,7 @@ handle_cast({invalidate, List}, State) ->
 	  end,
     lists:foreach(Fun, State#state.fe_servers),
 
-    {ok, State};
+    {noreply, State};
 
 handle_cast({invalidate_groups, Groups}, State) ->
     Fun = fun(Server) ->
@@ -177,7 +182,7 @@ handle_cast({invalidate_groups, Groups}, State) ->
 	  end,
     lists:foreach(Fun, State#state.fe_servers),
     
-    {ok, State};
+    {noreply, State};
 
 handle_cast({synchronize_docroot, Filename0}, State) ->
     Filename = case lists:prefix(e_conf:server_root(), Filename0) of
@@ -194,26 +199,26 @@ handle_cast({synchronize_docroot, Filename0}, State) ->
     
     spawn(?MODULE, synchronize_docroot0, [Filename, State#state.fe_servers]),
 
-    {ok, State};
+    {noreply, State};
 
 handle_cast(Else, State) ->
     error_logger:info_msg("~p module, unknown cast: ~p~nstate: ~p~n~n", 
 			  [?MODULE, Else, State]),
     
-    {ok, State}.
+    {noreply, State}.
 
 
 %% @hidden
 handle_info({nodedown, Node}, State) ->
     connect_to_fe(Node, State#state.ping_timeout),
 
-    {ok, State};
+    {noreply, State};
 
 handle_info({'EXIT', From, _}, State) ->
     Node = proplists:get_value(From, State#state.workers),
     Pid = connect_to_fe(Node, State#state.ping_timeout),
     
-    {ok, State#state{workers = [{Pid, Node} | lists:keydelete(From, 1, State#state.workers)]}}.
+    {noreply, State#state{workers = [{Pid, Node} | lists:keydelete(From, 1, State#state.workers)]}}.
 
 
 %% @hidden

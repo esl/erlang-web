@@ -69,6 +69,9 @@ start_node(single_node_with_cache, Server) ->
     
     e_db:start(),
     
+    supervisor:start_child(eptic, {e_cluster, {e_cluster, start_link, []},
+				   permanent, 1000, worker, dynamic}),
+    
     application:start(eptic_fe).
 
 start_web_server(inets) ->
