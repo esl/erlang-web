@@ -22,7 +22,6 @@
 -export([start_link/0, init/0, clear/0]).
 -export([request/1, get_order/0]).
 -export([dispatcher_reload/1, check_cache/1]).
--export([invalidate_handler/1]).
 -export([ask_front_end/1, ask_back_end/3]).
 -export([save_cache/2, save_cache/4]).
 
@@ -54,8 +53,8 @@ loop({A, B}) ->
 	    loop({A, B});
 	swap ->
 	    loop({B, A});
-	{invalidate, Regexp} ->
-	    invalidate(Regexp),
+	{invalidate, Regexps} ->
+	    invalidate_handler(Regexps),
 	    loop({A, B});
 	{invalidate_groups, Groups} ->
 	    invalidate_groups(Groups),

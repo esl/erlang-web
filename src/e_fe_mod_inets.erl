@@ -14,7 +14,7 @@
 %% erlang training & consulting ltd. all rights reserved.
 
 %%%-------------------------------------------------------------------
-%%% file    : e_fe_inets.erl
+%%% file    : e_fe_mod_inets.erl
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%%-------------------------------------------------------------------
 -module(e_fe_mod_inets).

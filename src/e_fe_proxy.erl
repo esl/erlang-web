@@ -21,7 +21,7 @@
 -export([start_link/0]).
 
 -export([start/0]).
--export([be_register/1, request/3, req_exec/6]).
+-export([request/3, req_exec/4]).
 -export([cleanup_backend/1]).
 
 -spec(start_link/0 :: () -> {ok, pid()}).	     
@@ -30,14 +30,15 @@ start_link() ->
     register(?MODULE, Pid),
     {ok, Pid}.
 
--spec(be_register/1 :: (atom()) -> {be, atom()}).	     
-be_register(Name) ->
-    e_fe_proxy ! {be, Name}.
-
--spec(request/3 :: (atom(), atom(), list()) -> term()).	     
+-spec(request/3 :: (atom(), atom(), string()) -> term()).	     
 request(M, F, A) ->
+    {ok, NodeType} = application:get_env(eptic, node_type),
+    request({M, F, A}, NodeType).
+
+-spec(request/2 :: ({atom(), atom(), string()}, atom()) -> term()).	     
+request(MFA, frontend) ->
     {ok, Dict} = e_dict:get_state(),
-    ?MODULE ! {req, M, F, A, Dict, self()},
+    ?MODULE ! {req, MFA, Dict, self()},
 
     receive 
 	{res, Res, NewDict, Pid} ->
@@ -46,18 +47,22 @@ request(M, F, A) ->
 	    Res;
 	error ->
 	    ok
-    end.
+    end;
+request({M, F, A}, single_node_with_cache) ->
+    e_mod_gen:controller(M, F, A).
 
 -spec(start/0 :: () -> none()).
 start() ->
     wait_be(),
     wait_req().
 
--spec(wait_be/0 :: () -> none()).	      
+-spec(wait_be/0 :: () -> any()).	      
 wait_be() -> 
     receive 
 	{be, Name} ->
-	    error_logger:info_msg("~p module, got ~p~n", [?MODULE, Name]),
+	    error_logger:info_msg("~p module, ~p node, backend server registered ~p~n", 
+				  [?MODULE, node(), Name]),
+
 	    application:set_env(eptic_fe, be_server_name, Name);
 	_ -> 
 	    wait_be()
@@ -66,9 +71,9 @@ wait_be() ->
 -spec(wait_req/0 :: () -> none()).	     
 wait_req() ->
     receive
-	{req, M, F, A, Dict, OutPid} -> 
+	{req, MFA, Dict, OutPid} -> 
 	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    spawn(?MODULE, req_exec, [Name, M, F, A, Dict, OutPid]);
+	    spawn(?MODULE, req_exec, [Name, MFA, Dict, OutPid]);
 	{be, Name} ->
 	    application:set_env(eptic_fe, be_server_name, Name);
 	_ -> 
@@ -76,8 +81,9 @@ wait_req() ->
     end,
     wait_req().
 
--spec(req_exec/6 :: (atom(), atom(), atom(), atom(), term(), pid()) -> error | {res, term(), term()}).	     
-req_exec(Name, M, F, A, Dict, OutPid) ->
+%% @hidden
+-spec(req_exec/4 :: (atom(), {atom(), atom(), string()}, term(), pid()) -> error | {res, term(), term()}).	     
+req_exec(Name, {M, F, A}, Dict, OutPid) ->
     case rpc:call(Name, e_cluster, be_request, [M, F, A, Dict]) of
 	{badrpc, Error} ->
 	    error_logger:error_msg("~p module, rpc error: ~p~n", [?MODULE, Error]),
@@ -86,7 +92,7 @@ req_exec(Name, M, F, A, Dict, OutPid) ->
 	    OutPid ! {res, Res, NewDict, Pid}
     end.
 
--spec(cleanup_backend/1 :: (atom()) -> none()).	     
+-spec(cleanup_backend/1 :: (atom()) -> any()).	     
 cleanup_backend(Mod) ->
     case eptic:fget("__backend_pid") of
 	undefined ->
