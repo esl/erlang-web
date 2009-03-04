@@ -54,6 +54,7 @@
 -define(INVALIDATOR_VAR_NAME, '__INVALIDATOR').
 -define(GROUP_INVALIDATOR_VAR_NAME, '__G_INVALIDATOR').
 -define(NODE_VAR_NAME, '__NODE_NAME').
+-define(INVALIDATOR_NODE_TYPE, '__INVALIDATOR_NODE_TYPE').
 -define(RPC_ERROR_NAME, '__RPC_ERROR').
 -define(RPC_RESULT, '__RPC_RESULT').
 
@@ -240,14 +241,43 @@ transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps)
 		{var, FirstLine, Var},
 		{block, FirstLine, Body}
 	       },
-	       {call, LastLine, 
-		{remote, LastLine,
-		 {atom, LastLine, e_cluster},
-		 {atom, LastLine, Fun}},
-		[prepare_list_of_strings(Regexps, LastLine)]
+	       {'case', LastLine,
+		{call, LastLine,
+		 {remote, LastLine,
+		  {atom, LastLine, application},
+		  {atom, LastLine, get_env}
+		 },
+		 [{atom, LastLine, eptic},
+		  {atom, LastLine, node_type}]
+		},
+		[{clause, LastLine,
+		  [{tuple, LastLine, 
+		    [{atom, LastLine, ok},
+		     {var, LastLine, ?INVALIDATOR_NODE_TYPE}]
+		   }],
+		  [[{op, LastLine, '==',
+		     {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+		     {atom, LastLine, backend}
+		    }],
+		   [{op, LastLine, '==',
+		     {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+		     {atom, LastLine, single_node_with_cache}
+		    }]],
+		  [{call, LastLine, 
+		    {remote, LastLine,
+		     {atom, LastLine, e_cluster},
+		     {atom, LastLine, Fun}},
+		    [prepare_list_of_strings(Regexps, LastLine)]
+		   }]
+		 },
+		 {clause, LastLine, 
+		  [{var, LastLine, '_'}],
+		  [],
+		  [{atom, LastLine, ok}]
+		 }]
 	       },
 	       {var, LastLine, Var}],
-
+    
     {clause, Line, Args, Guards, NewBody}.
 
 -spec(transform_gen_invalidator/5 :: (tuple(), atom(), atom(), list(string()), atom() | {atom(), atom()}) -> tuple()).
@@ -275,12 +305,40 @@ transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps,
 		[{clause, LastLine,
 		  [{atom, LastLine, true}],
 		  [],
-		  [{call, LastLine, 
-		    {remote, LastLine,
-		     {atom, LastLine, e_cluster},
-		     {atom, LastLine, Fun}
+		  [{'case', LastLine,
+		    {call, LastLine,
+		     {remote, LastLine,
+		      {atom, LastLine, application},
+		      {atom, LastLine, get_env}
+		     },
+		     [{atom, LastLine, eptic},
+		      {atom, LastLine, node_type}]
 		    },
-		    [prepare_list_of_strings(Regexps, LastLine)]
+		    [{clause, LastLine,
+		      [{tuple, LastLine, 
+			[{atom, LastLine, ok},
+			 {var, LastLine, ?INVALIDATOR_NODE_TYPE}]
+		       }],
+		      [[{op, LastLine, '==',
+			 {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+			 {atom, LastLine, backend}
+			}],
+		       [{op, LastLine, '==',
+			 {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+			 {atom, LastLine, single_node_with_cache}
+			}]],
+		      [{call, LastLine, 
+			{remote, LastLine,
+			 {atom, LastLine, e_cluster},
+			 {atom, LastLine, Fun}},
+			[prepare_list_of_strings(Regexps, LastLine)]
+		       }]
+		     },
+		     {clause, LastLine, 
+		      [{var, LastLine, '_'}],
+		      [],
+		      [{atom, LastLine, ok}]
+		     }]
 		   }]
 		 },
 		 {clause, LastLine,
