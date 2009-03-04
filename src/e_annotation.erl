@@ -51,13 +51,6 @@
 
 -export([parse_transform/2]).
 
--define(INVALIDATOR_VAR_NAME, '__INVALIDATOR').
--define(GROUP_INVALIDATOR_VAR_NAME, '__G_INVALIDATOR').
--define(NODE_VAR_NAME, '__NODE_NAME').
--define(INVALIDATOR_NODE_TYPE, '__INVALIDATOR_NODE_TYPE').
--define(RPC_ERROR_NAME, '__RPC_ERROR').
--define(RPC_RESULT, '__RPC_RESULT').
-
 -spec(parse_transform/2 :: (list(tuple()), list()) -> list(tuple())).	     
 parse_transform(Tree, _Options) ->
     {NewTree, Annotations} = remove_annotations(Tree),
@@ -132,6 +125,10 @@ transform_clause({cond_group_invalidator, _, Groups, Pred}, {Name, C}) ->
 -spec(transform_backend_call/2 :: (tuple(), atom()) -> tuple()).	     
 transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
     FirstLine = element(2, hd(Body)),
+
+    NodeVarName = get_unique_atom(),
+    RpcErrorName = get_unique_atom(),
+    RpcResult = get_unique_atom(),
     
     NewBody = [{'case', FirstLine,
 		{call, FirstLine,
@@ -151,7 +148,7 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
  		  [{match, FirstLine, 
  		    {tuple, FirstLine,
  		     [{atom, FirstLine, ok},
- 		      {var, FirstLine, ?NODE_VAR_NAME}]
+ 		      {var, FirstLine, NodeVarName}]
  		    },
  		    {call, FirstLine, 
  		     {remote, FirstLine, 
@@ -168,7 +165,7 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
  		      {atom, FirstLine, rpc},
  		      {atom, FirstLine, call}
  		     },
- 		     [{var, FirstLine, ?NODE_VAR_NAME},
+ 		     [{var, FirstLine, NodeVarName},
  		      {atom, FirstLine, get(module_name)},
  		      {atom, FirstLine, FunName},
  		      prepare_arguments_list(Args, FirstLine)]
@@ -176,7 +173,7 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
  		    [{clause, FirstLine, 
  		      [{tuple, FirstLine, 
  			[{atom, FirstLine, badrpc},
- 			 {var, FirstLine, ?RPC_ERROR_NAME}]
+ 			 {var, FirstLine, RpcErrorName}]
  		       }],
  		      [],
  		      [{call, FirstLine, 
@@ -188,20 +185,20 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
  			 {cons, FirstLine, 
  			  {atom, FirstLine, get(module_name)},
  			  {cons, FirstLine, 
- 			   {var, FirstLine, ?RPC_ERROR_NAME},
+ 			   {var, FirstLine, RpcErrorName},
  			   {nil, FirstLine}
  			  }
  			 }]
  		       },
  		       {tuple, FirstLine, 
  			[{atom, FirstLine, badrpc},
- 			 {var, FirstLine, ?RPC_ERROR_NAME}]
+ 			 {var, FirstLine, RpcErrorName}]
  		       }]
  		     },
  		     {clause, FirstLine, 
- 		      [{var, FirstLine, ?RPC_RESULT}],
+ 		      [{var, FirstLine, RpcResult}],
  		      [],
-		      [{var, FirstLine, ?RPC_RESULT}]
+		      [{var, FirstLine, RpcResult}]
  		     }]
  		   }
 		  ]
@@ -217,25 +214,27 @@ transform_backend_call({clause, Line, Args, Guards, Body}, FunName) ->
 
 -spec(transform_invalidator/2 :: (tuple(), list(tuple())) -> tuple()).	     
 transform_invalidator(Clause, Regexps) ->
-    transform_gen_invalidator(Clause, invalidate, ?INVALIDATOR_VAR_NAME, Regexps).
+    transform_gen_invalidator(Clause, invalidate, get_unique_atom(), Regexps).
 
 -spec(transform_group_invalidator/2 :: (tuple(), list(tuple())) -> tuple()).	
 transform_group_invalidator(Clause, Groups) ->
-    transform_gen_invalidator(Clause, invalidate_groups, ?GROUP_INVALIDATOR_VAR_NAME, Groups).
+    transform_gen_invalidator(Clause, invalidate_groups, get_unique_atom(), Groups).
 
 -spec(transform_invalidator/3 :: (tuple(), list(tuple()), atom() | {atom(), atom()}) -> tuple()).	     
 transform_invalidator(Clause, Regexps, Pred) ->
-    transform_gen_invalidator(Clause, invalidate, ?INVALIDATOR_VAR_NAME, Regexps, Pred).
+    transform_gen_invalidator(Clause, invalidate, get_unique_atom(), Regexps, Pred).
 
 -spec(transform_group_invalidator/3 :: (tuple(), list(tuple()), atom() | {atom(), atom()}) -> tuple()).	
 transform_group_invalidator(Clause, Groups, Pred) ->
-    transform_gen_invalidator(Clause, invalidate_groups, ?GROUP_INVALIDATOR_VAR_NAME, Groups, Pred).
+    transform_gen_invalidator(Clause, invalidate_groups, get_unique_atom(), Groups, Pred).
 
 
 -spec(transform_gen_invalidator/4 :: (tuple(), atom(), atom(), list(string())) -> tuple()).	     
 transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps) ->
     FirstLine = element(2, hd(Body)),
     LastLine = element(2, hd(lists:reverse(Body))),
+
+    NodeType = get_unique_atom(),
     
     NewBody = [{match, FirstLine, 
 		{var, FirstLine, Var},
@@ -253,14 +252,14 @@ transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps)
 		[{clause, LastLine,
 		  [{tuple, LastLine, 
 		    [{atom, LastLine, ok},
-		     {var, LastLine, ?INVALIDATOR_NODE_TYPE}]
+		     {var, LastLine, NodeType}]
 		   }],
 		  [[{op, LastLine, '==',
-		     {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+		     {var, LastLine, NodeType},
 		     {atom, LastLine, backend}
 		    }],
 		   [{op, LastLine, '==',
-		     {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+		     {var, LastLine, NodeType},
 		     {atom, LastLine, single_node_with_cache}
 		    }]],
 		  [{call, LastLine, 
@@ -284,6 +283,8 @@ transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps)
 transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps, Pred) ->
     FirstLine = element(2, hd(Body)),
     LastLine = element(2, hd(lists:reverse(Body))),
+
+    NodeType = get_unique_atom(),
 
     NewBody = [{match, FirstLine, 
 		{var, FirstLine, Var},
@@ -317,14 +318,14 @@ transform_gen_invalidator({clause, Line, Args, Guards, Body}, Fun, Var, Regexps,
 		    [{clause, LastLine,
 		      [{tuple, LastLine, 
 			[{atom, LastLine, ok},
-			 {var, LastLine, ?INVALIDATOR_NODE_TYPE}]
+			 {var, LastLine, NodeType}]
 		       }],
 		      [[{op, LastLine, '==',
-			 {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+			 {var, LastLine, NodeType},
 			 {atom, LastLine, backend}
 			}],
 		       [{op, LastLine, '==',
-			 {var, LastLine, ?INVALIDATOR_NODE_TYPE},
+			 {var, LastLine, NodeType},
 			 {atom, LastLine, single_node_with_cache}
 			}]],
 		      [{call, LastLine, 
@@ -366,3 +367,7 @@ prepare_list_of_strings([H | R], Line) ->
      prepare_list_of_strings(R, Line)};
 prepare_list_of_strings([], Line) ->
     {nil, Line}.
+
+-spec(get_unique_atom/0 :: () -> atom()).	     
+get_unique_atom() ->
+    list_to_atom(lists:flatten(io_lib:format("~w", [now()]))).
