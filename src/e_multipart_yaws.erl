@@ -24,7 +24,7 @@
 %% API
 -export([terminate/0, parse/1, is_multipart/1, terminate/1]).
 
--include("yaws_api.hrl").
+-include_lib("yaws/include/yaws_api.hrl").
 
 %%====================================================================
 %% API

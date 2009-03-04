@@ -28,8 +28,7 @@
 -export([parse_get/1, fetch_boundary/1, format_response/1]).
 
 -include_lib("inets/src/httpd.hrl").
-
--include("eptic.hrl").
+-include_lib("eptic/include/eptic.hrl").
 
 %%====================================================================
 %% API

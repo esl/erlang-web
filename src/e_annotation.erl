@@ -59,7 +59,7 @@ parse_transform(Tree, _Options) ->
     
 -spec(transform_tree/1 :: (list(tuple())) -> list(tuple())).	     
 transform_tree(Tree) ->
-    transform_tree(Tree, [], []),
+    transform_tree(Tree, [], []).
 
 -spec(transform_tree/3 :: (list(tuple()), list(tuple()), list(tuple() | atom())) -> list(tuple())).
 transform_tree([{attribute, _, backend_call, []} | Rest], Tree, Annotations) ->

@@ -30,9 +30,9 @@
 -export([cookie_up/1, add_headers/2, cookie_bind/1, cleanup/0]).
 -export([get_url/1]).
 
--include("yaws_api.hrl").
--include("yaws.hrl").
--include("eptic.hrl").
+-include_lib("yaws/include/yaws_api.hrl").
+-include_lib("yaws/include/yaws.hrl").
+-include_lib("eptic/include/eptic.hrl").
 
 %%====================================================================
 %% API
