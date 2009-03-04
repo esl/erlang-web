@@ -218,10 +218,12 @@ else
 	    ;;
 	*)
 	    NODE_TYPE=single_node
+    shift
+    shift
     esac
 fi
 
-erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER",
+erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
     
     BinStartInteractiveName = filename:join("bin", "start_interactive"),
     create_script(BinStartInteractiveName, BinStartInteractive),
