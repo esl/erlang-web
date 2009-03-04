@@ -22,23 +22,23 @@
 %% programming language.<br/>
 %% So far, the following annotations have been implemented:
 %% <ul>
-%% <li><i>-backend_call(Fun/Arity)</i> - indicates, that function should
+%% <li><i>-backend_call()</i> - indicates, that function should
 %% be invoked on the backend node, so the necessary RPC 
 %% (which is transparent from the user and developer side of view)
 %% will be called.</li>
-%% <li><i>-invalidate({Fun/Arity, [Regexp]})</i> - defines that
+%% <li><i>-invalidate([Regexp])</i> - defines that
 %% right after the function execution, the invalidation of the 
 %% regexps should be processed (always! - without inspecting the
 %% result of the function). The called function is 
 %% e_cluster:invalidate/1</li>
-%% <li><i>-invalidate_groups({Fun/Arity, [Group]})</i> - the same
+%% <li><i>-invalidate_groups([Group])</i> - the same
 %% as <i>invalidate</i> but invalidating groups instead of ids.</li>
-%% <li><i>-invalidate({Fun/Arity, [Regexp], PredFun})</i> - defines
+%% <li><i>-invalidate({[Regexp], PredFun})</i> - defines
 %% that right after execution of the <i>Fun</i>, the predicate 
 %% function (<i>PredFun</i>) will be triggered. If the returning value
 %% of the predicate function is <i>true</i> then the regular
 %% expression invalidation happens.</i>
-%% <li><i>-invalidate_groups({Fun/Arity}, [Group], PredFun)</i> - the
+%% <li><i>-invalidate_groups({[Group], PredFun})</i> - the
 %% same as <i>invalidate</i> above.</li>
 %% </ul>
 %% In order to use the annotations, the precompiler directive
@@ -46,6 +46,8 @@
 %% -compile({parse_transform, e_annotation}).
 %% </pre>
 %% must be attached to the source file.
+%% By default it is included in every entry of the user's application
+%% inside the Emakefile and accessible with bin/compile.erl.
 %% 
 -module(e_annotation).
 
@@ -53,57 +55,36 @@
 
 -spec(parse_transform/2 :: (list(tuple()), list()) -> list(tuple())).	     
 parse_transform(Tree, _Options) ->
-    {NewTree, Annotations} = remove_annotations(Tree),
-    transform_tree(NewTree, Annotations).
+    transform_tree(Tree).
     
--spec(remove_annotations/1 :: (list(tuple())) -> {list(tuple()), list(tuple())}).	     
-remove_annotations(Tree) ->
-    remove_annotations(Tree, [], []).
+-spec(transform_tree/1 :: (list(tuple())) -> list(tuple())).	     
+transform_tree(Tree) ->
+    transform_tree(Tree, [], []),
 
--spec(remove_annotations/3 :: (list(tuple()), list(tuple()), list(tuple())) -> {list(tuple()), list(tuple())}).	      
-remove_annotations([{attribute, _, backend_call, Fun} | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, Tree, [{backend_call, Fun} | Annotations]);
-remove_annotations([{attribute, _, invalidate, {Fun, Regexps}} | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, Tree, [{invalidator, Fun, Regexps} | Annotations]);
-remove_annotations([{attribute, _, invalidate, {Fun, Regexps, Pred}} | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, Tree, [{cond_invalidator, Fun, Regexps, Pred} | Annotations]);
-remove_annotations([{attribute, _, invalidate_groups, {Fun, Groups}} | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, Tree, [{group_invalidator, Fun, Groups} | Annotations]);
-remove_annotations([{attribute, _, invalidate_groups, {Fun, Groups, Pred}} | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, Tree, [{cond_group_invalidator, Fun, Groups, Pred} | Annotations]);
-remove_annotations([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
+-spec(transform_tree/3 :: (list(tuple()), list(tuple()), list(tuple() | atom())) -> list(tuple())).
+transform_tree([{attribute, _, backend_call, []} | Rest], Tree, Annotations) ->
+    transform_tree(Rest, Tree, [backend_call | Annotations]);
+transform_tree([{attribute, _, invalidate, {Regexps, Pred}} | Rest], Tree, Annotations) ->
+    transform_tree(Rest, Tree, [{cond_invalidator, Regexps, Pred} | Annotations]);
+transform_tree([{attribute, _, invalidate, Regexps} | Rest], Tree, Annotations) ->
+    transform_tree(Rest, Tree, [{invalidator, Regexps} | Annotations]);
+transform_tree([{attribute, _, invalidate_groups, {Groups, Pred}} | Rest], Tree, Annotations) ->
+    transform_tree(Rest, Tree, [{cond_group_invalidator, Groups, Pred} | Annotations]);
+transform_tree([{attribute, _, invalidate_groups, Groups} | Rest], Tree, Annotations) ->
+    transform_tree(Rest, Tree, [{group_invalidator, Groups} | Annotations]);
+transform_tree([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
     put(module_name, Name),
-    remove_annotations(Rest, [A | Tree], Annotations);
-remove_annotations([Element | Rest], Tree, Annotations) ->
-    remove_annotations(Rest, [Element | Tree], Annotations);
-remove_annotations([], Tree, Annotations) ->
-    {lists:reverse(Tree), Annotations}.
-    
--spec(transform_tree/2 :: (list(tuple()), list(tuple())) -> list(tuple())).	     
-transform_tree(Tree, Annotations) ->
-    transform_tree(Tree, [], Annotations).
-
--spec(transform_tree/3 :: (list(tuple()), list(tuple()), list(tuple())) -> list(tuple())).	     
-transform_tree([{function, _, _, _, _} = Function | Rest], Tree, Annotations) ->
-    transform_tree(Rest, [transform_function(Function, Annotations) | Tree], Annotations);
-transform_tree([Other | Rest], Tree, Annotations) ->
-    transform_tree(Rest, [Other | Tree], Annotations);
+    transform_tree(Rest, [A | Tree], Annotations);
+transform_tree([{function, _, _, _, _} = F | Rest], Tree, Annotations) ->
+    Fun = transform_function(F, Annotations),
+    transform_tree(Rest, [Fun | Tree], []);
+transform_tree([Element | Rest], Tree, Annotations) ->
+    transform_tree(Rest, [Element | Tree], Annotations);
 transform_tree([], Tree, _) ->
     lists:reverse(Tree).
-    
--spec(transform_function/2 :: (tuple(), list(tuple())) -> tuple()).	     
-transform_function({function, _, Name, Arity, _} = F, Annotations0) ->
-    case lists:filter(fun(Ann) -> 
-			      {Name, Arity} == element(2, Ann)
-		      end, Annotations0) of
-	[] ->
-	    F;
-	Annotations ->
-	    transform_function1(F, Annotations)
-    end.
 
--spec(transform_function1/2 :: (tuple(), list(tuple())) -> tuple()).
-transform_function1({function, Line, Name, Arity, Clauses0}, Annotations) ->
+-spec(transform_function/2 :: (tuple(), list(tuple())) -> tuple()).
+transform_function({function, Line, Name, Arity, Clauses0}, Annotations) ->
     Clauses = lists:map(fun(Clause) ->
 				element(2, lists:foldl(fun transform_clause/2, {Name, Clause}, Annotations))
 			end, Clauses0),
@@ -111,15 +92,15 @@ transform_function1({function, Line, Name, Arity, Clauses0}, Annotations) ->
     {function, Line, Name, Arity, Clauses}.
 
 -spec(transform_clause/2 :: (tuple(), list(tuple())) -> tuple()).	     
-transform_clause({backend_call, _}, {Name, C}) ->
+transform_clause(backend_call, {Name, C}) ->
     {Name, transform_backend_call(C, Name)};
-transform_clause({invalidator, _, Regexps}, {Name, C}) ->
+transform_clause({invalidator, Regexps}, {Name, C}) ->
     {Name, transform_invalidator(C, Regexps)};
-transform_clause({group_invalidator, _, Groups}, {Name, C}) ->
+transform_clause({group_invalidator, Groups}, {Name, C}) ->
     {Name, transform_group_invalidator(C, Groups)};
-transform_clause({cond_invalidator, _, Regexps, Pred}, {Name, C}) ->
+transform_clause({cond_invalidator, Regexps, Pred}, {Name, C}) ->
     {Name, transform_invalidator(C, Regexps, Pred)};
-transform_clause({cond_group_invalidator, _, Groups, Pred}, {Name, C}) ->
+transform_clause({cond_group_invalidator, Groups, Pred}, {Name, C}) ->
     {Name, transform_group_invalidator(C, Groups, Pred)}.
 
 -spec(transform_backend_call/2 :: (tuple(), atom()) -> tuple()).	     
