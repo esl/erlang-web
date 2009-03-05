@@ -92,7 +92,7 @@ req_exec(Name, {M, F, A}, Dict, OutPid) ->
 	    OutPid ! {res, Res, NewDict, Pid}
     end.
 
--spec(cleanup_backend/1 :: (atom()) -> any()).	     
+-spec(cleanup_backend/1 :: (atom()) -> any()).
 cleanup_backend(Mod) ->
     case eptic:fget("__backend_pid") of
 	undefined ->
