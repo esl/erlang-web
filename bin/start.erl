@@ -198,6 +198,7 @@ then
 	    SERVER=inets
     esac
     NODE_TYPE=single_node
+    shift
 else
     case $1 in
 	yaws)
