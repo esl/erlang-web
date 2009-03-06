@@ -62,7 +62,7 @@ transform_tree(Tree) ->
     transform_tree(Tree, [], []).
 
 -spec(transform_tree/3 :: (list(tuple()), list(tuple()), list(tuple() | atom())) -> list(tuple())).
-transform_tree([{attribute, _, backend_call, []} | Rest], Tree, Annotations) ->
+transform_tree([{attribute, _, backend_call, _} | Rest], Tree, Annotations) ->
     transform_tree(Rest, Tree, [backend_call | Annotations]);
 transform_tree([{attribute, _, invalidate, {Regexps, Pred}} | Rest], Tree, Annotations) ->
     transform_tree(Rest, Tree, [{cond_invalidator, Regexps, Pred} | Annotations]);
@@ -76,7 +76,7 @@ transform_tree([{attribute, _, module, Name} = A | Rest], Tree, Annotations) ->
     put(module_name, Name),
     transform_tree(Rest, [A | Tree], Annotations);
 transform_tree([{function, _, _, _, _} = F | Rest], Tree, Annotations) ->
-    Fun = transform_function(F, Annotations),
+    Fun = transform_function(F, sort(Annotations)),
     transform_tree(Rest, [Fun | Tree], []);
 transform_tree([Element | Rest], Tree, Annotations) ->
     transform_tree(Rest, [Element | Tree], Annotations);
@@ -352,3 +352,15 @@ prepare_list_of_strings([], Line) ->
 -spec(get_unique_atom/0 :: () -> atom()).	     
 get_unique_atom() ->
     list_to_atom(lists:flatten(io_lib:format("~w", [now()]))).
+
+-spec(sort/1 :: (list(atom() | tuple())) -> list(atom() | tuple())).
+sort(Annotations) ->
+    lists:sort(fun sort/2, Annotations).
+
+-spec(sort/2 :: (atom() | tuple(), atom() | tuple()) -> bool()).
+sort(backend_call, Else) when is_tuple(Else) ->
+    true;
+sort(Else, backend_call) when is_tuple(Else) ->
+    false;
+sort(_, _) ->
+    true.
