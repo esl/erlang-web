@@ -1,1 +1,1 @@
-<input type="radio" name="<% slot %>" class="<% slot %>" value="<% slot %>" <% slot %>/><% slot %><br/>
+<label><input type="radio" name="<% slot %>" class="<% slot %>" value="<% slot %>" <% slot %>/><% slot %></label><br/>
