@@ -93,14 +93,18 @@ parse_post(String) ->
 	{simple, Data} ->
 	    httpd:parse_query(Data);
 	{multipart, Boundary} ->
-	    {ok, Node} = application:get_env(eptic_fe, be_server_name),
-	    case rpc:call(Node, e_multipart_inets, get_multipart, [String, Boundary]) of
-		{badrpc, Reason} ->
-		    error_logger:error_msg("~p module, error during multipart parse, reason: ~p~n",
-					   [?MODULE, Reason]),
-		    [];
-		Else ->
-		    Else
+	    case application:get_env(eptic_fe, be_server_name) of
+		{ok, Node} ->
+		    case rpc:call(Node, e_multipart_inets, get_multipart, [String, Boundary]) of
+			{badrpc, Reason} ->
+			    error_logger:error_msg("~p module, error during multipart parse, reason: ~p~n",
+						   [?MODULE, Reason]),
+			    [];
+			Else ->
+			    Else
+		    end;
+		undefined ->
+		    e_multipart_inets:get_multipart(String, Boundary)
 	    end
     end.
 
