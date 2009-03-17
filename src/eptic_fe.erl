@@ -83,6 +83,6 @@ load_conf() ->
 	{ok, Tuples} ->
 	    ets:insert(e_fe_conf, Tuples);
 	{error, Reason} ->
-	    error_logger:error_msg("Error during read configuration file config/project_fe.conf, " 
+	    error_logger:error_msg("Error during reading the configuration file config/project_fe.conf, " 
 				   "reason: ~p", [Reason])
     end.
