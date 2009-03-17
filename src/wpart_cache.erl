@@ -29,13 +29,13 @@
 
 process_xml(E) ->
     case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
+	{ok, CacheableNode} when CacheableNode == frontend;
+				 CacheableNode == single_node_with_cache ->
 	    cached_content(E);
 	_ ->
 	    wpart_xs:process_xml(E#xmlElement.content)
     end.
 
-%% @todo add the cache group when saving
 cached_content(E) ->
     Id = wpartlib:has_attribute("attribute::id", E),
     Groups = prepare_groups(wpartlib:has_attribute("attribute::groups", E)),
