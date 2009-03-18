@@ -38,6 +38,9 @@
 start([Type]) ->
     start([Type, inets]);
 start([Type, Server]) ->
+    application:set_env(eptic, template_root, "templates"),
+    application:set_env(eptic, node_type, Type),
+
     application:start(sasl),
     application:start(ssl),
     application:start(crypto),
@@ -45,9 +48,6 @@ start([Type, Server]) ->
     application:start(eptic),
     application:start(wpart),
     application:start(wparts),
-
-    application:set_env(eptic, template_root, "templates"),
-    application:set_env(eptic, node_type, Type),
 
     start_node(Type, Server).
 
@@ -60,17 +60,11 @@ start_node(frontend, Server) ->
     
     application:start(eptic_fe);
 start_node(backend, _) ->
-    e_db:start(),
-
-    supervisor:start_child(eptic, {e_cluster, {e_cluster, start_link, []},
-				   permanent, 1000, worker, dynamic});
+    e_db:start();
 start_node(single_node_with_cache, Server) ->
     start_web_server(Server),
     
     e_db:start(),
-    
-    supervisor:start_child(eptic, {e_cluster, {e_cluster, start_link, []},
-				   permanent, 1000, worker, dynamic}),
     
     application:start(eptic_fe).
 

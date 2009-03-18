@@ -107,7 +107,18 @@ init([]) ->
 	       permanent, 2000, worker, dynamic},
     Components = {e_component, {e_component, start_link, []},
 		  permanent, 2000, worker, [e_component]},
-    {ok, {{one_for_one, 1, 10}, [Dict,Session,Components]}}.
+
+    List = case application:get_env(eptic, node_type) of
+	       {ok, Type} when Type == backend;
+			       Type == single_node_with_cache ->
+		   [Dict, Session, Components, 
+		    {e_cluster, {e_cluster, start_link, []},
+		     permanent, 1000, worker, dynamic}];
+	       _ ->
+		   [Dict, Session, Components]
+	   end,
+
+    {ok, {{one_for_one, 1, 10}, List}}.
 
 %%====================================================================
 %% Internal functions
