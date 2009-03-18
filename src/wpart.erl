@@ -35,7 +35,8 @@
          expand_string/1,
 	 search/2,
 	 search/1,
-	 finsert/2
+	 finsert/2,
+	 fdelete/1
 	]).
 -export([behaviour_info/1]).
 
@@ -97,7 +98,15 @@ search(Value) ->
 
 finsert(Key0, Val) ->
     [List, Key] = string:tokens(Key0, ":"),
-    eptic:finsert(List, Key, Val).	
+    eptic:finsert(List, Key, Val).
+
+fdelete(Key0) ->	
+    case string:tokens(Key0, ":") of
+	[List, Key] ->
+	    eptic:fdelete(List, Key);
+	[Key] ->
+	    eptic:fdelete(Key)
+    end.
 
 %%====================================================================
 %% Internal functions
