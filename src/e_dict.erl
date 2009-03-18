@@ -24,6 +24,7 @@
 %% API
 -export([init_state/1, terminate_state/0, get_state/0]).
 -export([fset/2, fset/3, fget/1, fget/2, fget/3, finsert/3]).
+-export([fdelete/1, fdelete/2]).
 
 -export([start_link/0]).
 -export([init/1, terminate/2]).
@@ -112,16 +113,16 @@ check_store(T, Current, List, Dict) ->
 %%
 -spec(finsert/3 :: (term(), term(), term()) -> none()).
 finsert(List, Key, Value) ->
-	case ets:lookup(?MODULE, self()) of
-		[{_, Dict}] ->
-                    Current = dict_fetch(List, Dict),
-                    New = case lists:keysearch(Key,1,Current) of
-                            {value, _} -> lists:keyreplace(Key,1,Current,{Key,Value});
-                            false -> [{Key,Value}|Current]
-                        end,
-                    ets:insert(?MODULE, {self(), dict:store(List, New, Dict)});
-		[]          -> exit(no_dict_attached)
-	end.
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] ->
+	    Current = dict_fetch(List, Dict),
+	    New = case lists:keysearch(Key,1,Current) of
+		      {value, _} -> lists:keyreplace(Key,1,Current,{Key,Value});
+		      false -> [{Key,Value}|Current]
+		  end,
+	    ets:insert(?MODULE, {self(), dict:store(List, New, Dict)});
+	[]          -> exit(no_dict_attached)
+    end.
 
 %%
 %% @spec fget(Key :: term()) -> Value :: term() | undefined
@@ -131,10 +132,10 @@ finsert(List, Key, Value) ->
 %%
 -spec(fget/1 :: (term()) -> term()).	      
 fget(Key) ->
-	case ets:lookup(?MODULE, self()) of
-		[{_, Dict}] -> dict_fetch(Key, Dict);
-		[]          -> exit(no_dict_attached)
-	end.
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] -> dict_fetch(Key, Dict);
+	[]          -> exit(no_dict_attached)
+    end.
 
 %%
 %% @spec fget(List :: term(), Key :: term()) -> term() | undefined
@@ -146,26 +147,67 @@ fget(Key) ->
 %%
 -spec(fget/2 :: (term(), term()) -> term()).	      
 fget(List, Key) ->
-	case fget(List) of
-		PropList when is_list(PropList) ->
-                    case proplists:get_all_values(Key, PropList) of
-                        [] -> undefined;
-                        [Value] -> Value;
-                        Values -> Values  
-                    end;
-		Result ->
-                    Result
-	end.
-
+    case fget(List) of
+	PropList when is_list(PropList) ->
+	    case proplists:get_all_values(Key, PropList) of
+		[] -> undefined;
+		[Value] -> Value;
+		Values -> Values  
+	    end;
+	Result ->
+	    Result
+    end.
 
 %% @hidden
 fget(List, Key, Validator) ->
     case catch Validator(fget(List, Key)) of
-		{'EXIT', _Reason} ->
-			exit({validation, Key});
-		Result ->
-			Result
-	end.
+	{'EXIT', _Reason} ->
+	    exit({validation, Key});
+	Result ->
+	    Result
+    end.
+
+%%
+%% @since 1.3
+%% @spec fdelete(Key :: term()) -> true
+%% @doc Removes the value stored in the request dictionary under the <i>Key</i>
+%% The value that is stored under the <i>Key</i> will be lost
+%% pernamently. 
+%%
+-spec(fdelete/1 :: (term()) -> true).	     
+fdelete(Key) ->
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] ->
+	    ets:insert(?MODULE, {self(), dict:erase(Key, Dict)});
+	[] ->
+	    exit(no_dict_attached)
+    end.
+
+%%
+%% @since 1.3
+%% @spec fdelete(List :: term(), Key :: term()) -> true
+%% @doc Removes the value stored under the <i>Key</i> inside the <i>List</i> in the request dictionary
+%% If the <i>List</i> after the removal process is empty, it 
+%% is also removed.
+%%
+-spec(fdelete/2 :: (term(), term()) -> true).	     
+fdelete(List, Key) ->
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] ->
+	    case dict:find(List, Dict) of
+		{ok, Proplist} ->
+		    case lists:keydelete(Key, 1, Proplist) of
+			[] ->
+			    ets:insert(?MODULE, {self(), dict:erase(List, Dict)});
+			NewProplist ->
+			    ets:insert(?MODULE, {self(), dict:store(List, NewProplist, Dict)})
+		    end;
+		error ->
+		    true
+	    end;
+	[] -> 
+	    exit(no_dict_attached)
+    end.
 
 %%====================================================================
 %% Server functions

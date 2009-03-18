@@ -29,6 +29,7 @@
 
 %% e_dict
 -export([fget/1, fget/2, fget/3, fset/2, fset/3, finsert/3]).
+-export([fdelete/1, fdelete/2]).
 %% e_cache
 -export([read_file/1]).
 
@@ -79,6 +80,14 @@ fset(List, Key, Value) ->
 %% @see e_dict:finsert/3
 finsert(List, Key, Value) ->
     e_dict:finsert(List, Key, Value).
+
+%% @see e_dict:fdelete/1
+fdelete(Key) ->
+    e_dict:fdelete(Key).
+
+%% @see e_dict:fdelete/2
+fdelete(List, Key) ->
+    e_dict:fdelete(List, Key).
 
 %%====================================================================
 %% API for s_cache
