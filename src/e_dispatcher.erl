@@ -153,7 +153,7 @@ error_page(Nr) ->
 
 %% main handler: it selects the first match in patterns list
 %% and properly processes it
--spec(dispatch/2 :: (string(), list(tuple())) -> tuple() | nomatch).	     
+-spec(dispatch/2 :: (string(), list(tuple())) -> dispatcher_result()).   
 dispatch(URL, Patterns) ->
     Selector = fun(X) -> selector(URL, X) end,
     Action = case filter(Selector, Patterns) of
