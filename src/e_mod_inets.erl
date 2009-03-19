@@ -42,9 +42,11 @@ do(#mod{parsed_header = Headers} = A) ->
 
 	    case A#mod.socket_type of 
 		{ssl, _} ->
-		    e_dict:fset("__https", true);
+		    e_dict:fset("__https", true),
+		    e_dict:fset("__ip", get_ip(ssl:peername(A#mod.socket)));
 		_ ->
-		    e_dict:fset("__https", false)
+		    e_dict:fset("__https", false),
+		    e_dict:fset("__ip", get_ip(inet:peername(A#mod.socket)))
 	    end,
 
 	    ClientCookie = cookie_up(Headers),
@@ -114,17 +116,21 @@ controller_exec(Ret, View) ->
 	{redirect, URL} ->
 	    {[{code, 302}, {location, URL}, {content_length, "0"}], []};
 	{content, html, Data} ->
-	    Content = lists:flatten(Data),
-	    Length = {content_length, integer_to_list(length(Content))},
-	    {[{content_type, "text/html"}, {code, 200}, Length], Content};
+	    Length = {content_length, integer_to_list(erlang:iolist_size(Data))},
+	    {[{content_type, "text/html"}, {code, 200}, Length], Data};
+	{content, xml, Data} ->
+	    Length = {content_length, integer_to_list(erlang:iolist_size(Data))},
+	    {[{content_type, "application/xml"}, {code, 200}, Length], Data};
 	{content, text, Data} ->
-	    Content = lists:flatten(Data),
-	    Length = {content_length, integer_to_list(length(Content))},
-	    {[{content_type, "text/plain"}, {code, 200}, Length], Content};
+	    Length = {content_length, integer_to_list(erlang:iolist_size(Data))},
+	    {[{content_type, "text/plain"}, {code, 200}, Length], Data};
+	{content, pdf, Data} ->
+	    Length = {content_length, integer_to_list(erlang:iolist_size(Data))},
+	    {[{content_type, "application/pdf"}, {code, 200}, Length], Data};
 	{json, Data} ->
 	    Content = e_json:encode(Data),
 	    Length = {content_length, integer_to_list(length(Content))},
-	    {[{content_type, "application/json"}, {code, 200}, Length], Content};
+	    {[{content_type, "text/plain"}, {code, 200}, Length], Content};
 	{template, Template} ->
 	    format_response(e_mod_gen:template(Template, [],
 					       e_conf:template_expander()));
@@ -140,17 +146,15 @@ controller_exec(Ret, View) ->
 
 -spec(format_response/1 :: (term()) -> term()).	     
 format_response({html, HTML}) ->
-    Content = lists:flatten(HTML),
-    Length = {content_length, integer_to_list(length(Content))},
-    {[{content_type, "text/html"}, {code, 200}, Length], Content};
+    Length = {content_length, integer_to_list(erlang:iolist_size(HTML))},
+    {[{content_type, "text/html"}, {code, 200}, Length], HTML};
 format_response([{status, Code}, {html, HTML}]) ->
-    Content = lists:flatten(HTML),
-    Length = {content_length, integer_to_list(length(Content))},
-    {[{content_type, "text/html"}, {code, Code}, Length], Content};
+    Length = {content_length, integer_to_list(erlang:iolist_size(HTML))},
+    {[{content_type, "text/html"}, {code, Code}, Length], HTML};
 format_response(Else) ->
     Else.
 
--spec(with_formatted_error/1 :: (atom()) -> term()).	      
+-spec(with_formatted_error/1 :: (fun()) -> term()).	      
 with_formatted_error(F) ->
     case catch F() of
 	{'EXIT', Reason} ->
@@ -168,6 +172,10 @@ create_headers([{cookie, CookieName, CookieVal, CookiePath} | Rest], Acc) ->
     create_headers(Rest, [{"Set-cookie", CookieName ++ [$= | CookieVal ++ "; path=" ++ CookiePath]} | Acc]);
 create_headers([{cookie, CookieName, CookieVal, CookiePath, CookieExpDate} | Rest], Acc) ->
     create_headers(Rest, [{"Set-cookie", CookieName ++ [$= | CookieVal ++ "; path=" ++ CookiePath ++ "; expires=" ++ CookieExpDate]} | Acc]);
+create_headers([{content_length, Len} | Rest], Acc) when is_integer(Len) ->
+    create_headers(Rest, [{"Content-Length", integer_to_list(Len)} | Acc]);
+create_headers([{content_length, Len} | Rest], Acc) when is_list(Len) ->
+    create_headers(Rest, [{"Content-Length", Len} | Acc]);
 create_headers([_ | Rest], Acc) ->
     create_headers(Rest, Acc).
 
@@ -238,8 +246,7 @@ cookie_bind(ClientCookie) ->
     e_mod_gen:bind_session(ClientCookie),
     {"Set-cookie", ?COOKIE ++ [$= | ClientCookie ++ "; path=/"]}.
 
-%% @hidden
--spec(cleanup/0 :: () -> none()).	     
+-spec(cleanup/0 :: () -> any()).
 cleanup() ->
     e_multipart_inets:terminate(),
     e_dict:terminate_state().
@@ -255,3 +262,8 @@ get_cookies(Headers) ->
 			      list_to_tuple(string:tokens(string:strip(Cookie, both, $ ), "="))
 		      end, Cookies)
     end.
+
+get_ip({ok, {Ip, _Port}}) ->
+    Ip;
+get_ip(_) ->
+    {error, no_ip}.

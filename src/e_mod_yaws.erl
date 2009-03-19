@@ -56,6 +56,7 @@ out(A) ->
             
 	    e_dict:fset("__path", URL),
 	    e_dict:fset("__cookie_key", ClientCookie),
+	    e_dict:fset("__ip", element(1, A#arg.client_ip_port)),
 
 	    ControllerFun = fun() -> 
 				    case e_mod_gen:handle_request([$/ | URL]) of
@@ -137,28 +138,35 @@ handle_args(#arg{req = R} = Arg) ->
 									      {redirect, string()} |
 									      {content, string(), string()} |
 									      term()).
-controller_exec(template, View) ->
-    e_mod_gen:template(e_mod_gen:template_file(View), [], 
-		       e_conf:template_expander());
-controller_exec({redirect, URL}, _) ->
-    {redirect, URL};
-controller_exec({content, html, Data}, _) ->
-    {content, "text/html", Data};
-controller_exec({content, text, Data}, _) ->
-    {content, "text/plain", Data};
-controller_exec({json, Data}, _) ->
-    {content, "text/plain", e_json:encode(Data)};
-controller_exec({template, Template}, _) ->
-    e_mod_gen:template(Template, [],
-		       e_conf:template_expander());
-controller_exec({custom, Custom}, _) ->
-    Custom;
-controller_exec({headers, Headers, NewRet}, View) ->
-    [controller_exec(NewRet, View), add_headers(Headers, [])];
-controller_exec({error, Code}, _) ->
-    e_mod_gen:error_page(Code, e_dict:fget("__path")).
+									      
+controller_exec(Ret, View) ->
+    case Ret of
+	template ->
+	    e_mod_gen:template(e_mod_gen:template_file(View), [], 
+			       e_conf:template_expander());
+	{redirect, URL} ->
+	    {redirect, URL};
+	{content, html, Data} ->
+	    {content, "text/html", Data};
+	{content, xml, Data} ->
+	    {content, "application/xml", Data};
+	{content, text, Data} ->
+	    {content, "text/plain", Data};
+	{content, pdf, Data} ->
+	    {content, "application/pdf", Data};
+	{json, Data} ->
+	    {content, "text/plain", e_json:encode(Data)};
+	{template, Template} ->
+	    e_mod_gen:template(Template, [],
+			       e_conf:template_expander());
+	{custom, Custom} ->
+	    Custom;
+	{headers, Headers, NewRet} ->
+	    [controller_exec(NewRet, View), add_headers(Headers, [])];
+	{error, Code} ->
+	    e_mod_gen:error_page(Code, e_dict:fget("__path"))
+    end.
 
-%% @hidden
 -spec(add_headers/2 :: (list(tuple()), list(tuple())) -> list(tuple())).	     
 add_headers([], Acc) ->
     Acc;
@@ -168,6 +176,8 @@ add_headers([{cookie, CookieName, CookieVal, CookiePath} | Rest], Acc) ->
     add_headers(Rest, [set_user_cookie(CookieName, CookieVal, CookiePath) | Acc]);
 add_headers([{cookie, CookieName, CookieVal, CookiePath, CookieExpDate} | Rest], Acc) ->
     add_headers(Rest, [set_user_cookie(CookieName, CookieVal, CookiePath, CookieExpDate) | Acc]);
+add_headers([{content_length, Len} | Rest], Acc) ->
+    add_headers(Rest, [set_content_length(Len) | Acc]);
 add_headers([_ | Rest], Acc) ->
     add_headers(Rest, Acc).
 	
@@ -208,7 +218,7 @@ split_cookies([Cookies0]) ->
 		      list_to_tuple(string:tokens(string:strip(Cookie, both, $ ), "="))
 	      end, Cookies).
 
--spec(with_formatted_error/1 :: (atom()) -> term()).	     
+-spec(with_formatted_error/1 :: (fun()) -> term()).	     
 with_formatted_error(F) ->
     case catch F() of
 	{'EXIT', Reason} ->
@@ -233,8 +243,11 @@ set_user_cookie(CookieName, CookieVal, CookiePath) ->
 set_user_cookie(CookieName, CookieVal, CookiePath, CookieExpDate) ->
     yaws_api:setcookie(CookieName, CookieVal, CookiePath, CookieExpDate).
 
-%% @hidden
--spec(cleanup/0 :: () -> none()).	     
+-spec(set_content_length/1 :: (integer() | string()) -> tuple()).	     
+set_content_length(Length) ->
+    {header, {content_length, Length}}.
+
+-spec(cleanup/0 :: () -> true).	     
 cleanup() ->
     e_multipart_yaws:terminate(),
     e_dict:terminate_state().

@@ -29,44 +29,44 @@
 -export([http_port/0, https_port/0, project_name/0]).
 -export([couchdb_address/0, dbms/0, server_root/0]).
 -export([ecomponents/0, xmerl_cache_mod/0]).
--export([get_conf/1, get_conf/2]).
+-export([get_conf/1, get_conf/2, set_conf/2]).
 
 %%====================================================================
 %% API
 %%====================================================================
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> ok
 %% @doc Loads the configuration from the default path.
 %% @see load_conf/0
 %%
--spec(install/0 :: () -> none()).
+-spec(install/0 :: () -> ok).
 install() ->
     load_conf().
 
 %%
-%% @spec reinstall() -> none()
+%% @spec reinstall() -> ok
 %% @doc Loads the configuration from the default path.
 %% @see load_conf/0
 %%
--spec(reinstall/0 :: () -> none()).
+-spec(reinstall/0 :: () -> ok).
 reinstall() ->
     load_conf().
 
 %%
-%% @spec load_conf() -> none()
+%% @spec load_conf() -> ok
 %% @doc Loads the configuration from the default path.
 %% The default path is 
 %% <i>e_conf:server_root()/config/project.conf</i>.
 %% @end
 %% @see load_conf/1
 %%
--spec(load_conf/0 :: () -> none()).
+-spec(load_conf/0 :: () -> ok).
 load_conf() ->
     load_conf(filename:join([server_root(), "config", "project.conf"])).
 
 %%
-%% @spec load_conf(Filename :: string()) -> none()
+%% @spec load_conf(Filename :: string()) -> ok
 %% @doc Loads the configuration from the given file.
 %% The previous configuration is erased. 
 %% File given as a parameter must be parsable by the file:consult call.<br/>
@@ -74,7 +74,7 @@ load_conf() ->
 %% <b>e_conf</b> ets table.
 %% @end
 %%
--spec(load_conf/1 :: (Filename :: string()) -> none()).
+-spec(load_conf/1 :: (Filename :: string()) -> ok).
 load_conf(Filename) ->
     {ok, Tuples} = file:consult(Filename),
     
@@ -152,7 +152,12 @@ load_conf(Filename) ->
 %%
 -spec(upload_dir/0 :: () -> string()).
 upload_dir() ->
-    get_conf(upload_dir, "docroot/upload").
+    case ets:lookup(e_conf, upload_dir) of
+	[] ->
+	    filename:join([e_conf:server_root(), "docroot", "upload"]);
+	[{upload_dir, Dir}] ->
+	    filename:join([e_conf:server_root(), "docroot", Dir])
+    end.
 
 %%
 %% @spec default_language() -> DefaultLanguage :: atom()
@@ -404,11 +409,21 @@ server_root() ->
 ecomponents() ->
     get_conf(ecomponents, []).
 
--spec(get_conf/1 :: (atom()) -> undefined | term()).
-get_conf(Key) ->	     
+%%
+%% @spec get_conf(Key :: term()) -> Configuration :: term()
+%% @doc Returns the configuration associated with the given <i>Key</i>.
+%% If no configuration has been found, the <i>undefined</i>
+%% atom is returned.
+%%
+-spec(get_conf/1 :: (term()) -> term()).	     
+get_conf(Key) ->
     get_conf(Key, undefined).
 
--spec(get_conf/2 :: (atom(), term()) -> term()).	     
+-spec(set_conf/2 :: (term(), term()) -> true).
+set_conf(Key, Val) ->	     
+    ets:insert(?MODULE, {Key, Val}).
+
+-spec(get_conf/2 :: (term(), term()) -> term()).	     
 get_conf(Key, Default) ->
     case ets:lookup(?MODULE, Key) of
 	[] -> Default;

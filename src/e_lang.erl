@@ -33,10 +33,10 @@
 -export([list/0, translate/2]).
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> true
 %% @doc Loads the translation files and creates the proper ets table.
 %%
--spec(install/0 :: () -> none()).	     
+-spec(install/0 :: () -> true).	     
 install() ->
     Languages = load(),
     
@@ -44,11 +44,11 @@ install() ->
     ets:insert(e_languages, Languages).
 
 %%
-%% @spec reinstall() -> none()
+%% @spec reinstall() -> true
 %% @doc Clears the translation and reloads the translation files.
 %% @todo in case of e_ets_cache acceptance, flush all the cached files
 %%
--spec(reinstall/0 :: () -> none()).	     
+-spec(reinstall/0 :: () -> true).	     
 reinstall() ->
     ets:delete_all_objects(e_languages),
 

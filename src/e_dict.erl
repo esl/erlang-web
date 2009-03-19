@@ -61,10 +61,10 @@ terminate_state() ->
     ets:delete(?MODULE, self()).
 
 %% 
-%% @spec fset(Key :: term(), Value :: term()) -> none()
+%% @spec fset(Key :: term(), Value :: term()) -> true
 %% @doc Inserts the <i>Value</i> under the specified <i>Key</i> in the request dictionary.
 %%
--spec(fset/2 :: (term(), term()) -> none()).	     
+-spec(fset/2 :: (term(), term()) -> true).
 fset(Key, Value) ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] -> ets:insert(?MODULE, {self(), dict:store(Key, Value, Dict)});
@@ -72,7 +72,7 @@ fset(Key, Value) ->
     end.
 
 %%
-%% @spec fset(List :: term(), Key :: term(), Value :: term()) -> none()
+%% @spec fset(List :: term(), Key :: term(), Value :: term()) -> true
 %% @doc Appends the <i>Value</i> into the <i>List</i> under the <i>Key</i> in the request dictionary.
 %% <i>List</i> is the top-level key to the proplist in the dictionary. 
 %% If there is no list, the new one is created - the call is equivalent to:
@@ -82,7 +82,7 @@ fset(Key, Value) ->
 %% Otherwise, the <i>{Key, Value}</i> is appended to the list and the list is then
 %% stored in the request dictionary.
 %%
--spec(fset/3 :: (term(), term(), term()) -> none()).
+-spec(fset/3 :: (term(), term(), term()) -> true).
 fset(List, Key, Value) ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->
@@ -103,7 +103,7 @@ check_store(T, Current, List, Dict) ->
     ets:insert(?MODULE, {self(), dict:store(List, New, Dict)}).
 
 %%
-%% @spec finsert(List :: term(), Key :: term(), Value :: term()) -> none()
+%% @spec finsert(List :: term(), Key :: term(), Value :: term()) -> true
 %% @doc Inserts the <i>Value</i> into the <i>List</i> under the <i>Key</i> in the request dictionary.
 %% <i>List</i> is the top-level key to the container in the dictionary. 
 %% There must be a proper container inside the request dictionary.<br/>
@@ -111,7 +111,7 @@ check_store(T, Current, List, Dict) ->
 %% the tuple is replaced with <i>{Key, Value}</i>.
 %% Otherwise, the <i>{Key, Value}</i> is appended to the <i>List</i>
 %%
--spec(finsert/3 :: (term(), term(), term()) -> none()).
+-spec(finsert/3 :: (term(), term(), term()) -> true).
 finsert(List, Key, Value) ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->

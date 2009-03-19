@@ -27,7 +27,7 @@
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> ok
 %% @doc Sets up the CouchDB database for Erlang Web needs.
 %% It creates the separate database (its name will be obtained from 
 %% the project name set in <i>project.conf</i>).<br/>
@@ -37,8 +37,10 @@
 %% @see e_conf:project_name/0
 %% @see e_conf:couchdb_address/0
 %%
--spec(install/0 :: () -> none()).	     
+-spec(install/0 :: () -> ok).	     
 install() ->
+    application:start(inets),
+
     Name = e_conf:project_name(),
     Address = e_conf:couchdb_address(),
 
@@ -160,10 +162,10 @@ read(Prefix0, Id) ->
     end.
 
 %%
-%% @spec delete(Type :: atom(), Element :: tuple()) -> ok | {error, Reason}
+%% @spec delete(Type :: atom(), Key :: any()) -> ok | {error, Reason}
 %% @equiv e_db:delete/2
 %% 
--spec(delete/2 :: (atom(), tuple()) -> ok | {error, any()}).  
+-spec(delete/2 :: (atom(), any()) -> ok | {error, any()}).  
 delete(Prefix0, Id) ->
     Name = e_conf:project_name(),
     CouchURL = e_conf:couchdb_address(),
@@ -345,9 +347,7 @@ get_next_id(Prefix0) ->
 		{error, Reason1} ->
 		    error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason1]),
 		    {error, Reason1}
-	    end;
-	Else ->
-	    Else
+	    end
     end.
 	    
 get_rev(Url) ->

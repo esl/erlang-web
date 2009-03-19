@@ -28,7 +28,7 @@
 %%% <li>uninstall/1</li>
 %%% <li>dependencies/0</li>
 %%% </ul></p>
-%%% <p>The role of the <i>install/1</li> function is to install all needed
+%%% <p>The role of the <i>install/1</i> function is to install all needed
 %%% things in the new environment (such as: start gen_server and connect
 %%% it to the main wparts supervisor - registered locally 
 %%% under the <b>wpart</b> name, create ets tables, load tpls or similar).
@@ -148,6 +148,7 @@ uninstall({Name, Conf}) ->
     
 %% @hidden
 init([]) ->
+    install(),
     {ok, #state{running = []}}.
 
 %% @hidden
@@ -276,7 +277,7 @@ install_ecomponent(Name, Conf, CallStack, State) ->
 	    {Result, NewState} = run_deps(Deps, CallStack, State),
 	    case no_errors(Result, []) of
 		true ->
-		    {ok, NewState};
+		    transactional_start(Name, Conf, NewState);
 		Errors ->
 		    {{error, {can_not_run_dependencies, Errors}}, NewState}
 	    end

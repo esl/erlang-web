@@ -45,10 +45,10 @@ stop(_) ->
     ok.
 
 %%
-%% @spec reload() -> none()
+%% @spec reload() -> ok
 %% @doc Reloads the configuration and compiles all the changed files.
 %%
--spec(reload/0 :: () -> none()).	     
+-spec(reload/0 :: () -> ok).	     
 reload() ->
     make:all([load]),
     e_dispatcher:reinstall(),
@@ -58,26 +58,32 @@ reload() ->
 %% API for s_dict
 %%====================================================================
 %% @see e_dict:fget/1
+-spec(fget/1 :: (term()) -> term()).	     
 fget(Key) ->
     e_dict:fget(Key).
     
 %% @see e_dict:fget/2
+-spec(fget/2 :: (term(), term()) -> term()).	     
 fget(List, Key) ->
     e_dict:fget(List, Key).
 
 %% @see e_dict:fget/3
+-spec(fget/3 :: (term(), term(), fun()) -> term()).
 fget(List, Key, Validator) ->
     e_dict:fget(List, Key, Validator).
 
 %% @see e_dict:fset/2
+-spec(fset/2 :: (term(), term()) -> true).	     
 fset(Key, Value) ->
     e_dict:fset(Key, Value).
 
 %% @see e_dict:fset/3
+-spec(fset/3 :: (term(), term(), term()) -> true).	     
 fset(List, Key, Value) ->
     e_dict:fset(List, Key, Value).
 
 %% @see e_dict:finsert/3
+-spec(finsert/3 :: (term(), term(), term()) -> true).	     
 finsert(List, Key, Value) ->
     e_dict:finsert(List, Key, Value).
 

@@ -69,14 +69,14 @@ encode(Binary) when is_binary(Binary)->
 %% Decodes the input string from JSON format to the Erlang term.
 %% @end
 %%-------------------------------------------------------------------
--spec(decode/1 :: (string()) -> string()).	     
+-spec(decode/1 :: (string()) -> {ok, term()}).	     
 decode(String) ->
     {ok, scan(String, [])}.
 
 %%-------------------------------------------------------------------
 %%% Internal functions
 %%-------------------------------------------------------------------
--spec(tuple_to_object/2 :: (list(tuple()), string()) -> string()).	     
+-spec(tuple_to_object/2 :: (list(tuple()), list()) -> string()).	     
 tuple_to_object([], Acc) ->
     [${|lists:flatten(lists:reverse([$}|Acc]))];
 tuple_to_object([{Key, Value}], Acc) when is_atom(Key) ->
@@ -119,7 +119,7 @@ string_to_json_string([$ |T], Acc) ->
 string_to_json_string([H|T], Acc) ->
     string_to_json_string(T, [H|Acc]).
 
--spec(scan/2 :: (string(), list(term())) -> list(term())).	     
+-spec(scan/2 :: (string(), list(term())) -> list(term()) | {list(term()), string()}).
 scan([], Acc) ->
     lists:reverse(Acc);
 scan([$ |T], Acc) ->

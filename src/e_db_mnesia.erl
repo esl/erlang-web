@@ -33,11 +33,11 @@
 -record(id, {table, next_id}).
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> any()
 %% @doc Creates a table named <i>ids_tab</i> responsible for  storing the unique ids for elements.
 %% @todo Change node() to some proper be_nodes() or similar.
 %%
--spec(install/0 :: () -> none()).	     
+-spec(install/0 :: () -> any()).	     
 install() ->
     mnesia:create_table(ids_tab, [{attributes, record_info(fields, id)},
 				  {disc_copies, [node()]}]).
@@ -88,10 +88,10 @@ read(Tab, Key) ->
     end.
 
 %%
-%% @spec delete(Type :: atom(), Element :: tuple()) -> ok | {error, Reason}
+%% @spec delete(Type :: atom(), Key :: any()) -> ok | {error, Reason}
 %% @equiv e_db:delete/2
 %% 
--spec(delete/2 :: (atom(), tuple()) -> ok | {error, any()}).  
+-spec(delete/2 :: (atom(), any()) -> ok | {error, any()}).  
 delete(Tab, Key) ->
     Trans = fun() ->
 		    mnesia:delete(Tab, Key, write)

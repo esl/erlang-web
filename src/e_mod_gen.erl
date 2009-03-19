@@ -33,19 +33,22 @@
 -export([template/3, template_file/1, error_page/2, error_page/3]).
 -export([restore_session/1, bind_session/1]).
 -export([controller/3]).
-
 -export([sanitize_file_name/1, parse_url/1]).
 
--include("eptic.hrl").
+-include_lib("eptic/include/eptic.hrl").
 
 -type(controller_response() :: template | 
       {redirect, string()} |
-      {content, html, string()} | 
-      {content, text, string()} | 
+      {content, html, iolist()} | 
+      {content, text, iolist()} | 
+      {content, xml, iolist()} |
+      {content, pdf, iolist()} |
       {json, term()} |
       {template, string()} | 
       {custom, term()} |
-      {headers, list(tuple()), controller_response()} |
+      %should be controller_response(), but recursive types are not
+      %supported.
+      {headers, list(tuple()), ControllerResponse::any()} |
       {error, integer()}).
 
 %%
@@ -168,14 +171,14 @@ bind_session(Cookie) ->
     end.
 
 %%
-%% @spec restore_session(Cookie :: term()) -> none()
+%% @spec restore_session(Cookie :: term()) -> true
 %% @doc Restores the session with the given <i>Cookie</i>.
 %% If the <i>Cookie</i> is empty, it sets the request dictionary 
 %% session variable to empty list. 
 %% Otherwise, it loads the previous state of session from
 %% the internal data storage.
 %%
--spec(restore_session/1 :: (term()) -> none()).	     
+-spec(restore_session/1 :: (term()) -> true).	     
 restore_session("") ->
     e_dict:fset("session", []);
 restore_session(Cookie) ->

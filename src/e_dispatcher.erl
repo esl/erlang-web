@@ -63,10 +63,10 @@
 -type(cache_type() :: no_cache | normal | persistent | {timeout, integer()}).
 
 %%
-%% @spec install() -> none()
+%% @spec install() -> ok
 %% @doc Loads the configuration files and creates the dispatcher ets tables.
 %%
--spec(install/0 :: () -> none()).	     
+-spec(install/0 :: () -> ok).	     
 install() ->
     Patterns = load(),
     {Static, Dynamic} = divide(Patterns),
@@ -77,10 +77,10 @@ install() ->
     load_errors().
 
 %%
-%% @spec reinstall() -> none()
+%% @spec reinstall() -> ok
 %% @doc Reloads the configuration files and clears the old dispatcher ets tables.
 %%
--spec(reinstall/0 :: () -> none()).	     
+-spec(reinstall/0 :: () -> ok).	     
 reinstall() ->
     ets:delete_all_objects(?MODULE),
 
@@ -153,7 +153,7 @@ error_page(Nr) ->
 
 %% main handler: it selects the first match in patterns list
 %% and properly processes it
--spec(dispatch/2 :: (string(), list(tuple())) -> dispatcher_result()).   
+-spec(dispatch/2 :: (string(), list(tuple())) -> dispatcher_result()).
 dispatch(URL, Patterns) ->
     Selector = fun(X) -> selector(URL, X) end,
     Action = case filter(Selector, Patterns) of
@@ -224,7 +224,7 @@ load(Filename) ->
     lists:map(fun(X) -> parser(X, NamedRegexp) end, Terms).
 
 %% Returns first element which satisfies Fun
--spec(filter/2 :: (atom(), list(tuple())) -> {ok, tuple()} | nomatch).	    
+-spec(filter/2 :: (fun(), list(tuple())) -> {ok, tuple()} | nomatch).	    
 filter(_Fun, []) -> 
     nomatch;
 filter(Fun, [First|Rest]) ->
@@ -280,16 +280,14 @@ selector_exec(Element, Regexp, Opts) ->
 %% {Module, Function, [mptaszek, using_e_dispatcher]}.
 %% In the future re module will deal with it.
 -spec(process/2 :: (tuple(), string()) -> dispatcher_result()).	     
-process({static, _, Path}, _URL) ->
-    if
-	Path == enoent -> invalid_url;
-	true -> {view, Path}
-    end;
-process({static, _, Path, _Opts}, _URL) ->
-    if
-	Path == enoent -> invalid_url;
-	true -> {view, Path}
-    end;
+process({static, _, enoent}, _URL) ->
+    invalid_url;
+process({static, _, Path}, _) ->
+    {view, Path};
+process({static, _, enoent, _}, _URL) ->
+    invalid_url;
+process({static, _, Path, _}, _) ->
+    {view, Path};
 process({dynamic, _Regex, {Module, Function}}, _URL) ->
     {Module, Function, []};
 process({dynamic, _Regex, {Module, Function}, _Opts}, _URL) ->
@@ -347,5 +345,5 @@ add_rule(Type, Regexp, Target, Opts) ->
     [{_, TypeRules}] = ets:lookup(?MODULE, Type),
     {ok, Compiled} = re:compile(Regexp),
     
-    ets:insert(?MODULE, Type, lists:append({Type, Compiled, Target, Opts}, TypeRules)).
+    ets:insert(?MODULE, {Type, lists:append([{Type, Compiled, Target, Opts}], TypeRules)}).
 

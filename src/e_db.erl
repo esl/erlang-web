@@ -56,13 +56,7 @@ start() ->
 -spec(read/1 :: (atom()) -> list(tuple())).
 read(Type) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, read, [Type]);
-	_ ->
-	    Mod:read(Type)
-    end.
+    Mod:read(Type).
 
 %% 
 %% @spec read(Type :: atom(), Id :: any()) -> Element :: tuple() | not_found | {error, Reason}
@@ -75,31 +69,19 @@ read(Type) ->
 -spec(read/2 :: (atom(), any()) -> tuple() | not_found | {error, any()}).
 read(Type, Id) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, read, [Type, Id]);
-	_ ->
-	    Mod:read(Type, Id)
-    end.
+    Mod:read(Type, Id).
 
 %%
-%% @spec delete(Type :: atom(), Element :: tuple()) -> ok | {error, Reason}
-%% @doc Removes the given <i>Element</i> of the <i>Type</i> from the database.
+%% @spec delete(Type :: atom(), Key :: any()) -> ok | {error, Reason}
+%% @doc Removes the given element of the <i>Type</i> with <i>Key</i> from the database.
 %% If removal process succeeds, <i>ok</i> is returned.<br/>
 %% In case of error, the <i>{error, Reason}</i> is returned.
 %% @end
 %%
--spec(delete/2 :: (atom(), tuple()) -> ok | {error, any()}).	     
-delete(Type, Element) ->
+-spec(delete/2 :: (atom(), any()) -> ok | {error, any()}).	     
+delete(Type, Key) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, delete, [Type, Element]);
-	_ ->
-	    Mod:delete(Type, Element)
-    end.
+    Mod:delete(Type, Key).
 
 %%
 %% @spec write(Type :: atom(), Element :: tuple()) -> ok | {error, Reason}
@@ -111,13 +93,7 @@ delete(Type, Element) ->
 -spec(write/2 :: (atom(), tuple()) -> ok | {error, any()}).	     
 write(Type, Element) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, write, [Type, Element]);
-	_ ->
-	    Mod:write(Type, Element)
-    end.
+    Mod:write(Type, Element).
 
 %%
 %% @spec update(Type :: atom(), Element :: tuple()) -> ok | {error, Reason}
@@ -129,13 +105,7 @@ write(Type, Element) ->
 -spec(update/2 :: (atom(), tuple()) -> ok | {error, any()}).	     
 update(Type, Element) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, update, [Type, Element]);
-	_ ->
-	    Mod:update(Type, Element)
-    end.
+    Mod:update(Type, Element).
 
 %%
 %% @spec size(Type :: atom()) -> integer() | {error, Reason}
@@ -144,13 +114,7 @@ update(Type, Element) ->
 -spec(size/1 :: (atom()) -> integer() | {error, any()}).	    
 size(Type) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, size, [Type]);
-	_ ->
-	    Mod:size(Type)
-    end.
+    Mod:size(Type).
 
 %%
 %% @spec get_next_id(Type :: atom()) -> integer() | {error, Reason}
@@ -164,10 +128,4 @@ size(Type) ->
 -spec(get_next_id/1 :: (atom()) -> integer() | {error, any()}).	     
 get_next_id(Type) ->
     Mod = e_conf:dbms(),
-    case application:get_env(eptic, node_type) of
-	{ok, frontend} ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:call(Name, Mod, get_next_id, [Type]);
-	_ ->
-	    Mod:get_next_id(Type)
-    end.
+    Mod:get_next_id(Type).
