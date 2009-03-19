@@ -84,15 +84,18 @@ get_description(Name, Tuples) ->
 
 find(Name, List) ->
     case lists:keysearch(Name, 1, List) of
+	{value, {_, undefined}} ->
+	    "";
 	{value, {_, Val}} ->
 	    Val;
-	false -> ""
+	false ->
+	    ""
     end.
 
 %% Attributes: [{name_of_field, {choices, "choice1:Text1,choice2:Text2"}}]
 
 handle_types(Fields,Types,Attributes) -> 
-handle_types(Fields, Types, Attributes, Fields, []).
+    handle_types(Fields, Types, Attributes, Fields, []).
 
 handle_types([], [], _, Fields, Types) ->
     lists:zip(Fields, Types);

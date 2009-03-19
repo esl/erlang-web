@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -29,4 +28,5 @@
 handle_call(_, XML) ->
 	XML.
 
-validate(X) -> wtype_string:validate(X).
+validate(X) -> 
+    wtype_string:validate(X).

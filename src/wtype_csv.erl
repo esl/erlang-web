@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -45,30 +44,39 @@ validate({Options, Input}) ->
         true ->
 	    {ok, Input};
         false ->
-	   {value, {type,  Type}} = lists:keysearch(type, 1, Options),
+	    {value, {type, Type0}} = lists:keysearch(type, 1, Options),
+	    Type = list_to_atom("wtype_" ++ atom_to_list(Type0)),
+
+	    Delimiter = case lists:keysearch(delimiter, 1, Options) of
+			    {_, {_, Del}} ->
+				Del;
+			    _ ->
+				","
+			end,
 
 	   %%TODO: implement nesseccary options
 	   %%{value, {max_val, Max_val}} = lists:keyse
-	   Str = lists:keydelete(type, 1, Options), 
-	   List = string:tokens(Input,","),
-	   ResultList = lists:map(
-			  fun(X) -> 				  
-				  A = apply(list_to_atom("wtype_"++ 
-							 atom_to_list(Type)), 
-				  validate,[{Str,X}]),
-				  B = tuple_to_list(A), 
-				  [H|_T]=B,
-				  if H =/= ok -> error;
-				     true -> A
-				  end
-			  end, 
-			  List),
-	  Bool = lists:member(error, ResultList),
-	  if Bool -> {error, {wrong_value_in_set, Input}};
-	     true -> 
-		  Ready = lists:map(fun({ok,X}) -> X end, ResultList),
-		  %%Joined = string:join(Ready,",")
-		  {ok,Ready}
-          end
+	    Str = lists:keydelete(type, 1, Options), 
+	    List = string:tokens(Input, Delimiter),
+	    ResultList = lists:map(
+			   fun(X) -> 				  
+				   A = apply(Type, validate, [{Str,X}]),
+				   B = tuple_to_list(A), 
+				   if 
+				       hd(B) =/= ok -> 
+					   error;
+				       true -> 
+					   A
+				   end
+			   end, 
+			   List),
+	    case lists:member(error, ResultList) of
+		true ->
+		    {error, {wrong_value_in_set, Input}};
+		false -> 
+		    Ready = lists:map(fun({ok,X}) -> X end, ResultList),
+		    %%Joined = string:join(Ready,",")
+		    {ok,Ready}
+	    end
     end.
 	    

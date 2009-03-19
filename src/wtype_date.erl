@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Martin Carlson <info@erlang-consulting.com>
 %%%         Michal Zajda
 %%% @doc 
@@ -26,7 +25,6 @@
 
 -author("support@erlang-consulting.com").
 -copyright("Erlang Training & Consulting Ltd.").
--vsn("$Rev").
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -72,10 +70,10 @@ format("MONTH" ++ T, {_, Month, _} = D, Acc) ->
     format(T, D, Acc ++ month(Month));
 format("DD" ++ T, {_, _, Day} = D, Acc) ->
     format(T, D, Acc ++ convert(Day, 2));
-format("SDAY" ++ T, Date, Acc) ->
-    format(T, Date, Acc ++ sday(Date));
-format("DAY" ++ T, Date, Acc) ->
-    format(T, Date, Acc ++ day(Date));
+format("SDAY" ++ T, {_, _, Day} = D, Acc) ->
+    format(T, D, Acc ++ sday(Day));
+format("DAY" ++ T, {_, _, Day} = D, Acc) ->
+    format(T, D, Acc ++ day(Day));
 format([H|T], D, Acc) ->
     format(T, D, Acc ++ [H]);
 format([], D, []) ->
@@ -83,8 +81,10 @@ format([], D, []) ->
 format([], _, Acc) ->
     Acc.
 
-get_date(Format, Date) -> 
-    format(Format, Date, []). 
+get_date(Format, Date) when is_tuple(Date) -> 
+    format(Format, Date, []);
+get_date(_, Date) when is_list(Date) ->
+    Date.
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
@@ -101,143 +101,127 @@ validate({Types, undefined}) ->
 
 validate({Options,Input}) ->
     case wpart_valid:is_private(Options) of
-    true ->
+	true ->
 	    {ok, Input};
-    _ ->
-        Separators= ["-","/"," ",".", "_"], 
-    
-        F = lists:keysearch(format, 1, Options),
-    
-        {value, {format,  Format}} = if F == false -> {value, {format, "YYYY-MM-DD"}};
-                                       true -> F
-                              end,
-
-        Length = length(Separator = lists:filter(
-                                fun(X) -> string:str(Format, X) /= 0 
-                                end, 
-                                Separators)
-                       ),
-
-        case Length of
-	   1   ->  Result = spliter(Input, Separator),
-                 {R, ResList} = Result,
-                    if ((R == ok) andalso (length(ResList))) == 3 ->
-                            {B,Inp} = check_limits(Options, Result, Separator, Format),
-                            if B -> {ok,Inp};
-                               true -> {error, {bad_range, Input}}
-                            end;
-                       true -> {error, {bad_date_format, Input}}
-                    end;
-	   _   -> {error, {bad_separator_in_date_form, Input}}
-        end
+	_ ->
+	    Separators= ["-","/"," ",".", "_"], 
+	    F = lists:keysearch(format, 1, Options),
+	    {value, {format,  Format}} = if F == false -> {value, {format, "YYYY-MM-DD"}};
+					    true -> F
+					 end,
+	    Length = length(Separator = lists:filter(
+					  fun(X) -> string:str(Format, X) /= 0 
+					  end, 
+					  Separators)
+			   ),
+	    case Length of
+		1   ->  Result = splitter(Input, Format, Separator),
+			{R, ResList} = Result,
+			if ((R == ok) andalso (length(ResList))) == 3 ->
+				{B,Inp} = check_limits(Options, Result),
+				if B -> {ok,Inp};
+				   true -> {error, {bad_range, Input}}
+				end;
+			   true -> {error, {bad_date_format, Input}}
+			end;
+		_   -> {error, {bad_separator_in_date_form, Input}}
+	    end
     end.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-spliter(Input, [Separator]) ->
-    {ok, DateList} = regexp:split(Input, Separator),	
-    Input_to_i = lists:map(
-                            fun(L) -> 
-                               catch list_to_integer(L) 
-                            end,
-                            DateList),
-    
+splitter(Input, Format, [Separator]) ->
+    {ok, DateList} = regexp:split(Input, Separator),
+    {ok, FormatList} = regexp:split(Format, Separator),
+    Input_to_i = validate_field(DateList, FormatList, []),
     case lists:all(fun is_integer/1, Input_to_i) of
         true -> {ok, Input_to_i};
         _ -> {error, {bad_date_input, Input}}	
     end.
 
-check_limits(_, {error, X}, _, _) -> {error, X};
+validate_field([],[],List) ->
+    lists:map(fun(L) ->
+		      element(2, L)
+	      end, lists:keysort(1, List));
+validate_field([], [_|_], _) ->
+    [error];
+validate_field([_|_], [], _) ->
+    [error];
+validate_field([H1|T1],[H2|T2],List) ->
+    R = field(H2, H1),
+    validate_field(T1,T2,[R|List]).
 
-check_limits(Options, {ok, Input_to_i}, Separator, Format) -> 
+field("YYYY", Value) ->
+    catch {1, list_to_integer(Value)};
+field("YY", Value) ->
+    catch {1, list_to_integer(Value)};
+field("MM", Value) ->
+    catch {2, list_to_integer(Value)};
+field("DD", Value) ->
+    catch {3, list_to_integer(Value)};
+field("SMONTH", Value) ->
+    {2, smonth_to_int(Value)};
+field("MONTH", Value) ->
+    {2, month_to_int(Value)};
+field("SDAY", Value) ->
+    {3, sday_to_int(Value)};
+field("DAY", Value) ->
+    {3, day_to_int(Value)};
+field(_Format, _Value) ->
+    bad_format.
 
+check_limits(_, {error, X}) -> {error, X};
+
+check_limits(Options, {ok, Input_to_i}) -> 
     U = lists:keysearch(max, 1, Options),
     D = lists:keysearch(min, 1, Options),
 
-    Up_to_i = if U == false -> [];
-                 true ->    {value, {max,  Up_limit}} = U,
-                            spliter(Up_limit, Separator)
-              end,
-
-    Down_to_i = if D == false -> [];
-                   true ->  {value, {min,  Down_limit}} = D, 
-                             spliter(Down_limit, Separator)
-                end,
-
-    [Inside] = Separator,
-    FormatStr = lists:concat(string:tokens(Format,Inside)),
-
-    S = fun(X,Y) -> X =< Y end, 
-    G = fun(X,Y) -> X >= Y end,
-
-    calendar(FormatStr, Input_to_i, Up_to_i, Down_to_i,S,G).
+    Limit = 
+	fun(Val) ->
+		case Val of
+		    false -> [];
+		    {value, {max, {H,M,S}}} -> 
+			case lists:all(fun is_integer/1, [H,M,S]) of
+			    true -> {ok, {H,M,S}};
+			    _ -> {error, {bad_limit_format, {H,M,S}}}	
+			end;
+		    _ -> {error, {bad_limit_format, Val}}
+		end
+	end,
+    MaxFun = fun(X,Y) -> X =< Y end, 
+    MinFun = fun(X,Y) -> X >= Y end,
+    test_limits(list_to_tuple(Input_to_i), Limit(D), Limit(U), MinFun, MaxFun).
 %----------------------------------------------------------------------------
-calendar(_,_,{error,_},_,_,_) -> {false, bad_up_limit_format};
-calendar(_,_,_,{error,_},_,_) -> {false, bad_down_limit_format};
-
-calendar(Format, Input, [], [],F,_) -> 
-        calendar(Format, Input, [], F);
-
-calendar(Format, Input_to_i, {ok,Up_to_i}, [], S, _G) ->
-        calendar(Format, Input_to_i, Up_to_i, S);
-
-calendar(Format, Input_to_i, [], {ok,Down_to_i},_S,G) ->
-       calendar(Format, Input_to_i, Down_to_i, G);
-
-calendar(Format, Input_to_i, {ok,Up_to_i}, {ok,Down_to_i},S,G) ->
-       {R1,Inp1} = calendar(Format, Input_to_i, Up_to_i, S),
-       {R2,_Inp2} = calendar(Format, Input_to_i, Down_to_i, G),
-       {lists:all(fun(X) -> X == true end, [R1,R2]), Inp1}.
-
-%-----------------------------------------------------------------------------
-
-calendar("YYYY"++ T, Input, Limit, Fun) ->
-        if T == "MMDD" -> calendar(Input, Limit, Fun);
-           T == "DDMM" -> [H1|T1] = Input,
-                          calendar([H1|lists:reverse(T1)],Limit,Fun);
-           true -> {false, Input}
-        end;
-
-calendar("DD"++ T, Input, Limit, Fun) ->
-        if T == "MMYYYY" -> calendar(lists:reverse(Input),Limit, Fun);
-           true -> {false, Input}
-        end;
-
-calendar("MM"++ T, Input, Limit, Fun) ->
-        if T == "DDYYYY" -> [H1|T1] = Input, 
-                            [HH1|TT1] = T1,
-                            [Year1|_] = TT1,
-                            calendar([Year1,H1,HH1], Limit, Fun);
-           true -> {false, Input}
-        end.
-%--------------------------------------------------------------------------
-
-calendar(Input, [], _Fun) ->
-    Inp = list_to_tuple(Input),
-    BI = calendar:valid_date(Inp),
-    {BI,Inp};
-
-calendar(Input, Limit, Fun) ->
-    Inp = list_to_tuple(Input),
-    Lmt = list_to_tuple(Limit),
+test_limits(_,{error,_},_,_,_) -> {false, bad_min_limit_format};
+test_limits(_,_,{error,_},_,_) -> {false, bad_max_limit_format};
+test_limits(Input, [], {ok,Max}, _, MaxFun) ->
+    Result = test_limit(Input, Max, MaxFun),
+    {Result, Input};
+test_limits(Input, {ok,Min}, [], MinFun, _) ->
+    Result = test_limit(Input, Min, MinFun),
+    {Result, Input};
+test_limits(Input, [], [],_,_) ->
+    {true, Input};
+test_limits(Input, {ok,Min}, {ok,Max}, MinFun, MaxFun) ->
+    R1 = test_limit(Input, Min, MinFun),
+    R2 = test_limit(Input, Max, MaxFun),
+    Result = if R1 and R2 -> true;
+		true -> false
+	     end,
+    {Result,Input}.
     
-    BI = calendar:valid_date(Inp),
-    BL = calendar:valid_date(Lmt),
-    
-    Result = 
-    if BI and BL ->  NI = calendar:date_to_gregorian_days(Inp),
-                     NL = calendar:date_to_gregorian_days(Lmt), 
-                     Fun(NI,NL);
+test_limit(Input, Limit, LimitFun) ->
+    BI = calendar:valid_date(Input),
+    BL = calendar:valid_date(Limit),
+    if BI and BL ->
+	    GI = calendar:date_to_gregorian_days(Input),
+	    GL = calendar:date_to_gregorian_days(Limit),
+	    LimitFun(GI,GL);
        true -> false
-    end, 
+    end.
     
-    %change: List -> Tuple
-    {Result,Inp}.
-
-
-
 convert(N, Len) ->
     case integer_to_list(N) of
         List when length(List) >= Len ->
@@ -251,16 +235,30 @@ smonth(2) -> "Feb";
 smonth(3) -> "Mar";
 smonth(4) -> "Apr";
 smonth(5) -> "May";
-smonth(6) -> "June";
-smonth(7) -> "July";
+smonth(6) -> "Jun";
+smonth(7) -> "Jul";
 smonth(8) -> "Aug";
 smonth(9) -> "Sep";
 smonth(10) -> "Oct";
 smonth(11) -> "Nov";
 smonth(12) -> "Dec".
 
+smonth_to_int("Jan") -> 1;
+smonth_to_int("Feb") -> 2;
+smonth_to_int("Mar") -> 3;
+smonth_to_int("Apr") -> 4;
+smonth_to_int("May") -> 5;
+smonth_to_int("Jun") -> 6;
+smonth_to_int("Jul") -> 7;
+smonth_to_int("Aug") -> 8;
+smonth_to_int("Sep") -> 9;
+smonth_to_int("Oct") -> 10;
+smonth_to_int("Nov") -> 11;
+smonth_to_int("Dec") -> 12;
+smonth_to_int(_) -> bad_month.
+    
 month(1) -> "January";
-month(2) -> "Febuary";
+month(2) -> "February";
 month(3) -> "March";
 month(4) -> "April";
 month(5) -> "May";
@@ -269,8 +267,22 @@ month(7) -> "July";
 month(8) -> "August";
 month(9) -> "September";
 month(10) -> "October";
-month(11) -> "Novmber";
+month(11) -> "November";
 month(12) -> "December".
+
+month_to_int("January") -> 1;
+month_to_int("February") -> 2;
+month_to_int("March") -> 3;
+month_to_int("April") -> 4;
+month_to_int("May") -> 5;
+month_to_int("June") -> 6;
+month_to_int("July") -> 7;
+month_to_int("August") -> 8;
+month_to_int("September") -> 9;
+month_to_int("October") -> 10;
+month_to_int("November") -> 11;
+month_to_int("December") -> 12;
+month_to_int(_) -> bad_month.
 
 sday(1) -> "Mon";
 sday(2) -> "Tue";
@@ -281,6 +293,15 @@ sday(6) -> "Sat";
 sday(7) -> "Sun";
 sday(D) -> sday(calendar:day_of_the_week(D)).
 
+sday_to_int("Mon") -> 1;
+sday_to_int("Tue") -> 2;
+sday_to_int("Wed") -> 3;
+sday_to_int("Thu") -> 4;
+sday_to_int("Fri") -> 5;
+sday_to_int("Sat") -> 6;
+sday_to_int("Sun") -> 7;
+sday_to_int(_) -> bad_day.
+
 day(1) -> "Monday";
 day(2) -> "Tuesday";
 day(3) -> "Wednesday";
@@ -289,3 +310,12 @@ day(5) -> "Friday";
 day(6) -> "Saturday";
 day(7) -> "Sunday";
 day(D) -> day(calendar:day_of_the_week(D)).
+
+day_to_int("Monday") -> 1;
+day_to_int("Tuesday") -> 2;
+day_to_int("Wednesday") -> 3;
+day_to_int("Thursday") -> 4;
+day_to_int("Friday") -> 5;
+day_to_int("Saturday") -> 6;
+day_to_int("Sunday") -> 7;
+day_to_int(_) -> bad_day.

@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author Michal Zajda <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -46,11 +45,31 @@ validate({Types, Input}) ->
 	true ->
 	    {ok, Input};
 	false ->
-            %TODO: make actual validation
-            if Input =/= undefined ->  {ok, Input};
-               true -> {error, {empty_input, Input}}
+            if 
+				Input =/= undefined ->  
+		    		check_choices(Types, Input);
+               true -> 
+		    		{error, {empty_input, Input}}
             end
     end;
 
 validate(Input) -> {error, {it_is_not_enum_value, Input}}.
 	    
+check_choices(Types, Input) ->
+    case lists:keysearch(choices, 1, Types) of
+	{_, {_, Choices}} ->
+	    case lists:member(Input, prepare_choices(Choices)) of
+		true ->
+		    {ok, Input};
+		false ->
+		    {error, {no_such_enum_value, Input}}
+	    end;
+	_ ->
+	    {ok, Input}
+    end.
+
+prepare_choices(String) ->
+    lists:map(fun prepare_choices1/1, string:tokens(String, [$|])).
+    
+prepare_choices1(String) ->
+    hd(string:tokens(String, [$:])).

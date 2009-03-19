@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,28 +25,31 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = attribute_getter("name", "no_name_password", E),
-    Class = attribute_getter("class", "", E),
-
-    #xmlText{value=get_html_tag(Name, Class),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
+    
+    #xmlText{value=get_html_tag(Attrs),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, _) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class), Description).
+    Attrs0 = wpart:normalize_html_attrs([{confirm, proplists:get_value(confirm, Params, false)} |
+					 proplists:get_value(html_attrs, Params, [])]),
+    Attrs = [{"name", N} | proplists:delete("name", Attrs0)],
+    
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs), Description).
 
-attribute_getter(Name, Default, E) ->
-    case wpartlib:has_attribute("attribute::" ++ Name, E) of
-	false -> Default;
-	Val -> Val
-    end.
-
-get_html_tag(Name, Class) ->
-    [{_, Part}] = ets:lookup(templates, {wpart, password}),
-    wpart_gen:build_html(Part, [Name, Class]).
+get_html_tag(Attrs) ->
+    Field = wpart_gen:build_html(wpart_gen:tpl_get(password), 
+				 [{"html", wpart:proplist2html(proplists:delete("confirm", Attrs))}]),
+    
+    case proplists:get_value("confirm", Attrs, "false") of
+	"false" ->
+	    Field;
+	_ ->
+	    Field ++ Field
+    end. 
 
 load_tpl() ->
     wpart_gen:load_tpl(password,

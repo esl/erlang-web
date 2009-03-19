@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -50,8 +49,8 @@ validate({Types,Input}) ->
 	true ->
 	    {ok, Input};
 	false ->
-		case catch list_to_float(Input) of 
-		    Flt when is_float(Flt) -> 
+		case string:to_float(Input) of 
+		    {Flt, []} -> 
 			case check_min(Flt, Types) of
 			    {ok, Flt} ->
 				case check_max(Flt, Types) of
@@ -60,7 +59,23 @@ validate({Types,Input}) ->
 				end;
 			    ErrorMin -> ErrorMin
 			end;
-		    _ -> {error, {not_float, Input}}
+		    {error, no_float} ->
+			case string:to_integer(Input) of
+			    {Int, []} ->
+				Flt1 = Int * 1.0,
+				case check_min(Flt1, Types) of
+				    {ok, Flt1} ->
+					case check_max(Flt1, Types) of
+					    {ok, Flt1} -> {ok, Flt1};
+					    ErrorMax -> ErrorMax
+					end;
+				    ErrorMin -> ErrorMin
+				end;
+			    _ ->
+				{error, {not_float, Input}}
+			end;
+		    _ -> 
+			{error, {not_float, Input}}
 		end
     end.
 

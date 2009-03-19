@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,55 +25,50 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-%% @doc wpart:autocomplete complete:"something1,something2"
-%% generates javascript function to talk with jquery.js and jquery.autocomplete.js
-%% (not included in the head section by this wpart!).
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs1 = wpart:xml2proplist(Attrs0),
+    Attrs = [{"complete", string:tokens(proplists:get_value(complete, Attrs1, ""), [$|])} |
+	     proplists:delete("complete", Attrs1)],
 
-handle_call(E) ->
-    Name = attribute_getter("name", "no_name_auto", E),
-    Complete = attribute_getter("complete", "", E),
-    Class = attribute_getter("class", "", E),
-
-    #xmlText{value=get_html_tag(Name, Class, Complete, ""),
-	     type=cdata}.
+    #xmlText{value = get_html_tag(Attrs, ""),
+	     type = cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
-    Complete = case lists:keysearch(complete, 1, Params) of
-		  false -> [];
-		  {value, {complete, List}} -> List
-	      end,
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N,Class,Complete,D),Description).
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", N}, {"complete", proplists:get_value(complete, Params, [])} | 
+	     proplists:delete("name", Attrs0)],
+    
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
 		    
-attribute_getter(Name, Default, E) ->
-    case wpartlib:has_attribute("attribute::" ++ Name, E) of
-	false -> Default;
-	Val -> Val
-    end.
-
-get_html_tag(Name, Class, Complete, Default) ->
-    Result = if 
-		 Complete =/= "" ->
-		     Args = string:tokens(Complete, "|"),
-		     tl(lists:foldl(fun(X,Acc) -> Acc ++ ",'" ++ X ++ "'" end, "", Args));
-		 true -> ""
-	     end,
-
-    [{_, Parts1}] = ets:lookup(templates, {wpart, autocomplete}),
-    [{_, Parts2}] = ets:lookup(templates, {wpart, autocomplete_input_id}),
-    wpart_gen:build_html(Parts1, [Name, Name, Result]) ++
-	wpart_gen:build_html(Parts2, [Name, Class, Name, Default]).
+get_html_tag(Attrs, Default) ->
+    Complete = case proplists:get_value("complete", Attrs) of
+		   [] ->
+		       "";
+		   Strings ->
+		       tl(lists:foldl(fun(X, Acc) ->
+					      Acc ++ ",'" ++ X ++ "'"
+				      end, "", Strings))
+	       end,
+    		       
+    wpart_gen:build_html(wpart_gen:tpl_get(autocomplete), 
+			 [{"complete", Complete},
+			  {"name", proplists:get_value("name", Attrs, "")}]) ++
+	wpart_gen:build_html(wpart_gen:tpl_get(autocomplete_input_id),
+			     [{"html", wpart:proplist2html([{"id", proplists:get_value("name", Attrs, "")} | 
+							    proplists:delete("complete", Attrs)])},
+			      {"value", Default}]).
+    
+load_tpl() ->
+    wpart_gen:load_tpl(autocomplete,
+		       filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),
+    wpart_gen:load_tpl(autocomplete_input_id,
+		       filename:join([code:priv_dir(wparts),"html","input_id.tpl"])).
 
 load_tpl() ->
-    {ok, Binary} = file:read_file(filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),
-    {ok, List} = regexp:split(binary_to_list(Binary), "<% *slot *%>"),
-    
-    ets:insert(templates, {{wpart, autocomplete}, List}),
-
-    {ok, Binary1} = file:read_file(filename:join([code:priv_dir(wparts),"html","input_id.tpl"])),
-    {ok, List1} = regexp:split(binary_to_list(Binary1), "<% *slot *%>"),
-    
-    ets:insert(templates, {{wpart, autocomplete_input_id}, List1}).
+    wpart_gen:load_tpl(autocomplete,
+		       filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),
+    wpart_gen:load_tpl(autocomplete_input_id,
+		       filename:join([code:priv_dir(wparts),"html","input_id.tpl"])).

@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,64 +25,54 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = wpartlib:attribute("attribute::name", "", E),
-    Class = wpartlib:attribute("attribute::class", "", E),
-
-    #xmlText{value=get_html_tag(Name, Class, ""), type=cdata}.
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
+    
+    #xmlText{value=get_html_tag(Attrs, ""),
+	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N,Class,D), Description).
 
-get_html_tag(Name, Class, Default) ->
-    Dict = wpart:fget(Name),
-    Dis = if 
-	      Dict == "readonly" -> 
-		  "readonly=\"readonly\"";
-	      true -> 
-		  ""
-	  end,
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Delimiter = proplists:get_value(delimiter, Params, ","),
+    Attrs = [{"name", N}, {"delimiter", Delimiter} | proplists:delete("name", Attrs0)],
 
-    Ready = if 
-	length(Default) > 0 ->
-	    [H|_T] = Default,
-	    To_Join = case H of
-		{_Date,_Time} -> [wtype_datetime:format("Stamp",Tuple) || Tuple <- Default];
-		{_Y,_M,_D} -> 
-			      case calendar:valid_date(H) of
-				  true ->
-				      [wtype_date:get_date( "DD SMONTH YYYY", List) || List <- Default];
-				  false ->
-				      case wtype_time:is_valid_time(H) of
-					  true ->[ 
-						   string:join
-						    (lists:map
-						     (fun(X) -> 
-							      integer_to_list(X) 
-						      end , 
-						      tuple_to_list(In)),
-						     ":")
-						   ||
-						     In <- Default
-							];
-					  false ->    
-						  Default
-				      end	       
-			      end;
-	        _Val -> Default
-	    end,
-	    tl(lists:concat([lists:concat([",",X]) || X <- To_Join]));
-	true ->
-	    Default
-    end,
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
 
-    [{_, Parts}] = ets:lookup(templates, {wpart, csv}),
-    wpart_gen:build_html(Parts, [Name, Class, Dis, Ready]).
+get_html_tag(Attrs, Default) ->
+    Ready = get_default(proplists:get_value("delimiter", Attrs, ","), Default),
+    
+    wpart_gen:build_html(wpart_gen:tpl_get(csv),
+			 [{"html", wpart:proplist2html(proplists:delete("delimiter", Attrs))},
+			  {"value", Ready}]).
 
+get_default(Delimiter, Defaults) when length(Defaults) > 0 ->
+    string:join(case hd(Defaults) of
+		    {_D, _T} -> %% a datetime
+			[wtype_datetime:format("Stamp", Tuple) || Tuple <- Defaults];
+		    {_, _, _} = DT -> %% date or time
+			case calendar:valid_date(DT) of
+			    true ->
+				[wtype_date:get_date("DD SMONTH YYYY", List) || List <- Defaults];
+			    false ->
+				case wtype_time:is_valid_time(DT) of
+				    true ->
+					[string:join(lists:map(fun integer_to_list/1, 
+							       tuple_to_list(In)), 
+						     [$:]) || In <- Defaults];
+				    false ->
+					Defaults
+				end
+			end;
+		    _ ->
+			Defaults
+		end, Delimiter);
+get_default(_Delimiter, Defaults) ->
+    Defaults.
+		   
 load_tpl() ->
     wpart_gen:load_tpl(csv,
-		       filename:join([code:priv_dir(wparts),"html","string.tpl"])).
+		       filename:join([code:priv_dir(wparts),"html","csv.tpl"])).

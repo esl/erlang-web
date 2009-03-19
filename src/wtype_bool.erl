@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author  <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -26,40 +25,31 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(_Format, XML) -> XML.
+handle_call(_Format, true) ->
+    "true";
+handle_call(_Format, false) ->
+    "false";
+handle_call(_Format, #xmlText{value=Val}) -> 
+    #xmlText{value=handle_call(not_used, Val)}.
 
-validate({Types, undefined}) ->
+validate({Types, Val}) ->
     case wpart_valid:is_private(Types) of
 	true ->
-	    {ok, undefined};
-        false ->
-            case lists:keysearch(optional, 1, Types) of
-		{value, {optional, Default}} -> 
-                    {ok, Default};
-		_ ->  
-                    {error, {empty_input, undefined}}
-            end
-    end;
-
-validate({Types, Input}) ->
-    case wpart_valid:is_private(Types) of
-	true ->
-	    {ok, Input};
-	_ ->
-	    Val = if
-		      Input == undefined -> false;
-		      true -> true
-		  end,
-
+	    {ok, Val =/= undefined};
+    false ->
 	    case lists:keysearch(always, 1, Types) of
-		{value, {always, Truth}} ->
+		{_, {_, Bool}} ->
 		    if
-			Truth == Val ->
-			    {ok, Val};
+			Val == undefined, Bool == false ->
+			    {ok, false};
+			Val == undefined, Bool == true ->
+			    {error, {bad_bool_value, Val}};
+			Bool == false ->
+			    {error, {bad_bool_value, Val}};
 			true ->
-			    {error, {bad_bool_value, Val}}
+			    {ok, true}
 		    end;
 		_ ->
-		    {ok, Val}
+		    {ok, Val =/= undefined}
 	    end
     end.

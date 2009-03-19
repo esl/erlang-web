@@ -14,55 +14,49 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
-%%% 
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(wpart_upload).
 -behaviour(wpart).
 
 -export([handle_call/1, build_html_tag/4, load_tpl/0]).
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = wpartlib:attribute("attribute::name", "no_name_file", E),
-    Class = wpartlib:attribute("attribute::class", "", E),
-
-    #xmlText{value=get_html_tag(Name, Class, ""),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
+    
+    #xmlText{value=get_html_tag(Attrs, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", N} | proplists:delete("name", Attrs0)],
 
-get_html_tag(Name, Class, Default) ->
-    [{_, Part1}] = ets:lookup(templates, {wpart, upload}),
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
 
-    if
-	Default == undefined orelse Default == [] ->
-	    wpart_gen:build_html(Part1, [Name, Class, ""]);
-	true ->
-	    [{_, Part2}] = ets:lookup(templates, {wpart, upload_edit}),
-
-	    "docroot" ++ Path = Default,
-
-	    wpart_gen:build_html(Part1, [Name, Class,
-					 wpart_gen:build_html(Part2, [Path, Path])])
-    end.
-
+get_html_tag(Attrs, Default) when Default == undefined; Default == [] ->
+    wpart_gen:build_html(wpart_gen:tpl_get(upload),
+			 [{"html", wpart:proplist2html(Attrs)}]);
+get_html_tag(Attrs, Default) ->
+    Path = case Default of
+	       "docroot" ++ P ->
+		   P;
+	       Else ->
+		   Else
+	   end,
+	       
+    wpart_gen:build_html(wpart_gen:tpl_get(upload),
+			 [{"html", wpart:proplist2html(Attrs)},
+			  {"comment", wpart_gen:build_html(wpart_gen:tpl_get(upload_edit),
+							   [{"path", Path}])}]).
+    
 load_tpl() ->
-    {ok, Binary} = file:read_file(filename:join([code:priv_dir(wparts),"html","upload_edit.tpl"])),
-    {ok, List} = regexp:split(binary_to_list(Binary), "<% *slot *%>"),
-    
-    ets:insert(templates, {{wpart, upload_edit}, List}),
-    
-    {ok, Binary1} = file:read_file(filename:join([code:priv_dir(wparts),"html","upload.tpl"])),
-    {ok, List1} = regexp:split(binary_to_list(Binary1), "<% *slot *%>"),
-    
-    ets:insert(templates, {{wpart, upload}, List1}).
+    wpart_gen:load_tpl(upload_edit, 
+		       filename:join([code:priv_dir(wparts),"html","upload_edit.tpl"])),
+    wpart_gen:load_tpl(upload, 
+		       filename:join([code:priv_dir(wparts),"html","upload.tpl"])).

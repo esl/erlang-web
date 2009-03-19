@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -47,18 +46,33 @@ validate({Types, String}) when is_list(String) ->
 	true ->
 	    {ok, String};
 	false ->
-	    case check_min_length(String, Types) of
-		{ok, String} ->
-		    case check_max_length(String, Types) of
-			{ok, String} -> 
-			    {ok, String};
-			ErrorMax -> 
-			    ErrorMax
+	    case check_confirm(String, Types) of
+		{ok, NString} ->
+		    case check_min_length(NString, Types) of
+			{ok, NString} ->
+			    case check_max_length(NString, Types) of
+				{ok, NString} -> 
+				    check_regexp(NString, Types);
+				ErrorMax -> 
+				    ErrorMax
+			    end;
+			ErrorMin -> ErrorMin
 		    end;
-		ErrorMin -> ErrorMin
+		ErrorConfirm ->
+		    ErrorConfirm
 	    end
     end.
 
+check_confirm(String, Types) ->
+    check_confirm0(String, proplists:get_value(confirm, Types, false)).
+
+check_confirm0(String, false) ->
+    {ok, String};
+check_confirm0([String, String], true) when is_list(String) ->
+    {ok, String};
+check_confirm0(String, _) ->
+    {error, {passwords_do_not_match, String}}.
+    
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
@@ -84,5 +98,18 @@ check_max_length(String, Types) ->
 		    {ok, String}
 	    end;
 	_ -> 
+	    {ok, String}
+    end.
+
+check_regexp(String, Types) ->
+    case lists:keysearch(regexp, 1, Types) of
+	{value, {regexp, Regexp}} ->
+	    case re:run(String, Regexp) of
+		{match, _} ->
+		    {ok, String};
+		nomatch ->
+		    {error, {regexp_does_not_match, String}}
+	    end;
+	_ ->
 	    {ok, String}
     end.

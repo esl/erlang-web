@@ -47,7 +47,10 @@ format(_, X) when is_list(X) ->
     X;
 
 format(Format,{Date, Time}) ->
-    format(Format, {Date, Time}, []).
+    format(Format, {Date, Time}, []);
+
+format(_, _) ->
+    "".
 
 format({Date, Time}) ->
     format("YYYY-MM-DD HH:MM:SS", {Date, Time}, []).

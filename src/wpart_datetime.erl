@@ -26,28 +26,35 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = wpartlib:attribute("attribute::name", "no_name_datetime", E),
-    Class = wpartlib:attribute("attribute::class", "", E),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
     
-    #xmlText{value=get_html_tag(Name, Class, {date(), time()}),
+    #xmlText{value=get_html_tag(Attrs, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Format = proplists:get_value(format, Params, "YYYY-MM-DD"),
+    Attrs = [{"name", N}, {"format", Format} | proplists:delete("name", Attrs0)],
 
-get_html_tag(Name, Class, Default) ->
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
+
+get_html_tag(Attrs, Default) ->
     DateTime = if
-	           Default == "" -> "";
-	           true ->  wtype_datetime:format("Stamp",Default)
+	           Default == "" -> 
+		       "";
+	           true ->
+		       Format = proplists:get_value(format, Attrs, "YYYY-MM-DD HH:NN:SS"),
+		       wtype_datetime:format(Format, Default)
 	       end,
     
-    [{_, Parts}] = ets:lookup(templates, {wpart, datetime}),
-    wpart_gen:build_html(Parts, [Name, Class, DateTime]).
+    wpart_gen:build_html(wpart_gen:tpl_get(datetime), 
+			 [{"html", wpart:proplist2html(
+				     proplists:delete("format", Attrs))},
+			  {"value", DateTime}]).
 
 load_tpl() ->
     wpart_gen:load_tpl(datetime,

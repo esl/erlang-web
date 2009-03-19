@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,51 +25,53 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = attribute_getter("name", "no_name_enum", E),
-    Choices = attribute_getter("choices", "", E),
-    Class = attribute_getter("class", "", E),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
+
+    Chosen = proplists:get_value("chosen", Attrs, ""),
     
-    #xmlText{value=get_html_tag(Name, Class, Choices, ""),
+    #xmlText{value=get_html_tag(Attrs, Chosen),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
-    Choices = case lists:keysearch(choices, 1, Params) of
-		  false -> [];
-		  {value, {choices, List}} -> List
-	      end,
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class, Choices, D), 
-				      Description).
-		    
-attribute_getter(Name, Default, E) ->
-    case wpartlib:has_attribute("attribute::" ++ Name, E) of
-	false -> Default;
-	Val -> Val
-    end.
+    Chosen = if
+		 D == [] ->
+		     proplists:get_value(chosen, Params, []);
+		 true ->
+		     D
+	     end,
 
-%% tag should looks like:
-%% <wpart:enum name="language" choices="english:English,my:My\ Lang"\>
-get_html_tag(Name, Class, ChoicesString, Default) ->
-    [{_, Part}] = ets:lookup(templates, {wpart, enum}),
+    Choices = proplists:get_value(choices, Params, ""),
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", N}, {"choices", Choices} | proplists:delete("name", Attrs0)],
+
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, Chosen), Description).
+		    
+get_html_tag(Attrs0, Default) ->
+    Enum = wpart_gen:tpl_get(enum),
+
+    ChoicesString = proplists:get_value("choices", Attrs0, ""),
+    Attrs = proplists:delete("choices", Attrs0),
 
     Inserter = fun(String, Acc) ->
-		       {ok, [Value, Desc]} = regexp:split(String, ":"),
-		       Checked = if
-				     Value == Default -> 
-					 "checked=\"checked\"";
-				     true -> ""
-				 end,
-		       Acc ++ wpart_gen:build_html(Part, [Name, Class, Value, Checked, Desc])
+		       [Value, Desc] = string:tokens(String, ":"),
+		       CheckedAttrs = if
+					  Value == Default -> 
+					      [{"checked", "checked"} | Attrs];
+					  true ->
+					      Attrs
+				      end,
+		       Acc ++ wpart_gen:build_html(Enum, [{"html", wpart:proplist2html(CheckedAttrs)},
+							  {"value", Value},
+							  {"desc", Desc}])
 	       end,
 
-    {ok, Choices} =  regexp:split(ChoicesString, "|"),
-    case Choices of 
-	[[]] -> "No choices loaded.";
-	_ -> lists:foldl(Inserter, "", Choices)
+    case string:tokens(ChoicesString, [$|]) of 
+	    [] -> "No choices loaded.";
+	    Tokens -> lists:foldl(Inserter, "", Tokens)
     end.
 
 load_tpl() ->

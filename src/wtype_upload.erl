@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author Michal Ptaszek  <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -25,13 +24,77 @@
 -export([handle_call/2, validate/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
+-include_lib("kernel/include/file.hrl").
 
 handle_call(_Format, XML) -> 
     XML.
 
-validate({_Types, undefined}) ->
-    {ok, undefined};
+-spec(validate/1 :: ({list(), undefined | string()}) -> {ok, undefined | string()} | {error, {bad_extension | too_big, string()}}).	     
+validate({Types, undefined}) ->
+    case wpart_valid:is_private(Types) of
+	true -> {ok, undefined};
+        false ->
+            case lists:keysearch(optional, 1, Types) of
+		{value, {optional, Default}} -> 
+                    {ok, Default};
+		_ ->  
+                    {ok, undefined}
+            end
+    end;
 validate({_Types, []}) ->
     {ok, undefined};
-validate({_Types, File}) -> 
-    {ok, File}.
+validate({Types, File}) -> 
+    case wpart_valid:is_private(Types) of
+	true ->
+	    {ok, File};
+	false ->
+	    case check_extension(Types, File) of
+		{ok, File} ->
+		    check_max_size(Types, File);
+		ErrorExt ->
+		    ErrorExt
+	    end
+    end.
+
+-spec(check_extension/2 :: (list(), string()) -> {ok, string()} | {error, {bad_extension, string()}}).
+check_extension(Types, File) ->
+    case lists:keysearch(extensions, 1, Types) of
+	{value, {extensions, Exts}} ->
+	    case lists:any(fun(Ext) ->
+				   lists:suffix(string:to_lower(Ext), 
+						string:to_lower(File))
+			   end, Exts) of
+		true ->
+		    {ok, File};
+		false ->
+		    {error, {bad_extension, File}}
+	    end;
+	false ->
+	    {ok, File}
+    end.
+
+-spec(check_max_size/2 :: (list(), string()) -> {ok, string()} | {error, {too_big, string()}}).	     
+check_max_size(Types, File) ->
+    case lists:keysearch(max_size, 1, Types) of
+	{value, {max_size, Size}} ->
+	    {ok, FileInfo} = file:read_file_info(File),
+	    CSize = convert_size(Size),
+	    if
+		FileInfo#file_info.size > CSize ->
+		    {error, {too_big, File}};
+		true ->
+		    {ok, File}
+	    end;		    
+	false ->
+	    {ok, File}
+    end.
+
+-spec(convert_size/1 :: (integer() | {integer(), atom()}) -> integer()).
+convert_size({Size, bytes}) ->
+    Size;
+convert_size({Size, kbytes}) ->
+    Size bsl 10;
+convert_size({Size, mbytes}) ->
+    Size bsl 20;
+convert_size(Size) ->
+    Size.

@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,31 +25,27 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = wpartlib:attribute("attribute::name", "no_name_string", E),
-    Class = wpartlib:attribute("attribute::class", "", E),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
     
-    #xmlText{value=get_html_tag(Name, Class, ""),
+    #xmlText{value=get_html_tag(Attrs, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D), Description).
+    
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", N} | proplists:delete("name", Attrs0)],
+    
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, wtype_html:htmlize(D)), 
+				      Description).
 
-get_html_tag(Name, Class, Default) ->
-    Dict = wpart:fget(Name),
-    Dis = if 
-	      Dict == "readonly" -> 
-		  "readonly=\"readonly\"";
-	      true ->
-		  ""
-	  end,
-
-    [{_, Parts}] = ets:lookup(templates, {wpart, string}),
-    wpart_gen:build_html(Parts, [Name, Class, Dis, Default]).
+get_html_tag(Attrs, Default) ->
+    wpart_gen:build_html(wpart_gen:tpl_get(string), 
+			 [{"html", wpart:proplist2html(Attrs)}, 
+			  {"value", Default}]).
 
 load_tpl() ->
     wpart_gen:load_tpl(string,

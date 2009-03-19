@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,36 +25,35 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
-    Name = wpartlib:attribute("attribute::name", "no_name_date", E),
-    Class = wpartlib:attribute("attribute::class", "", E),
+handle_call(#xmlElement{attributes = Attrs0}) ->
+    Attrs = wpart:xml2proplist(Attrs0),
     
-    #xmlText{value=get_html_tag(Name, Class, "", []),
+    #xmlText{value=get_html_tag(Attrs, ""),
 	     type=cdata}.
 
 build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
-    Class = proplists:get_value(class, Params, ""),
-    wpart_derived:surround_with_table(N, get_html_tag(N, Class, D, Params), Description).
 
-%% TODO - fetch date format from params!!
-get_html_tag(Name, Class, Default, Params) ->
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Format = proplists:get_value(format, Params, "YYYY-MM-DD"),
+    Attrs = [{"name", N}, {"format", Format} | proplists:delete("name", Attrs0)],
+
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
+
+get_html_tag(Attrs, Default) ->
     Date = if
 	       Default == "" -> 
 		   "";
 	       true -> 
-		   case lists:keysearch(format, 1, Params) of
-		       {value, {_, Format}} ->
-			   wtype_date:get_date(Format, Default);
-		       _ ->
-			   wtype_date:get_date("YYYY-MM-DD", Default)
-		   end
+		   Format = proplists:get_value(format, Attrs, "YYYY-MM-DD"),
+		   wtype_date:get_date(Format, Default)
 	   end,
 
-    [{_,Parts}] = ets:lookup(templates, {wpart, date}),
-    wpart_gen:build_html(Parts, [Name, Class, Date]).
+    wpart_gen:build_html(wpart_gen:tpl_get(date),
+			 [{"html", wpart:proplist2html(proplists:delete("format", Attrs))},
+			  {"value", Date}]).
 
 load_tpl() ->
     wpart_gen:load_tpl(date, 

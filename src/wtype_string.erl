@@ -13,23 +13,23 @@
 %% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2008,
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
+%%%-------------------------------------------------------------------
+%%% @author Michal Ptaszek <info@erlang-consulting.com>
+%%% @doc 
+%%% @end
+%%%-------------------------------------------------------------------
 -module(wtype_string).
 -behaviour(wtype).
 
--author("support@erlang-consulting.com").
--copyright("Erlang Training & Consulting Ltd.").
--vsn("$Rev").
-
 -include_lib("xmerl/include/xmerl.hrl").
-%% API
--export([handle_call/2,validate/1]).
+
+-export([handle_call/2, validate/1]).
 
 handle_call(_Format, #xmlText{value=String}) ->
     #xmlText{value=String};
 handle_call(_Format, String) when is_list(String) ->
     String.
 
-%TODO: handle optional in rest of types. This one is the only one for now.
 validate({Types,undefined}) -> 
     case wpart_valid:is_private(Types) of
 	true ->
@@ -52,11 +52,17 @@ validate({Types,String}) when is_list(String) ->
 		{ok, String} ->
 		    case check_max_length(String, Types) of
 			{ok, String} -> 
-			    check_html(String, Types);
+			    case check_regexp(String, Types) of
+					{ok, String} ->
+					    check_html(String, Types);
+					ErrorRegexp ->
+				  	  ErrorRegexp
+			    end;
 			ErrorMax -> 
 			    ErrorMax
 		    end;
-		ErrorMin -> ErrorMin
+		ErrorMin -> 
+		    ErrorMin
 	    end
     end.
 
@@ -85,6 +91,19 @@ check_max_length(String, Types) ->
 		    {ok, String}
 	    end;
 	_ -> 
+	    {ok, String}
+    end.
+
+check_regexp(String, Types) ->
+    case lists:keysearch(regexp, 1, Types) of
+	{value, {regexp, Regexp}} ->
+	    case re:run(String, Regexp) of
+		{match, _} ->
+		    {ok, String};
+		nomatch ->
+		    {error, {regexp_does_not_match, String}}
+	    end;
+	_ ->
 	    {ok, String}
     end.
 

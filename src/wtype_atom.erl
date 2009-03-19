@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev: 541 $
 %%% @author Michal Slaski <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -37,7 +36,7 @@ validate({_, Atom}) when is_atom(Atom) ->
 validate({_, String}) ->
     case catch list_to_existing_atom(String) of
         {'EXIT',{badarg,_}} ->
-            {error, not_existing};
+            {error, {not_existing, String}};
         Atom ->
             {ok, Atom}
     end.
