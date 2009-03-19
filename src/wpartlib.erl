@@ -15,9 +15,9 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : wpartlib.erl
-%%% Author  : Martin <info@erlang-consulting.com>
-%%% Description : 
-%%%
+%%% @author Martin Carlson <martin@erlang-consulting.com>
+%%% @doc Module with helper functions used within wpart application.
+%%% @end
 %%%-------------------------------------------------------------------
 -module(wpartlib).
 
@@ -40,9 +40,12 @@
 %%====================================================================
 %% API
 %%====================================================================
+%% @see wpart:select/2
+-spec(select/2 :: (string(), tuple()) -> term()).	     
 select(Path, #xmlElement{} = E) ->
     xmerl_xs:select(Path, E).
-	    
+%% @see wpart:has_attribute/2
+-spec(has_attribute/2 :: (string(), tuple()) ->	false | string()).	     
 has_attribute(Path, #xmlElement{} = E) ->
     case xmerl_xs:select(Path, E) of
 	[#xmlAttribute{value = Value}] ->
@@ -51,6 +54,13 @@ has_attribute(Path, #xmlElement{} = E) ->
 	    false
     end.
     
+%%
+%% @spec attribute(XPath :: string(), XMLElement :: tuple()) -> Value :: string()
+%% @doc Retrives the attribute value from the XML element.
+%% When the wanted parameter is not present, <i>erlang:error/1</i>
+%% is called.
+%% 
+-spec(attribute/2 :: (string(), tuple()) -> string() | none()).	     
 attribute(Path, #xmlElement{} = E) ->
     case xmerl_xs:select(Path, E) of
 	[#xmlAttribute{value = Value}] ->
@@ -59,6 +69,8 @@ attribute(Path, #xmlElement{} = E) ->
 	    erlang:error({Path, not_set})
     end.
 
+%% @see wpart:has_attribute/3
+-spec(attribute/3 :: (string(), term(), tuple()) -> term()).	     
 attribute(Path, Default, E) ->
     case xmerl_xs:select(Path, E) of
 	[#xmlAttribute{value = Value}] ->
@@ -67,6 +79,8 @@ attribute(Path, Default, E) ->
 	    Default
     end.
 
+%% @see wpart:format/2
+-spec(format/2 :: (term(), tuple()) -> term()).	     
 format(Value, E) ->
     case has_attribute("attribute::format", E) of
         false ->
@@ -75,6 +89,9 @@ format(Value, E) ->
             wtype:format(Format, Value)
     end.
 
+%% @hidden
+%% @FIXME - wrong?
+-spec(search/1 :: (term()) -> term()).	     
 search(Value) ->
     search(Value, []).
 
@@ -90,12 +107,16 @@ search(Value, [Token|Tokens]) when is_list(Value) ->
 search(_,_) ->
     undefined.
 
+%% @see wpart:eval_file/2
+-spec(eval_file/2 :: (string(), string()) -> list(string()) | string()).	     
 eval_file(File, XPath) ->
     eval(xmerl_xs:select(XPath, eptic:read_file(File))).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+%% @see wpart:eval/1
+-spec(eval/1 :: (tuple() | list(tuple())) -> tuple() | list(tuple())).	     
 eval(#xmlElement{nsinfo = {"wpart", Operator}} = E) ->
     Mod = list_to_atom("wpart_" ++ Operator),
     Attr = expand_attributes(E#xmlElement.attributes),
@@ -110,6 +131,7 @@ eval([H|T]) ->
 eval(E) ->
     E.
 
+-spec(expand_attributes/1 :: (list()) -> list()).	     
 expand_attributes([]) ->
     [];
 expand_attributes([#xmlAttribute{namespace = {"wpart", N}, value = V}|T]) ->
@@ -121,9 +143,11 @@ expand_attributes([#xmlAttribute{namespace = {"wpart", N}, value = V}|T]) ->
 expand_attributes([A|T]) ->
     [A|expand_attributes(T)].
 
+-spec(expand_string/1 :: (string()) -> string()).	     
 expand_string(S) ->
     expand_string(S, [], [[]]).
 
+-spec(expand_string/3 :: (string(), list(), list()) -> string()).	     
 expand_string([], _, [Acc0|Acc]) ->
     lists:flatten(lists:reverse([lists:reverse(Acc0)|Acc]));
 expand_string([${, H|T], _, [Acc0|Acc]) ->
@@ -146,10 +170,12 @@ expand_string([H|T], [], [Acc0|Acc]) ->
 expand_string([H|T], Acc0, Acc) ->
     expand_string(T, [H|Acc0], Acc).
 
+-spec(substitute_erl/3 :: (string(), string(), string()) -> string()).	     
 substitute_erl(Erl, From, To) ->
     {ok, NewErl, _} = regexp:gsub(Erl, From, To),
     NewErl.
 
+-spec(decode_erl/1 :: (string()) -> string()).	     
 decode_erl(Code) ->
     lists:foldl(fun({From, To}, Erl) ->
 			substitute_erl(Erl, From, To)

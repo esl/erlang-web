@@ -15,9 +15,9 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : wtpl.erl
-%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% Description : 
-%%%
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Template engine main module.
+%%% @end
 %%%-------------------------------------------------------------------
 
 -module(wtpl).
@@ -26,6 +26,8 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 %% @doc The same as build_template(E, []).
+%% @see build_template/2
+-spec(build_template/1 :: (tuple()) -> string()).    
 build_template(E) ->
     build_template(E, []).
 
@@ -77,12 +79,14 @@ build_template(E) ->
 %% </li>
 %% </ul>
 %% <br/></p>
+-spec(build_template/2 :: (string() | tuple(), list()) -> string()).	     
 build_template(Filename, Contents) when is_list(Filename) ->
     E = e_cache:read_file(Filename),
     build_template(E, Contents);
 build_template(E, Contents) ->
     wpart_xs:process_xml(expand(E, Contents)).
 
+-spec(expand/2 :: (tuple(), list()) -> tuple()).	     
 expand(#xmlElement{name = 'wtpl:parent'} = E, Contents) ->
     E2 = E#xmlElement{content = fill_slots(E, Contents)},
     Slots = xmerl_xs:select("descendant::wtpl:content", E2),
@@ -118,13 +122,13 @@ expand(#xmlElement{name = 'wtpl:include'} = E, Contents) ->
 expand(E, Contents) ->
     E#xmlElement{content = fill_slots(E#xmlElement.content, Contents)}.
 
+-spec(fill_slots/2 :: (list(tuple()) | tuple(), list()) -> list()).	     
 fill_slots([#xmlElement{name = 'wtpl:include'} = E | Rest], Contents) ->
     Name = wpartlib:attribute("attribute::name", E),
     {value, {_, Val}} = lists:keysearch(Name, 1, Contents),
 
     [Val | fill_slots(Rest, Contents)];
-fill_slots([#xmlElement{content = C} = E | Rest], Contents)
-  when length(C) == 0 ->
+fill_slots([#xmlElement{content = []} = E | Rest], Contents) ->
     [E | fill_slots(Rest, Contents)];
 fill_slots([#xmlElement{content = C} = E | Rest], Contents) ->
     [E#xmlElement{content = fill_slots(C, Contents)} | 

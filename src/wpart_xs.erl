@@ -13,6 +13,11 @@
 %% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2008,
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
+%%%-------------------------------------------------------------------
+%%% @author Martin Carlson <martin@erlang-consulting.com>
+%%% @doc Module responsible for template expanding.
+%%% @end
+%%%-------------------------------------------------------------------
 -module(wpart_xs).
 
 -include_lib("xmerl/include/xmerl.hrl").
@@ -20,6 +25,12 @@
 
 -export([process_xml/1, template/1]).
 
+%%
+%% @spec process_xml(XMLStructure :: tuple()) -> HTML :: list(string())
+%% @doc Processes the XML structure accoring to the built-in rules.
+%% Expands the wpart and wtpl tags.
+%%
+-spec(process_xml/1 :: (tuple()) -> list(string())).
 process_xml(E) ->
     case application:get_env(wpart, master) of
         {ok, Template} ->
@@ -29,10 +40,13 @@ process_xml(E) ->
             template(E)
     end.
 
+-spec(doctype/0 :: () -> string()).	     
 doctype()->
     "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\
     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n".    
 
+%% @hidden
+-spec(template/1 :: (tuple() | list(tuple())) -> list(string()) | string()).
 template(#xmlElement{name = 'html'} = E) ->
     ["<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
      doctype(),
@@ -58,6 +72,7 @@ template(E) when is_list(E) ->
 template(E) ->
     built_in_rules(fun template/1, E).
 
+-spec(export_tag/3 :: (atom(), list(tuple()), list()) -> list(string()) | string()).	     
 export_tag(Name, Attributes, []) ->
     [$<, atom_to_list(Name), export_attributes(Attributes), $/,$>];
 export_tag(Name, Attributes, Content) ->
@@ -66,14 +81,21 @@ export_tag(Name, Attributes, Content) ->
      xslapply(fun template/1, Content), 
      $<,$/, StrName, $>].
 
+-spec(export_attributes/1 :: (list(tuple())) -> list(string()) | string()).
 export_attributes([]) ->
     [];
 export_attributes([#xmlAttribute{namespace = {"wpart", N}, value = V}|A]) ->
     export_attributes([#xmlAttribute{name = list_to_atom(N),
 				     value = wpartlib:expand_string(V)}|A]);
 export_attributes([#xmlAttribute{name = Name, value = Value}|A]) ->
-    [$ , atom_to_list(Name), $=, $", Value, $"|export_attributes(A)].
+    %% Value is a list of Unicode codepoints.  We need to convert that
+    %% to UTF-8.
+    {ok, EncodedValue} = utf8:to_binary(lists:flatten(Value)),
+    %% And we need to use entities for & and ".
+    EntitifiedValue = entitify(EncodedValue),
+    [$ , atom_to_list(Name), $=, $", EntitifiedValue, $"|export_attributes(A)].
 
+-spec(built_in_rules/2 :: (fun(), tuple()) -> list(string()) | string()).	     
 built_in_rules(Fun, E = #xmlElement{})->
     lists:map(Fun, E#xmlElement.content);
 built_in_rules(_, E = #xmlText{type=pcdata}) ->
@@ -81,8 +103,40 @@ built_in_rules(_, E = #xmlText{type=pcdata}) ->
 built_in_rules(_, E = #xmlText{type=cdata}) -> %% Depricated
     E#xmlText.value;
 built_in_rules(_Fun, E = #xmlText{}) ->
-    xmerl_lib:export_text(E#xmlText.value);
+    %% Whoa!  Let's take this slowly.
+    %%
+    %% When xmerl parses a piece of XML, the text of the elements are
+    %% not strings, but lists of Unicode codepoints (i.e. lists of
+    %% integers that may be > 255).  We need to encode that to UTF-8
+    %% before sending it.
+    %%
+    %% But for the case type=cdata above, we do not encode.  The
+    %% wparts that return such things have either built these strings
+    %% without access to material from xmerl, or has passed this
+    %% material through wpart_xs:template already.  Therefore it is
+    %% safe not to encode that text; it would actually be harmful to
+    %% do it.
+    {ok, B} = utf8:to_binary(lists:flatten(xmerl_lib:export_text(E#xmlText.value))),
+    B;
 built_in_rules(_Fun, E = #xmlAttribute{}) ->
     E#xmlAttribute.value;
 built_in_rules(_Fun, _E) ->[].
 
+%% @doc Translate ampersands, single quotes and double quotes to XML
+%% entities.
+-spec entitify(binary()) -> iolist().
+entitify(B) ->
+    entitify(B, []).
+entitify(<<>>, Acc) ->
+    lists:reverse(Acc);
+entitify(<<$&:8, Rest/binary>>, Acc) ->
+    NewAcc = ["&amp;"|Acc],
+    entitify(Rest, NewAcc);
+entitify(<<34:8, Rest/binary>>, Acc) ->
+    NewAcc = ["&quot;"|Acc],
+    entitify(Rest, NewAcc);
+entitify(<<39:8, Rest/binary>>, Acc) ->
+    NewAcc = ["&apos;"|Acc],
+    entitify(Rest, NewAcc);
+entitify(<<C:8, Rest/binary>>, Acc) ->
+    entitify(Rest, [C|Acc]).

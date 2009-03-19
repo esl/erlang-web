@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : validate_tool.erl
-%%% Author  : Michal Zajda <michal.zajda@erlang-consulting.com>
+%%% @author  : Michal Zajda <michal.zajda@erlang-consulting.com>
 %%% Description : 
 %%%
 %%%-------------------------------------------------------------------
@@ -25,8 +25,9 @@
 -export([replace_primary/4, do_validate_ok/3, do_validate_ok/4, 
 	 do_validate_error/4, do_validate_error/5]).
 
-%% @edoc Create Update validation, retrieves all fields declared in record.
+%% @doc Create Update validation, retrieves all fields declared in record.
 %% WARNING: sets primarykey to undefined! not -1.
+-spec(validate_cu/2 :: (atom(), atom()) -> {ok, tuple()} | {error, not_valid | {atom(), integer()}}).
 validate_cu(Type, Fun) ->
     Mod = list_to_atom("wtype_" ++ atom_to_list(Type)),
 
@@ -45,10 +46,11 @@ validate_cu(Type, Fun) ->
             do_validate_error(Mod,Reason,Fun,Type,ParentType)
     end.
 
-
+-spec(do_validate_ok/3 :: (list(), atom(), atom()) -> {ok, tuple()}).
 do_validate_ok(List,Mod,Type) ->
     do_validate_ok(List,Type, Mod,Type).
 
+-spec(do_validate_ok/4 :: (list(), atom(), atom(), atom()) -> {ok, tuple()}).     
 do_validate_ok(List,Type,Mod,ParentType) ->
     Fields = apply(Mod, get_record_info, [Type]),
 
@@ -63,9 +65,11 @@ do_validate_ok(List,Type,Mod,ParentType) ->
     FinalTuple = list_to_tuple([ParentType] ++ Final),
     {ok, FinalTuple}.
 
+-spec(do_validate_error/4 :: (atom(), term(), atom(), atom()) -> {error, not_valid | {atom(), integer()}}).	     
 do_validate_error(Mod,Reason,Fun,Type) ->
     do_validate_error(Mod,Reason, Fun, Type, Type).
 
+-spec(do_validate_error/5 :: (atom(), term(), atom(), atom(), atom()) -> {error, not_valid | {atom(), integer()}}). 
 do_validate_error(Mod,Reason,Fun,Type,ParentType) ->
     Fields = apply(Mod, get_record_info, [Type]),
 
@@ -82,6 +86,7 @@ do_validate_error(Mod,Reason,Fun,Type,ParentType) ->
 	P -> {error, {Fun, list_to_integer(P)}}
     end.
 
+-spec(replace_primary/4 :: (list(), undefined | integer(), atom(), atom()) -> {error, no_primary_key} | list()).	     
 replace_primary(Result,undefined,_Mod,_Type) ->
     Result;
 replace_primary(Result,Pr,Mod,Type) ->
@@ -94,12 +99,14 @@ replace_primary(Result,Pr,Mod,Type) ->
      end,
      Final.
 
+-spec(replace_elem/3 :: (list(), integer(), integer()) -> list()).
 replace_elem(Result,Pr,No) ->
    {Front, Back} = lists:split((No - 1),Result),
    [_H|T] = Back,
    NewBack = [Pr|T],
    Front ++ NewBack.
 
+-spec(find_primary/3 :: (list(), integer(), atom()) -> {ok | false, integer()}).
 find_primary([],No,ok) ->
     {ok,No};
 find_primary([],No,false)->
@@ -111,16 +118,17 @@ find_primary(Rest,No,_OK) ->
        true -> find_primary(T,No+1,false)
     end.
 
+-spec(get_values/3 :: (atom(), list(), list()) -> {list(string()), list(string())}).	     
 get_values(Type,Fields,List) ->
     TypeS = atom_to_list(Type),
     post_get(TypeS,Fields,List,[],[]).
 
+-spec(post_get/5 :: (string(), list(), list(), list(string()), list(string())) -> {list(string()), list(string())}).	     
 post_get(_Type,[],_List,R,Reason_list) ->
     {R,Reason_list};
 
 %% TODO: refactor
 post_get(TypeS,[H|Next],List,R,Reason_list) ->
-
    Field = atom_to_list(H),
    LongName = TypeS ++ "_" ++ Field,
     

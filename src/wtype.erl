@@ -14,10 +14,21 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author Martin Carlson <info@erlang-consulting.com>
-%%% @doc 
-%%% 
+%%% @author Martin Carlson <martin@erlang-consulting.com>
+%%% @doc Behaviour module for wtypes.
+%%% The <i>wtype</i> behaviour defines two callback functions:
+%%% <ul>
+%%% <li><i>handle_call(Format, Value)</i> - converts the passed <i>Value</i>
+%%% according to the <i>Format</i>. It is used when the value kept in 
+%%% request dictionary must be preformated before embedding in the view
+%%% (like integer -> string convertions).</li>
+%%% <li><i>validate({Types, Input})</i> - does the actual validation. Function
+%%% takes the <i>Types</i> - list of the parameters describing and limiting 
+%%% the <i>Input</i>. It must return either <i>{ok, NewInput}</i> (where
+%%% <i>NewInput</i> might be transformed <i>Input</i> - like convertion
+%%% from string to integer in case of wtype_integer) or <i>{error, Reason}</i>.
+%%% The <i>Reason</i> will be passed to the caller.</li>
+%%% </ul>
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wtype).
@@ -29,12 +40,15 @@
 %%====================================================================
 %% API
 %%====================================================================
+%% @hidden
 behaviour_info(callbacks) ->
     [{handle_call, 2},
      {validate, 1}];
 behaviour_info(_Other) ->
     undefined.
 
+%% @see wpart:format/2
+-spec(format/2 :: (string(), term()) -> string()).	     
 format(Format0, Value) ->
     case string:tokens(Format0, "[]") of
         ["io"|_] = Type0 ->
@@ -51,6 +65,7 @@ format(Format0, Value) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+-spec(parse_format/1 :: (string()) -> {string(), string()}).	     
 parse_format(Str) ->
     Offset = string:chr(Str, $(),
     End = string:chr(Str, $)) - Offset,

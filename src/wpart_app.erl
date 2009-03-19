@@ -15,28 +15,36 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : wpart_app.erl
-%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% Description : 
-%%%
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Application and supervisor callback module for wpart application.
+%%% The wpart application loads all the tpls and starts the wpart
+%%% supervisor. <br/>
+%%% If any of the possible ecomponents needs the supervisor, it should 
+%%% attach its process to the wpart supervisor (it is registered locally
+%%% under the <i>wpart</i> name).
+%%% @end
 %%%-------------------------------------------------------------------
 
 -module(wpart_app).
 -export([start/2, stop/1]).
 -export([init/1]).
 
+-define(SUPERVISOR_NAME, wpart).
+
 -behaviour(application).
 -behaviour(supervisor).
 
--define(SUPERVISOR, wpart).
-
+%% @hidden
 start(_, _) ->
     ets_tables_install(),
 
-    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
+    supervisor:start_link({local, ?SUPERVISOR_NAME}, ?MODULE, []).
 
+%% @hidden
 stop(_) ->
     ok.
 
+%% @hidden
 init([]) ->
     {ok, {{one_for_one, 1, 10}, []}}.
 
@@ -44,6 +52,7 @@ init([]) ->
 %% Internal functions
 %%====================================================================
 
+-spec(ets_tables_install/0 :: () -> ok).	     
 ets_tables_install() ->
     {ok, [TypesT]} = file:consult(filename:join([code:priv_dir(wparts),"basic_types.conf"])),
     Types = tuple_to_list(TypesT),

@@ -15,21 +15,34 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : wpart_db.erl
-%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% Description : 
-%%%
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Module responsible for transforming record entity representation to the format accepted by the form generator.
+%%% Because the form generator expects the proplist of the fields
+%%% to display, the record structure must be transformed to the new
+%%% format. Moreover, wpart_db deals with the long name generation:
+%%% if records are nested, then the paths to the particular fields must
+%%% be unambiguous.<br/>
+%%% The result of the runnning build_record_structure should be stored
+%%% under <i>"__edit"</i> field in the request dictionary.
+%%% @end
 %%%-------------------------------------------------------------------
 
 -module(wpart_db).
--export([build_record_structure/2,build_record_structure/3]).
-%-export([save/3]).
+-export([build_record_structure/2, build_record_structure/3]).
 
 -include_lib("stdlib/include/qlc.hrl").
 
-build_record_structure(Name, Number) when is_integer(Number)
-					  andalso is_atom(Name) ->
+%%
+%% @spec build_record_structure(Name :: atom(), PrimaryKey :: integer()) -> FieldsProplist :: list(tuple())
+%% @doc Rebuilds the list of the fields.
+%% The record is read straight from the database - the <i>PrimaryKey</i>
+%% is used for that reason.
+%%
+-spec(build_record_structure/2 :: (atom(), integer()) -> list(tuple())).	     
+build_record_structure(Name, Number) when is_integer(Number), is_atom(Name) ->
     build_record_structure(Name, Number, atom_to_list(Name)).
 
+-spec(find_primary_key/1 :: (list(tuple())) -> false | integer()).
 find_primary_key([]) ->
     false;
 find_primary_key([{_, Attrs} | Rest]) ->
@@ -38,10 +51,17 @@ find_primary_key([{_, Attrs} | Rest]) ->
 	true -> length(Rest)
     end.
 
+%%
+%% @FIXME remove the mnesia read code - it is completely incompatible with the latest 
+%% framework version
+%% @spec build_record_structure(Name :: atom(), Type :: atom() | integer(), Record :: term()) -> list(tuple())
+%% @doc Rebuilds the record structure.
+%% If the <i>Type</i> parameter is set to <i>initial</i> the content
+%%
+-spec(build_record_structure/3 :: (atom(), atom() | integer(), term()) -> list(tuple())).	     
 build_record_structure(Name, initial, Explicite) when is_atom(Name) ->
     eptic:fset("initial", Explicite),
     build_record_structure(Name, notused, atom_to_list(Name));
-
 build_record_structure(Name, Number, Prefix) ->
     NameString = atom_to_list(Name),
 
@@ -82,6 +102,7 @@ build_record_structure(Name, Number, Prefix) ->
 
     expand(Zipped, Types).
       
+-spec(expand/2 :: (list(), list()) -> list(tuple())).	     
 expand(List, Types) ->
     Zipped = lists:zip(Types, List),
     Checker = fun({{Type, _}, {Name, Val}}, Acc) ->

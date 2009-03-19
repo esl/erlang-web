@@ -14,11 +14,11 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author Martin Carlson <info@erlang-consulting.com>
+%%% @author Martin Carlson <martin@erlang-consulting.com>
 %%% @doc 
 %%% 
 %%% @end
+%%% @hidden
 %%%-------------------------------------------------------------------
 -module(wpart_master).
 
