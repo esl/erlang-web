@@ -50,7 +50,7 @@
 	 eval/1,
 	 format/2,
 	 eval_file/2,
-     expand_string/1,
+	 expand_string/1,
 	 search/2,
 	 search/1,
 	 finsert/2,

@@ -114,7 +114,8 @@ built_in_rules(_Fun, E = #xmlText{}) ->
     B;
 built_in_rules(_Fun, E = #xmlAttribute{}) ->
     E#xmlAttribute.value;
-built_in_rules(_Fun, _E) ->[].
+built_in_rules(_Fun, _E) ->
+    [].
 
 %% @doc Translate ampersands, single quotes and double quotes to XML
 %% entities.
