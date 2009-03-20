@@ -133,7 +133,7 @@ create_boot_file(RelVsn) ->
     erl_tar:extract("releases/" ++ RelVsn ++ "/start.tar.gz", [compressed]).
 
 create_sys_config_file(RelVsn, yaws) ->
-    YawsConfig = "config/yaws.config",
+    YawsConfig = "config/yaws.conf",
     file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
     confirm_created(YawsConfig),
     

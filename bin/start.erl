@@ -45,6 +45,7 @@ start(Server) ->
     create_rel_file(Info, Server),
 
     generate_boot_file(),
+    copy_conf_files(),
     create_sys_config_file(Server),
     
     copy_escripts(RootDir).
@@ -56,7 +57,7 @@ inform_exists(Name) ->
     io:format("Element exists, skipping: ~s~n", [Name]).
 
 handle_error(Reason) ->
-    io:format("An error has occured: ~s~n", [Reason]).
+    io:format("An error has occured: ~p~n", [Reason]).
 
 create_start_dirs() ->
     Creator = fun(X) ->
@@ -272,14 +273,31 @@ create_start_erl_data({Version, _}) ->
 create_basic_config_files() ->
     conf_dispatcher(),
     conf_errors(),
-    conf_project().
+    conf_project(),
+    conf_autocomplete().
 
 conf_dispatcher() ->
     Filename = filename:join(["config", "dispatch.conf"]),
 
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    io:format(Fd, "{static, \"[/]*\", \"welcome.html\"}.", []),
+	    io:format(Fd, "%%~n"
+		      "%% ENTRIES FOR THE AUTOCOMPLETE WPART~n"
+		      "%%~n", []),
+
+	    Entries = [{static, "^/autocomplete\.css$", enoent},
+		       {static, "^/jquery\.autocomplete\.js$", enoent},
+		       {static, "^/jquery\.js$", enoent},
+		       {static, "^/indicator\.gif$", enoent}],
+	    lists:foreach(fun(Entry) ->
+				  io:format(Fd, "~p.~n", [Entry])
+			  end, Entries),
+
+	    io:format(Fd, "~n%%~n"
+		      "%% WELCOME PAGE~n"
+		      "%%~n"
+		      "~p.~n", [{static, "^/?$", "welcome.html"}]),
+
 	    file:close(Fd),
 	    confirm_created(Filename);
 	{error, Reason} ->
@@ -345,6 +363,19 @@ conf_project() ->
 	    handle_error(Reason)
     end.
 
+conf_autocomplete() ->
+    Wparts = code:priv_dir(wparts),
+    lists:foreach(fun(File) ->
+			  Dest = filename:join(["docroot", File]),
+			  case file:copy(filename:join([Wparts, File]), Dest) of
+			      {ok, _} ->
+				  confirm_created(Dest);
+			      {error, Reason} ->
+				  handle_error({Dest, Reason})
+			  end
+		  end, ["autocomplete.css", "indicator.gif", "jquery.autocomplete.js", 
+			"jquery.js"]).
+
 create_welcome_page() ->
     Filename = filename:join(["templates", "welcome.html"]),
 
@@ -409,15 +440,24 @@ generate_boot_file() ->
     
     erl_tar:extract("releases/0.1/start.tar.gz", [keep_old_files, compressed]).
 
-create_sys_config_file(yaws) ->
+copy_conf_files() ->
     YawsConfig = "config/yaws.conf",
     file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
     confirm_created(YawsConfig),
-    
+
+    MimeTypes = "docroot/conf/mime.types",
+    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
+    confirm_created(MimeTypes),
+
+    InetsConfig = "config/inets.conf",
+    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
+    confirm_created(InetsConfig).
+
+create_sys_config_file(yaws) ->
     Filename = "releases/0.1/sys.config",
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    Content = [{yaws, [{conf, YawsConfig}]}],
+	    Content = [{yaws, [{conf, "config/yaws.conf"}]}],
 	    io:format(Fd, "~p.~n", [Content]),
 	    confirm_created(Filename),
 	    file:close(Fd);
@@ -425,18 +465,10 @@ create_sys_config_file(yaws) ->
 	    handle_error(Reason)
     end;
 create_sys_config_file(inets) ->
-    MimeTypes = "docroot/conf/mime.types",
-    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
-    confirm_created(MimeTypes),
-
-    InetsConfig = "config/inets.conf",
-    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
-    confirm_created(InetsConfig),
-
     Filename = "releases/0.1/sys.config",
     case file:open(Filename, [write]) of
 	{ok, Fd} ->
-	    Content = [{inets, [{services, [{httpd, InetsConfig}]}]}],
+	    Content = [{inets, [{services, [{httpd, "config/inets.conf"}]}]}],
 	    io:format(Fd, "~p.~n", [Content]),
 	    confirm_created(Filename),
 	    file:close(Fd);
@@ -450,7 +482,8 @@ copy_escripts(RootDir) ->
 	    ok;
 	{ok, _} ->
 	    Files = [filename:join(["bin", "compile.erl"]),
-		     filename:join(["bin", "add.erl"])],
+		     filename:join(["bin", "add.erl"]),
+		     filename:join(["bin", "e_component.erl"])],
 	    
 	    file:copy(filename:join(RootDir, "Emakefile"), "Emakefile"),
 	    confirm_created("Emakefile"),
