@@ -67,8 +67,3 @@ load_tpl() ->
     wpart_gen:load_tpl(autocomplete_input_id,
 		       filename:join([code:priv_dir(wparts),"html","input_id.tpl"])).
 
-load_tpl() ->
-    wpart_gen:load_tpl(autocomplete,
-		       filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),
-    wpart_gen:load_tpl(autocomplete_input_id,
-		       filename:join([code:priv_dir(wparts),"html","input_id.tpl"])).
