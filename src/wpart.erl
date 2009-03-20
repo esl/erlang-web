@@ -56,7 +56,7 @@
 	 finsert/2,
 	 xml2proplist/1,
 	 proplist2html/1,
-	 normalize_html_attrs/1
+	 normalize_html_attrs/1,
 	 fdelete/1
 	]).
 -export([behaviour_info/1]).

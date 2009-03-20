@@ -32,13 +32,7 @@
 %%
 -spec(process_xml/1 :: (tuple()) -> list(string())).
 process_xml(E) ->
-    case application:get_env(wpart, master) of
-        {ok, Template} ->
-            eptic:fset("wpart_xs_view", E),
-            template(eptic:read_file(Template));
-        undefined ->
-            template(E)
-    end.
+    template(E).
 
 -spec(doctype/0 :: () -> string()).	     
 doctype()->
