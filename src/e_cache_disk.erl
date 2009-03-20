@@ -23,7 +23,7 @@
 -module(e_cache_disk).
 
 %% API
--export([read_file/1]).
+-export([read_file/2]).
 
 -type(xmlElement() :: term()).
 
@@ -32,7 +32,7 @@
 %%====================================================================
 
 %%
-%% @spec read_file(Filename :: string()) -> term()
+%% @spec read_file(Filename :: string(), Expander :: atom()) -> term()
 %% @doc Reads the file from disk cache.
 %% If the file has not been cached or the original one has changed, 
 %% the cache will be read once again.<br/>
@@ -40,11 +40,11 @@
 %% created, the <b>erlang:error({Reason, File})</b> is called.
 %% @end
 %%
--spec(read_file/1 :: (string()) -> xmlElement() | no_return()).	     
-read_file(File) ->
+-spec(read_file/2 :: (string(), atom()) -> xmlElement() | no_return()).	     
+read_file(File, Expander) ->
     case valid_cache(File) of
 	false ->
-	    cache(File);
+	    cache(File, Expander);
 	true ->
 	    Filename = [e_conf:cache_dir(), "/",
 			wpart_lang:get_lang_list(), "/",
@@ -60,8 +60,8 @@ read_file(File) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
--spec(cache/1 :: (string()) -> xmlElement() | no_return()).   
-cache(File) ->
+-spec(cache/2 :: (string(), atom()) -> xmlElement() | no_return()).   
+cache(File, xmerl_xs) ->
     XML = case xmerl_scan:file(File, []) of
 	      {error, enoent} ->
 		  case xmerl_scan:file(e_conf:template_root() ++ "/" ++ File, []) of

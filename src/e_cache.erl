@@ -18,35 +18,34 @@
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc Interface module for managing both: 
 %%% <ul>
-%%%  <li>Xmerl parsed structures</li>
+%%%  <li>XML parsed structures</li>
 %%%  <li>Generic frontend content</li>
 %%% </ul>
-%%% The Xmerl parsed structure cache implementation could be changed
+%%% The XML parsed structure cache implementation could be changed
 %%% in the <i>project.conf</i> file, by placing a proper parameter:
-%%% <i>{xmerl_cache, <b>Type</b>}</i> where <b>Type</b> is either
+%%% <i>{template_cache, <b>Type</b>}</i> where <b>Type</b> is either
 %%% <i>disk</i> or <i>ets</i> (by default it is set to <i>ets</i>).
 %%% @end
 %%%-------------------------------------------------------------------
 -module(e_cache).
-
 -export([read_file/1, install/0]).
 
 %%
-%% @spec read_file(Filename :: string()) -> XmerlStructure :: term()
-%% @doc Returns the content of the file parsed by the xmerl parser.
+%% @spec read_file(Filename :: string()) -> XmlStructure :: term()
+%% @doc Returns the content of the file parsed by the chosen XML parser.
 %% If the file content is not found in the cache, the file is read and
 %% put there.
 %% @end
 %%
 -spec(read_file/1 :: (string()) -> term()).	     
 read_file(Filename) ->
-    Mod = e_conf:xmerl_cache_mod(),
-    Mod:read_file(Filename).
+    Mod = e_conf:template_cache_mod(),
+    Mod:read_file(Filename, e_conf:template_expander()).
 
 %% @hidden
 -spec(install/0 :: () -> none()).	     
 install() ->
-    case e_conf:xmerl_cache_mod() of
+    case e_conf:template_cache_mod() of
 	e_cache_ets ->
 	    e_cache_ets:install();
 	_ ->

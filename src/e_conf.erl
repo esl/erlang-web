@@ -28,7 +28,7 @@
 -export([primitive_types/0, debug_mode/0, fe_servers/0]).
 -export([http_port/0, https_port/0, project_name/0]).
 -export([couchdb_address/0, dbms/0, server_root/0]).
--export([ecomponents/0, xmerl_cache_mod/0]).
+-export([ecomponents/0, template_cache_mod/0]).
 -export([get_conf/1, get_conf/2, set_conf/2]).
 
 %%====================================================================
@@ -120,11 +120,11 @@ load_conf(Filename) ->
 	    ets:insert(?MODULE, {upload_dir, filename:join([server_root(), "docroot", Dir])})
     end,
 
-    case ets:lookup(?MODULE, xmerl_cache_mod) of
+    case ets:lookup(?MODULE, template_cache_mod) of
 	[{_, disk}] ->
-	    ets:insert(?MODULE, {xmerl_cache_mod, e_cache_disk});
+	    ets:insert(?MODULE, {template_cache_mod, e_cache_disk});
 	_ ->
-	    ets:insert(?MODULE, {xmerl_cache_mod, e_cache_ets})
+	    ets:insert(?MODULE, {template_cache_mod, e_cache_ets})
     end,
     
     DBMS = case lists:keysearch(dbms, 1, Ext) of
@@ -328,17 +328,17 @@ dbms() ->
     element(2, application:get_env(eptic, dbms)).
 
 %%
-%% @spec xmerl_cache_mod() -> CacheModule :: atom()
-%% @doc Returns the name of the callback module for the xmerl records cache.
-%% Xmerl scanned files are stored either in the internal memory storage
+%% @spec template_cache_mod() -> CacheModule :: atom()
+%% @doc Returns the name of the callback module for the XML records cache.
+%% XML scanned files are stored either in the internal memory storage
 %% or on disk (in the directory specified by <i>cache_dir</i> option).<br/>
 %% The possible values are <i>ets</i> and <i>disk</i>.
 %% @see e_cache
 %% @see cache_dir/0
 %%
--spec(xmerl_cache_mod/0 :: () -> atom()).	     
-xmerl_cache_mod() ->
-    get_conf(xmerl_cache_mod, e_ets_cache).
+-spec(template_cache_mod/0 :: () -> atom()).	     
+template_cache_mod() ->
+    get_conf(template_cache_mod, e_ets_cache).
 
 %%
 %% @spec template_expander() -> TemplateExpanderCallbackModule :: atom()

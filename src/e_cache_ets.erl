@@ -16,12 +16,12 @@
 %%%-------------------------------------------------------------------
 %%% File    : e_cache_ets.erl
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
-%%% @doc Module responsible for managing the ets cached xmerl records.
+%%% @doc Module responsible for managing the ets cached XML records.
 %%% @end
 %%%-------------------------------------------------------------------
 -module(e_cache_ets).
 
--export([read_file/1, install/0]).
+-export([read_file/2, install/0]).
 -export([flush/0]).
 
 %% @hidden
@@ -29,7 +29,7 @@ install() ->
     ets:new(?MODULE, [named_table, public]).
 
 %%
-%% @spec read_file(Filename :: string()) -> term()
+%% @spec read_file(Filename :: string(), Expander :: atom()) -> term()
 %% @doc Reads the file from ets cache.
 %% If the file has not been cached or the original one has changed, 
 %% the cache will be read once again.<br/>
@@ -37,8 +37,8 @@ install() ->
 %% the <b>erlang:error({Reason, File})</b> is called.
 %% @end
 %%
--spec(read_file/1 :: (string()) -> term()).	     
-read_file(File) ->
+-spec(read_file/2 :: (string(), atom()) -> term()). 
+read_file(File, Exapnder) ->
     Filename = case filelib:is_file(File) of
 		   true ->
 		       File;
@@ -48,7 +48,7 @@ read_file(File) ->
 
     case valid_cache(Filename) of
 	false ->
-	    cache(Filename);
+	    cache(Filename, Expander);
 	CXML ->
 	    binary_to_term(CXML)
     end.
@@ -77,8 +77,8 @@ valid_cache(File) ->
 	    false
     end.
 
--spec(cache/1 :: (string()) -> term()).	     
-cache(File) ->
+-spec(cache/2 :: (string(), atom()) -> term()).	     
+cache(File, wpart_xs) ->
     XML = case xmerl_scan:file(File, []) of
 	      {error, Reason} ->
 		  erlang:error(Reason);
