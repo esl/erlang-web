@@ -39,7 +39,7 @@
 %%
 -spec(install/0 :: () -> ok).	     
 install() ->
-    application:start(inets),
+    start(),
 
     Name = e_conf:project_name(),
     Address = e_conf:couchdb_address(),

@@ -60,11 +60,9 @@ start_node(frontend, Server) ->
     
     application:start(eptic_fe);
 start_node(backend, _) ->
-    e_db:start();
+    ok;
 start_node(single_node_with_cache, Server) ->
     start_web_server(Server),
-    
-    e_db:start(),
     
     application:start(eptic_fe).
 

@@ -39,6 +39,7 @@
 %%
 -spec(install/0 :: () -> any()).	     
 install() ->
+    start(),
     mnesia:create_table(ids_tab, [{attributes, record_info(fields, id)},
 				  {disc_copies, [node()]}]).
 
