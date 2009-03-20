@@ -86,7 +86,8 @@ error_request(Code, Path) ->
 
 -spec(view/1 :: (string()) -> term()).	     
 view(View) ->
-    template(template_file(View)).
+    e_mod_gen:template(template_file(View), [], 
+		       e_conf:template_expander()).
 
 -spec(template_file/1 :: (string()) -> string()).	     
 template_file(View) ->
@@ -94,12 +95,3 @@ template_file(View) ->
 		   e_conf:template_root(),
 		   e_mod_gen:sanitize_file_name(View)
 		  ]).
-
--spec(template/1 :: (string()) -> term()).
-template(File) ->
-    case e_cache:read_file(File) of
-	{error, Error} ->
-	    e_mod_gen:error_page(404, File, {e_cache_error, Error});
-	E ->
-	    {html, wpart_xs:process_xml(E)}
-    end.
