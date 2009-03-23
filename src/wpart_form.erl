@@ -33,25 +33,34 @@ handle_call(E) ->
 
     case wpartlib:has_attribute("attribute::type", E) of 
 	false -> [];
-	Type -> case wpartlib:has_attribute("attribute::action", E) of
-		    false -> [];
-		    Action -> {XML, _} = xmerl_scan:string(build_form(Type, Action, Value)),
-			      Template = wpart_xs:template(XML),
-			      #xmlText{value=Template, 
-				       type=cdata}
-	end
+	Type -> 
+	    case wpartlib:has_attribute("attribute::action", E) of
+		false -> 
+		    [];
+		Action -> 
+		    FormType = wpart:has_attribute("attribute::form_type", "div", E),
+
+		    {XML, _} = xmerl_scan:string(build_form(FormType, Type, Action, Value)),
+		    Template = wpart_xs:template(XML),
+
+		    #xmlText{value=Template, 
+			     type=cdata}
+	    end
     end.
 
-build_form(Name, Action, Value) ->
+build_form(FormType, Name, Action, Value) ->
     Multi = check_for_multipart(Name, e_conf:primitive_types()),
     
     Multipart = if 
 		    Multi == true -> "enctype=\"multipart/form-data\"";
 		    true -> ""
 		end,
-    
-    [{_, Parts}] = ets:lookup(templates, {wpart, form}),
-    wpart_gen:build_html(Parts, [Action, Multipart, Name, Value]).
+
+    wpart_gen:build_html(wpart_gen:tpl_get(form), [{"action", Action}, 
+						   {"multipart", Multipart}, 
+						   {"type", Name}, 
+						   {"submit", Value},
+						   {"form_type", FormType}]).
 
 check_for_multipart(Name, BasicTypes) ->
     Module = list_to_atom("wtype_" ++ Name),

@@ -1,1 +1,1 @@
-<option value="<% slot %>" <% slot %> ><% slot %></option>
+<option value="<% value %>" <% html %> ><% desc %></option>

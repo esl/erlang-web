@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -26,36 +25,43 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-%TODO: needs re-writing to handle edit and dynamic feed for some options in one way.
-%      now e.g. autocomplete gets feed from dictionary and changes types attributes but edit 
-%      gets string with name to inject into wpart. We shoud have in each wpart handling 
-%      'default' attribute and this would reduce code. On edit 'engin' work also initial - so 
-%      some changes will be nesseccry.
-    
-%TODO change in tpl ~p to ~s and find into operations in strings
+-spec(handle_call/1 :: (tuple()) -> tuple()).	     
 handle_call(E) ->
     case wpartlib:has_attribute("attribute::type", E) of
-	false -> [];
+	false -> 
+	    error_logger:error_msg("~p module, error during processing the handle_call/1 function.~n"
+				   "wpart:derived tag must have the type attribute~n~n"),
+	    #xmlText{value=""};
 	Type -> 
+	    FormType = case wpartlib:has_attribute("attribute::form_type", E) of
+			   false ->
+			       undefined;
+			   Else ->
+			       list_to_atom(Else)
+		       end,
 	    Prefix = case wpartlib:has_attribute("attribute::long_name", E) of
-			 false -> "";
-			 Long -> Long ++ "_"
+			 false -> 
+			     "";
+			 Long -> 
+			     Long ++ "_"
 		     end,
-	    Inputs = build_tags(Type, Prefix),
-
+	    Inputs = build_tags(Type, FormType, Prefix),
+	    
 	    Templater = fun(Tag) ->
-                                Flatten = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" ++ Tag,
+                                Flatten = "<?xml version=\"1.0\" encoding=\"utf-8\"?><div>" ++ Tag ++ "</div>",
 				{XML, _} = xmerl_scan:string(Flatten),
-				wpart_xs:template(XML)
+				"<div>" ++ R = lists:flatten(wpart_xs:template(XML)),
+				">vid/<" ++ R2 = lists:reverse(R),
+				lists:reverse(R2)
 			end,
 	    Result = string:join(lists:map(Templater, Inputs), "\n"),
+
 	    #xmlText{value=Result,
 		     type=cdata}
     end.
 
 check_dict(N) ->
     case wpart:fget(N) of  
-        undefined -> true;
         "failed" -> "failed";
         _ -> true
     end.
@@ -70,18 +76,32 @@ surround_with_table(Name, Field, Description) ->
     [{_, Parts}] = ets:lookup(templates, {wpart, table_row}),
     wpart_gen:build_html(Parts, [Name, Name, Description, Err, Field]).
 
+-spec(generate_long_name/2 :: (string(), atom()) -> string()).	     
 generate_long_name(Prefix, Name) ->
     Prefix ++ atom_to_list(Name).
 
+-spec(get_description/2 :: (term(), list()) -> term()).	     
 get_description(Name, Tuples) ->
-    case lists:keysearch(description, 1, Tuples) of
-	false when is_atom(Name) -> atom_to_list(Name);
-	false -> Name;
-	{value, {description, {key, Key}}} ->
+    get_param(Name, description, Tuples).
+
+-spec(get_comment/2 :: (term(), list()) -> term()).	     
+get_comment(Name, Tuples) ->
+    get_param(Name, comment, Tuples).
+
+-spec(get_param/3 :: (term(), atom(), list()) -> term()).
+get_param(Name, Param, Params) ->
+    case lists:keysearch(Param, 1, Params) of
+	false when is_atom(Name) -> 
+	    atom_to_list(Name);
+	false -> 
+	    Name;
+	{value, {Param, {key, Key}}} ->
 	    wpart_lang:get_translation(Key);
-	{value, {description, Desc}} -> Desc
+	{value, {Param, Desc}} -> 
+	    Desc
     end.
 
+-spec(find/2 :: (term(), list()) -> term()).	     
 find(Name, List) ->
     case lists:keysearch(Name, 1, List) of
 	{value, {_, undefined}} ->
@@ -92,44 +112,38 @@ find(Name, List) ->
 	    ""
     end.
 
-%% Attributes: [{name_of_field, {choices, "choice1:Text1,choice2:Text2"}}]
-
-handle_types(Fields,Types,Attributes) -> 
-    handle_types(Fields, Types, Attributes, Fields, []).
-
-handle_types([], [], _, Fields, Types) ->
-    lists:zip(Fields, Types);
-    
-handle_types([Field|T1], [Type|T2], Attributes, Fields, New_Types) ->
-    Val = [X || X = {Name, _Att} <- Attributes, Name == Field],
-    if 
-       Val =/= [] ->
-            [{_Name, Att}] = Val,
-            {Type_name, List_Att} = Type,
-            New_Att = List_Att ++ [Att],
-            handle_types(T1, T2, Attributes, Fields, New_Types ++ [{Type_name, New_Att}]);
-       true ->
-            handle_types(T1,T2, Attributes, Fields, New_Types ++ [Type])
-    end.
-
-build_html_tag(Type, Name, Prefix, Params, Default) ->
-    case lists:member(Type, e_conf:primitive_types()) of
+-spec(build_html_tag/7 :: (atom(), atom(), string(), list(), term(), atom(), list(atom())) -> string()).	     
+build_html_tag(Type, Name, Prefix, Params, Default, FormType, Primitives) ->
+    case lists:member(Type, Primitives) of
 	true ->
-	    Module = list_to_atom("wpart_" ++ atom_to_list(Type)),
-	    Module:build_html_tag(Name, Prefix, Params, Default);
+	    build_html_tag(FormType, Type, Name, Prefix, Params, Default);
 	false ->
 	    build_html_tag(Type, Name, Prefix, Params)
     end.
 
+-spec(build_html_tag/6 :: (atom(), atom(), atom(), string(), list(), list()) -> string()).	     
+build_html_tag(FormType, Type, Name, Prefix, Params, Defaults) ->
+    Module = list_to_atom("wpart_" ++ atom_to_list(Type)),
+    LName = generate_long_name(Prefix, Name),
+    Input = Module:build_html_tag(LName, Params, find(LName, Defaults)),
+    
+    wpart_gen:build_html(wpart_gen:tpl_get(form_type(FormType)), 
+			 [{"id", LName},
+			  {"error", "Here the error for " ++ LName ++ " will be put"},%%e_error:description(LName)},
+			  {"description", get_description(Name, Params)},
+			  {"comment", get_comment(Name, Params)},
+			  {"input", Input}]).
+
+-spec(build_html_tag/4 :: (atom(), atom(), string(), list()) -> string()).	     
 build_html_tag(Type, _Name, Prefix, _Params) ->
     ListType = atom_to_list(Type),
+    
+    wpart_gen:build_html(wpart_gen:tpl_get(derived), [Prefix ++ ListType, 
+						      ListType,
+						      Prefix ++ ListType]).
 
-    [{_, Parts}] = ets:lookup(templates, {wpart, derived}),
-    wpart_gen:build_html(Parts, [Prefix ++ ListType, 
-				 ListType,
-				 Prefix ++ ListType]).
-
-build_tags(Type, Prefix) ->
+-spec(build_tags/3 :: (string(), atom(), string()) -> string()).	     
+build_tags(Type, FormType, Prefix) ->
     Default = case wpart:fget("__edit") of
 		  undefined -> [];
 		  V -> V
@@ -144,48 +158,53 @@ build_tags(Type, Prefix) ->
 		   [list_to_atom(Type)]),
     [_ | Types] = tuple_to_list(apply(Module, get_record_info,
 				      [list_to_atom(Type ++ "_types")])),
-    
-    Dynamic =  case wpart:fget("__types") of
-		  undefined -> [];
-		  V2 -> V2
-	      end,
-
-    Info = if 
-        Dynamic =/= [] -> 
-            handle_types(Fields, Types, Dynamic);
-        true -> 
-            lists:zip(Fields, Types)
-    end,
+    FormOptions = (catch Module:get_record_info(list_to_atom(Type ++ "_form"))),
 
     HtmlBuild = fun({Name, {T, Params}}, Acc) ->
-			Priv = case lists:keysearch(private, 1, Params) of
-				   {value, {private, Val}} ->
-				       Val;
-				   false ->
-				       false
-			       end,
-			
-			if
-			    Priv == false ->
-				[build_html_tag(T, Name, Prefix, 
-						Params, Default) 
+			case lists:keysearch(private, 1, Params) of
+			    false ->
+				[build_html_tag(T, Name, Prefix,
+						Params, Default,
+						FormType,
+						e_conf:primitive_types()) 
 				 | Acc];
-			    true ->
+			    _ ->
 				Acc
 			end
 		end,
-    
-    Result = lists:reverse(lists:foldl(HtmlBuild, [], Info)),
+    Result = lists:reverse(lists:foldl(HtmlBuild, [], lists:zip(Fields, Types))),
+
     if
 	PrimaryKey =/= -1 -> 
 	    ["<input type=\"hidden\" name=\"__primary_key\" value=\"" 
-		++ integer_to_list(PrimaryKey) ++ "\"/>" | Result];
-	true -> Result
+	     ++ integer_to_list(PrimaryKey) ++ "\"/>" | Result];
+	true -> 
+	    Result
     end.
 
+-spec(form_type/1 :: (atom()) -> atom()).	     
+form_type(table) ->
+    table_item;
+form_type(list) ->
+    list_item;
+form_type(paragraph) ->
+    paragraph_item;
+form_type(_) ->
+    div_item.
+
+-spec(load_tpl/0 :: () -> true).	     
 load_tpl() ->
     wpart_gen:load_tpl(derived, 
 		       filename:join([code:priv_dir(wparts),"html","derived.tpl"])),
     
-    wpart_gen:load_tpl(table_row, 
-		       filename:join([code:priv_dir(wparts),"html","table_row.tpl"])).
+    wpart_gen:load_tpl(table_item, 
+		       filename:join([code:priv_dir(wparts),"html","table_item.tpl"])),
+
+    wpart_gen:load_tpl(paragraph_item, 
+		       filename:join([code:priv_dir(wparts),"html","paragraph_item.tpl"])),
+
+    wpart_gen:load_tpl(list_item, 
+		       filename:join([code:priv_dir(wparts),"html","list_item.tpl"])),
+    
+    wpart_gen:load_tpl(div_item, 
+		       filename:join([code:priv_dir(wparts),"html","div_item.tpl"])).

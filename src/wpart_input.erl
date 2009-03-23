@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author  <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -25,19 +24,55 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(E) ->
+-spec(handle_call/1 :: (tuple()) -> tuple()).	     
+handle_call(#xmlElement{attributes = Attrs0} = E) ->
     case wpartlib:has_attribute("attribute::type", E) of
-	false -> [];
-	Type -> {XML, _} = xmerl_scan:string(build_tag(Type)),
-		Template = wpart_xs:template(XML),
-		#xmlText{value=Template,
-			 type=cdata}
+	false -> 
+	    [];
+	Type -> 
+	    FormType = case wpartlib:has_attribute("attribute::form_type", E) of
+			   false ->
+			       undefined;
+			   Else ->
+			       list_to_atom(Else)
+		       end,
+	    Attrs = wpart:xml2proplist(Attrs0),
+    
+	    {XML, _} = xmerl_scan:string(build_tag(FormType, Type, Attrs)),
+	    Template = wpart_xs:template(XML),
+	    
+	    #xmlText{value=Template,
+		     type=cdata}
     end.
 
-build_tag(Type) ->
-    Parts = wpart_gen:tpl_get(wpart, input),
-    wpart_gen:build_html(Parts, [Type, Type, Type]).
+-spec(build_tag/3 :: (atom(), string(), list()) -> string()).	     
+build_tag(FormType, Type, Attrs) ->
+    Parts = wpart_gen:tpl_get(wpart, form_type(FormType)),
+    wpart_gen:build_html(Parts, [{"id", Type}, 
+				 {"form_type", atom_to_list(FormType)},
+				 {"type", Type},
+				 {"html", wpart:proplist2html(proplists:delete("type", Attrs))}]).
 
+-spec(form_type/1 :: (atom()) -> atom()).	     
+form_type(table) ->
+    table_form;
+form_type(list) ->
+    list_form;
+form_type(paragraph) ->
+    paragraph_form;
+form_type(_) ->
+    div_form.
+
+-spec(load_tpl/0 :: () -> true).
 load_tpl() ->
-    wpart_gen:load_tpl(input, 
-		       filename:join([code:priv_dir(wparts),"html","input.tpl"])).
+    wpart_gen:load_tpl(table_form, 
+		       filename:join([code:priv_dir(wparts),"html","table_form.tpl"])),
+
+    wpart_gen:load_tpl(paragraph_form, 
+		       filename:join([code:priv_dir(wparts),"html","paragraph_form.tpl"])),
+
+    wpart_gen:load_tpl(list_form, 
+		       filename:join([code:priv_dir(wparts),"html","list_form.tpl"])),
+
+    wpart_gen:load_tpl(div_form, 
+		       filename:join([code:priv_dir(wparts),"html","div_form.tpl"])).

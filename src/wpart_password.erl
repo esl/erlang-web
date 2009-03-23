@@ -21,7 +21,9 @@
 -module(wpart_password).
 -behaviour(wpart).
 
--export([handle_call/1, build_html_tag/4, load_tpl/0]).
+-export([handle_call/1, build_html_tag/4, build_html_tag/3, load_tpl/0]).
+
+-deprecated([build_html_tag/4]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -30,6 +32,12 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
     
     #xmlText{value=get_html_tag(Attrs),
 	     type=cdata}.
+
+build_html_tag(Id, Params, _) ->
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
+    
+    get_html_tag(Attrs).
 
 build_html_tag(Name, Prefix, Params, _) ->
     N = wpart_derived:generate_long_name(Prefix, Name),

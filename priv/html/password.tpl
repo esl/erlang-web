@@ -1,1 +1,1 @@
-<input type="password" name="<% slot %>" class="<% slot %>" /><br/>
+<input type="password" <% html %> /><br/>
