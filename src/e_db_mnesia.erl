@@ -23,7 +23,6 @@
 %%% @see e_db
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(e_db_mnesia).
 -export([install/0, start/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
