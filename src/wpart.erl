@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Martin Carlson <martin@erlang-consulting.com>
 %%% @doc An interface to the Wpart application.
 %%% Only this module should be used to access the Wpart application
@@ -70,7 +69,7 @@
 behaviour_info(callbacks) ->
     [{handle_call,1},
      {load_tpl,0},
-     {build_html_tag,4}];
+     {build_html_tag,3}];
 behaviour_info(_Other) ->
     undefined.
 
