@@ -70,10 +70,10 @@ format("MONTH" ++ T, {_, Month, _} = D, Acc) ->
     format(T, D, Acc ++ month(Month));
 format("DD" ++ T, {_, _, Day} = D, Acc) ->
     format(T, D, Acc ++ convert(Day, 2));
-format("SDAY" ++ T, {_, _, Day} = D, Acc) ->
-    format(T, D, Acc ++ sday(Day));
-format("DAY" ++ T, {_, _, Day} = D, Acc) ->
-    format(T, D, Acc ++ day(Day));
+format("SDAY" ++ T, Date, Acc) ->
+    format(T, Date, Acc ++ sday(Date));
+format("DAY" ++ T, Date, Acc) ->
+    format(T, Date, Acc ++ day(Date));
 format([H|T], D, Acc) ->
     format(T, D, Acc ++ [H]);
 format([], D, []) ->
@@ -284,14 +284,18 @@ month_to_int("November") -> 11;
 month_to_int("December") -> 12;
 month_to_int(_) -> bad_month.
 
-sday(1) -> "Mon";
-sday(2) -> "Tue";
-sday(3) -> "Wed";
-sday(4) -> "Thu";
-sday(5) -> "Fri";
-sday(6) -> "Sat";
-sday(7) -> "Sun";
-sday(D) -> sday(calendar:day_of_the_week(D)).
+-spec(sday/1 :: ({integer(), integer(), integer()}) -> string()).	     
+sday(Date) ->
+    sday0(calendar:day_of_the_week(Date)).
+
+-spec(sday0/1 :: (integer()) -> string()).	     
+sday0(1) -> "Mon";
+sday0(2) -> "Tue";
+sday0(3) -> "Wed";
+sday0(4) -> "Thu";
+sday0(5) -> "Fri";
+sday0(6) -> "Sat";
+sday0(7) -> "Sun".
 
 sday_to_int("Mon") -> 1;
 sday_to_int("Tue") -> 2;
@@ -302,14 +306,17 @@ sday_to_int("Sat") -> 6;
 sday_to_int("Sun") -> 7;
 sday_to_int(_) -> bad_day.
 
-day(1) -> "Monday";
-day(2) -> "Tuesday";
-day(3) -> "Wednesday";
-day(4) -> "Thursday";
-day(5) -> "Friday";
-day(6) -> "Saturday";
-day(7) -> "Sunday";
-day(D) -> day(calendar:day_of_the_week(D)).
+-spec(day/1 :: ({integer(), integer(), integer()}) -> string()).	     
+day(Date) ->
+    day0(calendar:day_of_the_week(Date)).
+
+day0(1) -> "Monday";
+day0(2) -> "Tuesday";
+day0(3) -> "Wednesday";
+day0(4) -> "Thursday";
+day0(5) -> "Friday";
+day0(6) -> "Saturday";
+day0(7) -> "Sunday".
 
 day_to_int("Monday") -> 1;
 day_to_int("Tuesday") -> 2;

@@ -68,7 +68,7 @@ get_lang() ->
     end.
 
 get_lang_list() ->
-    case eptic:fget("session:lang") of
+    case wpart:fget("session:lang") of
 	undefined ->
 	    atom_to_list(e_conf:default_language());
 	Val ->

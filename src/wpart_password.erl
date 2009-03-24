@@ -34,7 +34,8 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
 	     type=cdata}.
 
 build_html_tag(Id, Params, _) ->
-    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs0 = wpart:normalize_html_attrs([{confirm, proplists:get_value(confirm, Params, false)} | 
+					 proplists:get_value(html_attrs, Params, [])]),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
     
     get_html_tag(Attrs).

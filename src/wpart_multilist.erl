@@ -21,7 +21,9 @@
 -module(wpart_multilist).
 -behaviour(wpart).
 
--export([handle_call/1, build_html_tag/4, load_tpl/0]).
+-export([handle_call/1, build_html_tag/4, build_html_tag/3, load_tpl/0]).
+
+-deprecated([build_html_tag/4]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -33,6 +35,31 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
     
     #xmlText{value=get_html_tag([{"preselected", Selected} | proplists:delete("selected", Attrs)], ""),
 	     type=cdata}.
+
+build_html_tag(Id, Params, Default) ->
+    D = case Default of
+            [] ->
+                [];
+            [[_|_]|_] = ListOfLists ->
+                ListOfLists;
+            [Integer|_] = ListofIntegers when is_integer(Integer) ->
+                lists:map(fun integer_to_list/1, ListofIntegers);
+            Integer when is_integer(Integer) ->
+                [integer_to_list(Integer)]
+        end,
+    Options = proplists:get_value(options, Params, []),
+    Selected = if
+		   D == [] ->
+		       proplists:get_value(selected, Params, []);
+		   true ->
+		       []
+	       end,
+    Attrs0 = wpart:normalize_html_attrs([{"options", Options},
+					 {"preselected", Selected} |
+					 proplists:get_value(html_attrs, Params, [])]),
+    Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
+    
+    get_html_tag(Attrs, D).
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),

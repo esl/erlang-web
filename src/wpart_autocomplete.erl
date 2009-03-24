@@ -21,7 +21,9 @@
 -module(wpart_autocomplete).
 -behaviour(wpart).
 
--export([handle_call/1, build_html_tag/4, load_tpl/0]).
+-export([handle_call/1, build_html_tag/4, build_html_tag/3, load_tpl/0]).
+
+-deprecated([build_html_tag/3]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -32,6 +34,14 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
 
     #xmlText{value = get_html_tag(Attrs, ""),
 	     type = cdata}.
+
+build_html_tag(Id, Params, Default) ->
+    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Attrs = [{"name", Id}, {"id", Id}, 
+	     {"complete", string:tokens(proplists:get_value(complete, Attrs0, ""), [$|])} 
+	     | proplists:delete("complete", proplists:delete("name", Attrs0))],
+    
+    get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
@@ -57,8 +67,7 @@ get_html_tag(Attrs, Default) ->
 			 [{"complete", Complete},
 			  {"name", proplists:get_value("name", Attrs, "")}]) ++
 	wpart_gen:build_html(wpart_gen:tpl_get(autocomplete_input_id),
-			     [{"html", wpart:proplist2html([{"id", proplists:get_value("name", Attrs, "")} | 
-							    proplists:delete("complete", Attrs)])},
+			     [{"html", wpart:proplist2html(proplists:delete("complete", Attrs))},
 			      {"value", Default}]).
     
 load_tpl() ->
