@@ -52,11 +52,16 @@ get_html_tag(Attrs, Default) when Default == undefined; Default == [] ->
     wpart_gen:build_html(wpart_gen:tpl_get(upload),
 			 [{"html", wpart:proplist2html(Attrs)}]);
 get_html_tag(Attrs, Default) ->
-    Path = case Default of
-	       "docroot" ++ P ->
-		   P;
-	       Else ->
-		   Else
+    Path = case lists:member($<, Default) of
+	       true ->
+		   "";
+	       false ->
+		   case Default of
+		       "docroot" ++ P ->
+			   P;
+		       Else ->
+			   Else
+		   end
 	   end,
 	       
     wpart_gen:build_html(wpart_gen:tpl_get(upload),
