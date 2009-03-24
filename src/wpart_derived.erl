@@ -126,10 +126,10 @@ build_html_tag(FormType, Type, Name, Prefix, Params, Defaults) ->
     Module = list_to_atom("wpart_" ++ atom_to_list(Type)),
     LName = generate_long_name(Prefix, Name),
     Input = Module:build_html_tag(LName, Params, find(LName, Defaults)),
-    
+
     wpart_gen:build_html(wpart_gen:tpl_get(form_type(FormType)), 
 			 [{"id", LName},
-			  {"error", "Here the error for " ++ LName ++ " will be put"},%%e_error:description(LName)},
+			  {"error", e_error:description(LName)},
 			  {"description", get_description(Name, Params)},
 			  {"comment", get_comment(Name, Params)},
 			  {"input", Input}]).
