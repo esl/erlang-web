@@ -38,7 +38,7 @@ install() ->
 %% @end
 %%
 -spec(read_file/2 :: (string(), atom()) -> term()). 
-read_file(File, Exapnder) ->
+read_file(File, Expander) ->
     Filename = case filelib:is_file(File) of
 		   true ->
 		       File;
