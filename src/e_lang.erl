@@ -89,6 +89,9 @@ list() ->
 %%
 -spec(load/0 :: () -> list(tuple())).	     
 load() ->
+    ErrorsConf = filename:join([e_conf:server_root(),
+				"config",
+				"errors_description.conf"]),
     case ets:lookup(e_conf, language_files) of
 	[] ->
 	    Default = e_conf:default_language(),
@@ -96,9 +99,9 @@ load() ->
 				    "config",
                                     "languages", 
 				    atom_to_list(Default) ++ ".conf"]),
-	    load([{Default, EnConf}]);
+	    load([{Default, EnConf}, {errors, ErrorsConf}]);
 	[{_, FileList}] ->
-	    load(FileList)
+	    load([{errors, ErrorsConf} | FileList])
     end.
 
 %% Translation file should be in format:
