@@ -451,7 +451,11 @@ copy_conf_files() ->
 
     InetsConfig = "config/inets.conf",
     file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
-    confirm_created(InetsConfig).
+    confirm_created(InetsConfig),
+    
+    ErrorsConfig = "config/errors_description.conf",
+    file:copy(code:priv_dir(eptic) ++ "/errors.conf", ErrorsConfig),
+    confirm_created(ErrorsConfig).
 
 create_sys_config_file(yaws) ->
     Filename = "releases/0.1/sys.config",
