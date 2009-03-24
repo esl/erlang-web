@@ -86,6 +86,7 @@ validate(Name, From) when is_atom(Name) ->
 pusher(Input, BasicTypes, LongBasicFields) ->
     Pairs = lists:zip(BasicTypes, Input),
     Result = lists:map(fun check/1, Pairs),
+    save_errors(LongBasicFields, Result),
     Bad = lists:keymember(error,1,Result),
     if   
 	not Bad -> {ok, show_output(Result,LongBasicFields,[])};
@@ -128,3 +129,11 @@ get_collection_fields(Name) ->
 			end
 		end, [], eptic:fget("post")).
 
+-spec(save_errors/2 :: (list(string()), list()) -> ok).	     
+save_errors([], []) ->
+    ok;
+save_errors([FieldName | RestFields], [{error, Reason} | RestResults]) ->
+    e_error:save(FieldName, Reason),
+    save_errors(RestFields, RestResults);
+save_errors([_ | RestFields], [_ | RestResults]) ->
+    save_errors(RestFields, RestResults).
