@@ -1,0 +1,25 @@
+\subsection{CAPTCHA}
+CAPTCHA = Completely Automated Public Turing test to tell Computers and Humans Apart.
+
+When we are creating our Web 2.0 service, we must somehow prevent it from bots attacks (spam/massive registration/etc.). One of the possible ways to achive that is using CAPTCHA. Having proper {\it wpart:captcha} can do a great contribution to filtering machines and human beings. 
+
+\subsection{Mailing System}
+A possibility to send e-mails right from the WWW site can simplify the service a lot. Having generic module for accessing SMTP/IMAP/POP3 servers will surely widen the spectrum of usability of our framework.
+
+\subsection{Automatic RSS Builder}
+Now RSS feeds must be built by user. However, the format of RSS is very simple and having some generic templates with builders for it is a very good idea (e.g. {\it wpart\_rss}. User will be responsible only for providing the callback function for getting (or maybe formatting) RSS items. 
+
+\subsection{Paginator}
+Displaying big collections of news/items on one site is not a good web-design practice. Probably {\it wpart:paginate} would solve that problem - it could create only the given page of the collection and render the proper buttons (links) to access other parts of it.
+
+\subsection{DB Dumper}
+DB backups should be frequent and systematic in order to avoid losing valuable data. Probably we can adopt {\it e\_backup} for that purpose. 
+
+\subsection{Support for other DBMS}
+Currently only {\it mnesia} DBMS is supported. In the future we should work on giving the possibility to talk to other databases as well. The main DBMS should be: PostgreSQL, MySQL, SQLite and CouchDB. There should be an interface module to transparently interact with databases too.
+
+\subsection{Support for other web servers}
+Currently only {\it Yaws} web server is fully supported. The second one - {\it INETS} has limited functionality: does not support {\it https} connections, session handling and big multipart requests processing. It will be a good idea to work on {\it INETS} and write some additional {\it e\_mod\_server} for {\it MochiWeb}, {\it lighttpd} and {\it Apache}.
+
+\subsection{Tool for managing the project}
+{\it start.erl} and {\it bin/start} scripts allow users to controll some actions easily. There should be at least three more scripts: for automatic building (with proper {\it .app} files modifications), for generating new applications/controllers and finally, for creating complete release (embedded system).

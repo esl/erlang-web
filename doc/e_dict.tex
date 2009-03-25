@@ -1,0 +1,112 @@
+\subsection{Request Dictionary}
+\subsubsection{Overview}
+Each request to HTTP server mod sets up \textit{request dictionary}. Its life time
+is limited only to this one request processing time and after that it is cleaned up. 
+Module which provides an API to it is {\it wparts}, however it was introduce
+only to improve handling of dictionary values. It is developers decision to
+brake framework idea of calling \emph{request dictionary} through \emph{wpart}
+application and work directly with \emph{eptic} --- it can give some
+advantages in specific situations. 
+\nlparagraph{Usage}
+In general, it is possible to set 
+\{Key, Value\} and later get those values from dictionary (they will be stored under 
+the {\it Key}). Below is presented a list of functions operating on request
+dictionary. 
+
+\subsubsection{Request dictionary API}
+\nlparagraph{Wpart API}
+\emph{Dictionary} API covers functions:\emph{ fset/2, finsert/2,
+  fget/1}. Altohough \emph{fset} takes only two arguments \{ \emph{Key},
+\emph{Value} \}  it is possible to create deeper structures. In verion 1.1 it is
+  only 2-level tree. To separate parent node from leaves in \emph{Key}
+  \emph{":"} (colon) is used. \emph{Wpart} API uses only string as keys,
+  thanks to that it is possible to call \emph{dictionary} from \emph{View}
+  application level (\emph{wpart:lookup} look for spec in Manual).  \\ \\
+How to put values into dictionary?
+\begin{description}
+  \item[fset/2] 
+\begin{Verbatim}
+      wpart:fset("SomeKey", SomeVal),
+\end{Verbatim}
+      All different values stored under \emph{Key} are in dictionary during request time.
+
+  \item[fset/2] - possible to create family of values in one table \begin{verbatim}
+      wpart:fset("List:Key",Val),
+    \end{verbatim}
+  \item[finsert/2] - analogical structure like fset but replaces values if the
+    key is the same \begin{verbatim}
+      wpart:finsert("key", Val),
+    \end{verbatim}  
+\end{description}
+\clearpage
+How to get values from dict?
+\begin{description}
+  \item[fget/1] \begin{verbatim}
+      wpart:fset("SomeKey"),
+    \end{verbatim}
+  \item [fget/1]  \begin{verbatim}
+      wpart:fget("People:Developers"),
+    \end{verbatim}
+    If there is more values under one key function returns a list of them.
+\end{description}
+\nlparagraph{Low level calls API}
+Setting values
+\begin{description}
+  \item[fset/2] 
+\begin{Verbatim}
+      eptic:fset("some key", SomeVal),
+\end{Verbatim}
+   
+    Even if some values are set under one key they are not missing. {\large\textsc{This is
+    major change from version 1.0.}} It has been implemented because HTML has some
+    tag constructions which do not allow to set name parameters in dependent
+    tags - just the cover tag has it.
+  \item[fset/3] - possible to create family of values in one table \begin{verbatim}
+      eptic:fset("list","key",Val),
+    \end{verbatim}
+  \item[finsert/2] - analogical structure like fset but replaces values if the
+    key is the same \begin{verbatim}
+      eptic:finsert("key", Val),
+    \end{verbatim}  
+\end{description}
+Recovering values
+\begin{description}
+  \item[fget/1] \begin{verbatim}
+      eptic:fset("some key"),
+    \end{verbatim}
+  \item [fget/2]  \begin{verbatim}
+      eptic:fget("post","name1"),
+    \end{verbatim}
+    If there is more values under one key function returns a list of them
+\end{description}
+\clearpage
+\subsubsection{Special cases}
+Dictionary is also used by framework. E.g. POST messages from browser go over
+it. Each message on framework side passed by request dictionary should start with double
+underscore.
+Because of backward compatibility issues some of them still are not. Below is the list of
+restricted keys. \newline \newline
+\begin{tabular}{|l|l|}
+  \hline
+  {\bf key} & {\bf description}\\
+  \hline
+  \_\_https &  Bool() \\
+  \_\_controller & current controller\\
+  post & POST\\
+  get & GET\\
+  \_\_not\_validated & record from form which failed validation\\
+  \_\_error & reason of validation failure\\
+  \_\_type & used by wpart\_page - information about whelp \\ 
+  & which  feeds wpart\_page list\\
+  \_\_types & dynamic feed for types addressed to wpart\_derived\\
+  \_\_edit & default or initial values for derived to  fill up form \\
+  session & talks to session table in ETS via {\it e\_session} \\
+  & which synchronize them \\
+  \_\_path & holds URL of current request \\
+  \_\_primary\_key & identifies values during update\\
+  \_\_cookies & list of tuples {\it \{CookieName, CookieVal\}}\\
+  & related to our service\\
+  \hline
+\end{tabular}
+
+

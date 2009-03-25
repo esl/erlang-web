@@ -1,0 +1,249 @@
+\subsection{Interesting wparts}
+\subsubsection{wpart\_choose} wpart\_choose provides {\it if} functionality in views. 
+
+During the tag expanding, wpart lookups for {\it wpart:when}s inside its body (and one optional {\it wpart:otherwise}. First {\it wpart:when} body which test evaluates to {\it true} is inserted as a {\it wpart:choose} value. Otherwise, {\it wpart:otherwise} is inserted.
+
+Because XHTML standard does not allow to use $<$ character in attribute value, we can use some substitutions of comparison operators:
+\begin{itemize}
+\item eq $\rightarrow$ =:=
+\item neq $\rightarrow$ =/=
+\item lt $\rightarrow$ $<$
+\item le $\rightarrow$ =$<$
+\item gt $\rightarrow$ $>$
+\item ge $\rightarrow$ $>$=
+\end{itemize}
+
+\paragraph{Attributes}
+\begin{description}
+\item[test]- Erlang code, which will be evaluated and the result will be compared to {\it true}
+\end{description}
+
+\paragraph{Tags}
+\begin{description}
+\item[wpart:when]- one of the {\it if's} branch - the {\it wpart:when}'s test attributes are evaluated sequentially. If its test has been evaluated to {\it true} as first, its body is inserted as a {\it wpart:choose} value
+\item[wpart:otherwise]- in case of all {\it when}s failure, its body is inserted as a return of {\it wpart:choose} expanding
+\end{description}
+
+\paragraph{Example}
+\begin{Verbatim}[numbers=left, frame=single, label=choose.html]
+...
+<wpart:choose>
+    <wpart:when test="1 + 1 == 3">
+        Impossible!
+    </wpart:when>
+    <wpart:when test="random:uniform(2) == 2">
+        Sometimes...
+    </wpart:when>
+    <wpart:otherwise>
+        Last resort!
+    </wpart:otherwise>
+</wpart:choose>
+...
+\end{Verbatim}
+
+\subsubsection{wpart\_include} wpart\_include allows to inject content of other file into view. 
+\paragraph{Attributes}
+\begin{description}
+\item[file]- specifies the path of the included file
+\item[as]- if present - inserts the content of the file into the {\it as} dictionary key
+\item[format] - if present - a format to apply to the value before printing it out. 
+\end{description}
+
+\nlparagraph{Example}
+We will insert contents of the file {\it priv/include/licence.txt} into view:
+\begin{Verbatim}[numbers=left, frame=single, label=licence.html]
+...
+  <h3>Here is out licence: </h3>
+  <pre>
+    <wpart:include file="priv/include/licence.txt" />
+  </pre>
+  <wpart:include file="priv/include/date.txt" format="YYYY-MM-DD" />
+...
+\end{Verbatim}
+
+Here is the example, how to use {\it as} attribute:
+\begin{Verbatim}[numbers=left, frame=single, label=copyright.html]
+...
+  <wpart:include file="priv/include/copyright.sig" as="copyright" />
+  This file is <wpart:lookup key="copyright" />.
+...
+  And here is another place where we are using wpart:lookup: 
+  <wpart:lookup key="copyright" />
+...
+\end{Verbatim}
+
+\subsubsection{wpart\_lang} wpart\_lang creates the possibility of building multilingual services with the same view structures. More information could be found in {\it Internationalization} section.
+\paragraph{Attributes}
+\begin{description}
+\item[key]- specifies the key that translation text should be fetched from.
+\end{description}
+
+\nlparagraph{Example}
+Here is the example explaining how to translate part of the page:
+\begin{Verbatim}[numbers=left, frame=single, label=main.html]
+...
+  <wpart:lang key="welcome" />
+...
+  <a href="login"><wpart:lang key="login:login" /></a>
+  <a href="register"><wpart:lang key="login:register" /></a>
+...
+\end{Verbatim}
+
+\subsubsection{wpart\_list} wpart\_list provides the list search/traversal functionality.
+
+\paragraph{Attributes}
+\begin{description}
+\item[select]- type of the operation. Can be {\it map}, {\it head}, {\it tail}, {\it filter}, {\it find} or {\it sort}:
+\begin{description}
+\item[map]- does a for each on the body, i.e. renders the body for all element it the list
+\item[head]- renders the body for the first element in the list
+\item[tail]- renders the body for the last element in the list
+\item[filter]- filters the list according to the {\it pred} attribute
+\item[find]- returns the first element of the list for which the {\it pred} attribute evaluates to {\it true}
+\item[sort]- sorts the list according to the {\it pred} attribute
+\end{description}
+\item[as]- inserts the content of the evaluation into the {\it as} dictionary key
+\item[list]- specifies which list in dictionary will be traversed
+\item[pred]- Erlang function definition
+\end{description}
+
+\nlparagraph{Example}
+\begin{enumerate}
+\item Print out all the elements of the list:
+\begin{Verbatim}[numbers=left, frame=single, label=map.erl]
+...
+<ul>
+  <wpart:list select="map" list="names" as="name">
+    <li><wpart:lookup key="name" /></li>
+  </wpart:list>
+</ul>
+...
+\end{Verbatim}
+\item Print out first element of the list:
+\begin{Verbatim}[numbers=left, frame=single, label=head.erl]
+...
+  <wpart:list select="head" list="line" as="first">
+    First in line: <wpart:lookup key="first" />
+  </wpart:list>
+...
+\end{Verbatim}
+\item Access the last element of the list:
+\begin{Verbatim}[numbers=left, frame=single, label=tail.erl]
+...
+<wpart:list select="tail" list="snake" as="piece">
+  <wpart:choose>
+    <wpart:when test="{piece} == rattle">
+      Aargh! It's a rattle snake! Run!
+    </wpart:when>
+    <wpart:otherwise>
+      Ooh! Come here, cute snake!
+    </wpart:otherwise>
+  </wpart:choose>
+</wpart:list>
+...
+\end{Verbatim}
+\item Filter some elements:
+\begin{Verbatim}[numbers=left, frame=single, label=filter.erl]
+...
+<wpart:list select="filter" list="employees" as="cool_employees" 
+      pred="fun(E) -> element(3, E) == cool end">
+  The cool ones are: 
+  <wpart:list select="map" list="cool_employees" as="ce">
+    <wpart:lookup key="ce" />, 
+  </wpart:list>
+</wpart:list>
+...
+\end{Verbatim}
+\item Find elements of the list:
+\begin{Verbatim}[numbers=left, frame=single, label=find.erl]
+...
+<wpart:list select="find" list="everyone" as="the_chosen_one" 
+      pred="fun(E) -> E == chosen end">
+  <wpart:choose>
+    <wpart:when test="{the_chosen_one} == []">
+      We are all equal.
+    </wpart:when>
+    <wpart:otherwise>
+      Go cry, emo kid!
+    </wpart:otherwise>
+  </wpart:choose>
+</wpart:list>
+...
+\end{Verbatim}
+\item Sort the list:
+\begin{Verbatim}[numbers=left, frame=single, label=find.erl]
+...
+<wpart:list select="sort" list="movies" 
+      as="top_rated_movies" pred="fun(M1, M2) -> M1 > M2 end.">
+    The movie I liked most ever is 
+    <wpart:list select="head" list="top_rated_movies" as="best_movie">
+      <wpart:lookup key="best_movie" />
+    </wpart:list>
+</wpart:list>
+...
+\end{Verbatim}
+\end{enumerate}
+
+The strings inside the {\it \{ \}} will be used as the keys to the request dictionary: their corresponding values will be inserted in their places.
+
+\subsubsection{wpart\_lookup} wpart\_lookup grants access to previously set variables inside a view.
+
+Variables should be prepared by calling {\it wpart:fset} function.
+
+\paragraph{Attributes}
+\begin{description}
+\item[key]- specifies the key which the value should be fetched from.
+\end{description}
+
+\paragraph{Example}
+\begin{Verbatim}[numbers=left, frame=single, label=controller.erl]
+...
+print_date() ->
+    wpart:fset("date", tuple_to_list(date())),
+    {template, "templates/date.html"}.
+...
+\end{Verbatim}
+\begin{Verbatim}[numbers=left, frame=single, label=date.html]
+...
+    Today is <wpart:lookup key="date" />!
+...
+\end{Verbatim}
+
+\subsubsection{wpart\_paginate} wpart\_paginate makes the possibility of chunking the big collection of items into smaller parts and access them sequentially in the view.
+\paragraph{Attributes}
+\begin{description}
+\item[action]- defines the returning value the expanded tag. 
+\begin{description}
+\item[page]- chunking the list into pieces and give access to its small part.
+\item[next\_link]- expands to the link to the next part of the list
+\item[prev\_link]- expands to the link to the previous part of the list
+\end{description}
+\item[list]- checked only when action == {\it page}, paginates the list held under given key in e\_dict (it must be manually set in the controller)
+\item[as]- checked only when action == {\it page}, saves the part of list we are interested in under the given key, so it is possible to fetch the contents of the list inside the wpart:paginate tag
+\item[per\_page]- checked only when action == {\it page}, defines the maximum length of the chunk (list) we pass to the inside of the tag
+\item[text]- checked only when action == {\it next\_page} or  {\it prev\_page}, defines the text which should be displayed as the clickable link
+\end{description}
+
+\paragraph{Example}
+\begin{Verbatim}[numbers=left, frame=single, label=controller.erl]
+...
+search(Keyword) ->
+    ...
+    wpart:fset("search_results", Results),
+    {template, "templates/search.html"}.
+...
+\end{Verbatim}
+\begin{Verbatim}[numbers=left, frame=single, label=search.html]
+...
+    <wpart:paginate action="page" as="search_results_part" 
+        list="search_results" per_page="10">
+        <ul>
+            <wpart:list select="map" as="item" list="search_results_part">
+            <li><wpart:lookup key="item" /></li>
+            </wpart:list>
+        </ul>
+    </wpart:paginate>
+    <wpart:paginate action="next_link" text="Previous page" /> || 
+    <wpart:paginate action="prev_link" text="Next page" />
+...
+\end{Verbatim}

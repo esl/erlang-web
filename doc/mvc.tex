@@ -1,0 +1,11 @@
+\section{MVC - What is What}\label{MVC}
+Mayor idea of ErlangWeb architecture is make separate areas responsible for
+adequate functionality. Framework consists of \emph{eptic}, \emph{wpart} and
+\emph{wparts}. \emph{Eptic} communicates with \emph{wpart} and \emph{wpart}
+manages \emph{wparts}. It is necessary to keep global configuration in separate
+file -- it is used by many components. User's project is usually kept in
+separate folder and there is place for custom modules, controllers, etc.  
+
+\begin{center}
+\includegraphics[width=0.75\textwidth]{images/app_pic.jpg}
+\end{center}

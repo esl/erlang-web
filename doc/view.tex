@@ -1,0 +1,226 @@
+\section{View. Let's see it.}\label{view}
+\subsection{Overview}
+Final result of interaction with system is rendered on base of html files in
+{\it templates} directory. 
+
+Usually each controller has folder to keep its own files but this is not
+requirement. Paths for .html files are directly set in controller in every
+function.
+
+\subsection{Example}
+\subsubsection{Base and dispatcher}
+Our task now is to build view part of application. Assume we want to have some
+menu on the horizontal bar and dynamic input in main part of page. In case of
+some pictures or JS scripts in docroot we need to change dispatcher. 
+Let's extend previous example.\\
+\begin{Verbatim}[frame=single,
+       framesep=2mm,
+       label=dispacher.conf,labelposition=topline,
+       fontsize=\small]
+{dynamic, "^/before_create", {new_controller, before_create}}.
+{dynamic, "^/create", {new_controller, create}}.
+
+{static, "^/images/.*", enoent}.
+{static, "^/style.css", enoent}.
+\end{Verbatim}
+
+Next part is to create base html file which will include some external files.
+
+\begin{Verbatim}[  
+       numbers=left,
+       fontsize=\small, frame=single, label=base.html]
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <title>erlangweb</title> 
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+
+<body>
+<div class="class1">
+	<div class="header">
+		<p id="ex_class1"><span>ErlangWeb</span></p>
+		<p id="ex_class2><br/>ErlangWeb is cool<br/>
+		<wpart:menu />
+		<wpart:submenu />
+	</div>
+	<div class="class2">
+  		<div class="content">
+			<wtpl:include name="content"/>
+		</div>
+	</div>
+</div>
+</body>
+</html>
+\end{Verbatim}
+
+Now we can clearly see what is going on in base.html. 
+\\
+\begin{itemize}
+\item Line 1 - necessary for xmerl.
+\item Line 8 - just example issue.. IE ignores line 1 so we need to place info
+  in meta information.
+\item Line 9 - everything like in regular HTML, here goes links to JS
+  libraries, rss, css.
+\item Lines 17,18 - static call to wparts. This case Menu.
+\item Line 22 - here is defined name of include slot.  
+\end{itemize}
+
+\subsubsection{Content}
+Now is time to construct file which is called in controller.
+\\
+\begin{Verbatim}[  
+       numbers=left,
+       fontsize=\small, frame=single, label=create.html]
+<wtpl:parent path="templates/base.html">
+  <wtpl:content name="content">
+    <wpart:lookup key="error_message" />
+    <wpart:form type="link" action="/link/create" />
+  </wtpl:content>
+</wtpl:parent>
+\end{Verbatim}
+\begin{itemize}
+\item Line 1 - says where to look for parent template
+\item Line 2 - specifies which slot should be filled
+\item Line 3 - picking up some error messages
+\item Line 4 - expanding form 
+\end{itemize}
+
+\subsubsection{Listing}
+Templates mentioned in example have just functionality of displaying form. To
+finish application we need some listing of stored values. Usually we need to
+display values as a list of items. Even better, sometimes, there should be
+several lists representing groups of specific values.
+
+Choice of implemantation listing view is based on functionality of a model.
+The simplest case is when groups of items are known and cannot be changed.
+
+Lets change controller and write some view. Remember to add proper URLs to \emph{dispatcher}.
+
+\begin{Verbatim}[frame=single,
+       framesep=2mm, numbers=left,
+       label=link.erl,labelposition=topline,
+       fontsize=\small]
+read(_) ->
+    prepare_list(),
+    {template, "templates/link/list.html"}.
+\end{Verbatim}
+
+\begin{Verbatim}[  
+       numbers=left,
+       fontsize=\small, frame=single, label=page.html]
+<wtpl:parent path="templates/base.html">
+  <wtpl:content name="content">
+  
+  <wpart:list select="map" list="Sites" as="link">
+    <wpart:lookup key="link:title" />
+    <wpart:lookup key="link:description" />
+  </wpart:list>
+
+  <wpart:list select="map" list="Repositories" as="repo">
+    <wpart:lookup key="repo:title" />
+    <wpart:lookup key="repo:description" />
+  </wpart:list>
+
+  </wtpl:content>
+</wtpl:parent>
+\end{Verbatim}
+To make things working just implement function \emph{prepare\_list} in controller. It should
+set values read from database into \emph{request dictionary}.
+
+Situation can get complicated if number, order, names and many other features
+is expected to be set dynamically. This exaple shows adding and listing links. We can
+choose group or set new one and change order of links. So there is necessary
+additional layer to handle all those features. Next example show how to treat
+this kind of problem. 
+\\
+One of simplest way of doing it is using \emph{wpart\_page}. 
+\begin{Verbatim}[  
+       numbers=left,
+       fontsize=\small, frame=single, label=page.html]
+<wtpl:parent path="templates/base.html">
+  <wtpl:content name="content">
+    <wpart:page />
+  </wtpl:content>
+</wtpl:parent>
+\end{Verbatim}
+
+{\it wpart\_page} needs some information from controller.
+\\
+\begin{Verbatim}[frame=single,
+       framesep=2mm, numbers=left,
+       label=link.erl,labelposition=topline,
+       fontsize=\small]
+read(_) ->
+    Auth = filter:is_auth([editor]),
+    wpart:fset("__type", {link, whelp_link, Auth, "/link/before_create"}),
+    {template, "templates/crud.html"}.
+\end{Verbatim}
+In line 3 \emph{whelp\_link} is a module to call by \emph{wpart\_page}.
+Specification would be:
+\begin{verbatim}
+wpart:fset("__type", {Name, Module, Authorization, Path})
+
+Name = Module = atom()
+Authorization = Bool()
+Path - valid URL of requested function
+\end{verbatim}
+
+\emph{whelp\_link} module calls wtype and prepares data. It must return a list of
+lists to group data in separate list elements.
+
+\begin{Verbatim}[frame=single,
+       framesep=2mm, numbers=left,
+       label=whelp\_link.erl,labelposition=topline,
+       fontsize=\footnotesize]
+%% .. 
+
+submenu(_) ->
+    [{"/blog/year/","BY YEAR"},
+     {"/blog/user/","BY USER"},
+     {"/blog/tag/", "BY TAG"}]. 
+
+list(Auth) ->
+    Blogs = wtype_blog:read(all),
+    {"Blogs", 
+          [[whelper:prepare("templates/wparts/list_li.tpl",
+            blog_lead(Auth, Art)] 
+            || 
+            Art <- Blogs]}.
+
+main(Auth) ->
+    All = sort(wtype_blog:read(all)),
+    Blog = case catch hd(All) of
+	       {'EXIT', _} -> 
+		   "No blog posts in database";
+	       El -> 
+		   blog_lead(Auth, El)
+	   end,
+    {"Main Page", [whelper:prepare("templates/wparts/list_li.tpl",Blog)]}.
+
+latest(Auth) ->
+    case sort(wtype_blog:read(all)) of
+	[First | _] ->
+	    blog(Auth, First#article.id);
+	[] ->
+	    {"Blog", "No blog posts in database"}
+    end.
+
+%%..
+\end{Verbatim}
+Fuction used by \emph{wpart page} is list. Each element returned is $<$li$>$
+which is part of list constructed by \emph{wpart page}. Easily every one can
+write own version of this kind of wpart -- just more customized.  
+
+This is just one way of implementing \emph{whelp} file. To understand it
+completely we should explain data relation -- which is not important here. It is
+just to show case where general way of implementing view is not enough. 
+\\
+What is significant, we can see how flexible is framework. It is possible to
+change approche	to solve many problems.   
+
+
