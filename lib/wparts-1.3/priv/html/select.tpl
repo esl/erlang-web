@@ -1,0 +1,3 @@
+<select <% html %> >
+	<% options %>
+</select>

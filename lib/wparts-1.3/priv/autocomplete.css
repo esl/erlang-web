@@ -1,0 +1,57 @@
+.ac_results {
+    border-right: windowframe 1px solid; 
+    padding-right: 0px; 
+    border-top: windowframe 1px solid; 
+    padding-left: 0px; 
+    padding-bottom: 0px; 
+    overflow: hidden; 
+    border-left: windowframe 1px solid; 
+    padding-top: 0px; 
+    border-bottom: windowframe 1px solid; 
+    background-color: window
+}
+
+.ac_results ul {
+    padding-right: 0px; 
+    padding-left: 0px; 
+    list-style-position: outside; 
+    padding-bottom: 0px; 
+    margin: 0px; 
+    width: 100%; 
+    padding-top: 0px; 
+    list-style-type: none
+}
+
+.ac_results iframe {
+    display: block; 
+    z-index: -1; 
+    filter: mask(); 
+    left: 0px; 
+    width: 3000px; 
+    position: absolute; 
+    top: 0px; 
+    height: 3000px
+}
+
+.ac_results li {
+    padding-right: 5px; 
+    display: block; 
+    padding-left: 5px; 
+    font-size: 12px; 
+    padding-bottom: 2px; 
+    margin: 0px; 
+    font: menu; 
+    overflow: hidden; 
+    width: 100%; 
+    cursor: pointer; 
+    padding-top: 2px;
+}
+
+.ac_loading {
+    background: url(./indicator.gif) window no-repeat right center;
+}
+
+.ac_over {
+    color: highlighttext; 
+    background-color: highlight
+}

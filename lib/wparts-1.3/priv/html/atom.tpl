@@ -1,0 +1,1 @@
+<input type="text" <% html %> value="<% value %>"/><br/>
