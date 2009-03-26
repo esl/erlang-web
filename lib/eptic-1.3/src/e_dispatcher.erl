@@ -51,7 +51,6 @@
 %%% </p>
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(e_dispatcher).
 
 -export([error_page/1]).
@@ -166,18 +165,9 @@ dispatch(URL, Patterns) ->
 divide(List) ->
     divide(List, [], []).
 
-%% to ets table are insterted already compiled regexps for re module.
 -spec(divide/3 :: (list(tuple()), list(tuple()), list(tuple())) -> {list(tuple()), list(tuple())}).	   
 divide([], Static, Dynamic) ->
     {lists:reverse(Static), lists:reverse(Dynamic)};
-divide([{static, Regexp, Action} | Rest], Static, Dynamic) ->
-    {ok, Compiled} = re:compile(Regexp),
-    T = {static, Compiled, Action},
-    divide(Rest, [T | Static], Dynamic);
-divide([{dynamic, Regexp, Action} | Rest], Static, Dynamic) ->
-    {ok, Compiled} = re:compile(Regexp),
-    T = {dynamic, Compiled, Action},
-    divide(Rest, Static, [T | Dynamic]);
 divide([{static, Regexp, Action, Opts} | Rest], Static, Dynamic) ->
     {ok, Compiled} = re:compile(Regexp),
     T = {static, Compiled, Action, Opts},
@@ -185,22 +175,24 @@ divide([{static, Regexp, Action, Opts} | Rest], Static, Dynamic) ->
 divide([{dynamic, Regexp, Action, Opts} | Rest], Static, Dynamic) ->
     {ok, Compiled} = re:compile(Regexp),
     T = {dynamic, Compiled, Action, Opts},
+    divide(Rest, Static, [T | Dynamic]);
+divide([{alias, RegexpSrc, RegexpTrgt, Opts} | Rest], Static, Dynamic) ->
+    {ok, Compiled} = re:compile(RegexpSrc),
+    T = {alias, Compiled, RegexpTrgt, Opts},
     divide(Rest, Static, [T | Dynamic]).
 
 -spec(parser/2 :: (tuple(), tuple()) -> tuple() | list(tuple())).	     
 parser({include, Filename}, _) ->
     load(Filename);
 parser({dynamic, delegate, Prefix, Filename}, Compiled) ->
-    Adder = fun({Type, Regexp, Arg}) -> 
-		    {Type, Prefix ++ Regexp, Arg};
-	       ({dynamic, delegate, Prefix2, Filename2}) ->
+    Adder = fun({dynamic, delegate, Prefix2, Filename2}) ->
 		    parser({dynamic, delegate, Prefix ++ Prefix2, Filename2}, Compiled);
 	       ({Type, Regexp, Arg, Opts}) when is_list(Regexp) ->
-		    {Type, Prefix ++ Regexp, Arg, Opts}
+		    {Type, Prefix ++ Regexp, Arg, Opts};
+	       ({Type, Regexp, Arg}) ->
+		    {Type, Prefix ++ Regexp, Arg, []}
 	    end,
     lists:map(Adder, load(Filename));
-parser({dynamic, Regexp, ModFun}, Compiled) ->
-    parser({dynamic, Regexp, ModFun, []}, Compiled);
 parser({dynamic, Regexp, ModFun, Options} = Org, Compiled) -> 
     case get_all_names(Regexp, Compiled) of
 	[] -> 
@@ -208,6 +200,16 @@ parser({dynamic, Regexp, ModFun, Options} = Org, Compiled) ->
 	Names ->
 	    {dynamic, Regexp, ModFun, [{named_subpatterns, Names} | Options]}
     end;
+parser({alias, Regexp, RegexpTrgt, Opts} = Org, Compiled) ->
+    case get_all_names(Regexp, Compiled) of
+	[] ->
+	    Org;
+	ANames ->
+	    SNames = lists:map(fun atom_to_list/1, ANames),
+	    {alias, Regexp, RegexpTrgt, [{substitutions, SNames} | Opts]}
+    end;
+parser({Type, Opt1, Opt2}, Compiled) ->
+    parser({Type, Opt1, Opt2, []}, Compiled);
 parser(X, _) ->
     X.
 
@@ -236,7 +238,7 @@ filter(Fun, [First|Rest]) ->
     end.
 
 -spec(selector/2 :: (string(), tuple()) -> bool()).	     
-selector(Element, {_, Regexp, _}) -> 
+selector(Element, {_, Regexp, _, []}) -> 
     selector_exec(Element, Regexp);
 selector(Element, {_, Regexp, _, Opts}) ->
     selector_exec(Element, Regexp, Opts).
@@ -271,43 +273,27 @@ selector_exec(Element, Regexp, Opts) ->
 	    end
     end.
 
-%% returns tuple of parameters to e_mod_inets
-%% in the future, it could be used to obtain some data
-%% right from the URL, like when you type:
-%% article/mptaszek__using_e_dispatcher.html
-%% it can return (let's assume we want to call 
-%% article:show/2 function with parameters [author, title]): 
-%% {Module, Function, [mptaszek, using_e_dispatcher]}.
-%% In the future re module will deal with it.
 -spec(process/2 :: (tuple(), string()) -> dispatcher_result()).	     
-process({static, _, enoent}, _URL) ->
-    invalid_url;
-process({static, _, Path}, _) ->
-    {view, Path};
 process({static, _, enoent, _}, _URL) ->
     invalid_url;
 process({static, _, Path, _}, _) ->
     {view, Path};
-process({dynamic, _Regex, {Module, Function}}, _URL) ->
+process({dynamic, _, {Module, Function}, _Opts}, _URL) ->
     {Module, Function, []};
-process({dynamic, _Regex, {Module, Function}, _Opts}, _URL) ->
-    {Module, Function, []};
+process({alias, Regexp, Target, Opts}, URL) ->
+    dispatch(substitute_alias(URL, Regexp, Target, proplists:get_value(substitutions, Opts, [])));
 process(nomatch, URL) ->
     {error, 404, URL}.
 
 -spec(fe_process/2 :: (tuple(), string()) -> {cache_type(), dispatcher_result()}).	     
-fe_process({static, _, enoent}, _) ->
-    {no_cache, [], invalid_url};
-fe_process({static, _, Path}, _) ->
-    {persistent, ["view"], {view, Path}};
 fe_process({static, _, enoent, _}, _) ->
     {no_cache, [], invalid_url};
 fe_process({static, _, Path, Opts}, _) ->
     {proplists:get_value(cache, Opts, persistent), proplists:get_value(cache_groups, Opts, ["view"]), {view, Path}};
-fe_process({dynamic, _, {M, F}}, _) ->
-    {normal, ["controller"], {M, F, []}};
 fe_process({dynamic, _, {M, F}, Opts}, _) ->
     {proplists:get_value(cache, Opts, normal), proplists:get_value(cache_groups, Opts, ["controller"]), {M, F, []}};
+fe_process({alias, Regexp, Target, Opts}, URL) ->
+    fe_dispatch(substitute_alias(URL, Regexp, Target, proplists:get_value(substitutions, Opts, [])));
 fe_process(nomatch, URL) ->
     {persistent, ["errors"], {error, 404, URL}}.
 
@@ -319,6 +305,17 @@ load_errors() ->
 		       ets:insert(?MODULE, {{error, Nr}, Tpl})
 	       end,
     lists:foreach(Inserter, Tuples).
+
+-spec(substitute_alias/4 :: (string(), tuple(), string(), list(atom())) -> string()).	     
+substitute_alias(URL, Regexp, Target0, Substitutions) ->
+    case re:run(URL, Regexp, [{capture, Substitutions, list}]) of
+	match ->
+	    Target0;
+	{match, Matched} ->
+	    lists:foldl(fun({Name, Replacement}, Target) ->
+				re:replace(Target, "\\(\\?<" ++ Name ++ ">\\)", Replacement, [{return, list}])
+			end, Target0, lists:zip(Substitutions, Matched))
+    end.
 
 -spec(get_all_names/2 :: (string(), tuple()) -> list(atom())).	     
 get_all_names(String, Regexp) ->
@@ -346,4 +343,3 @@ add_rule(Type, Regexp, Target, Opts) ->
     {ok, Compiled} = re:compile(Regexp),
     
     ets:insert(?MODULE, {Type, lists:append([{Type, Compiled, Target, Opts}], TypeRules)}).
-
