@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -160,17 +159,16 @@ calendar(Input, [], _Fun)  when length(Input) == 3 ->
     {BI,Inp};
 
 calendar(Input, Limit, Fun) when length(Input) == 3 ->
-      
     {H,H2,H3} = list_to_tuple(Input),
     {G,G2,G3} = list_to_tuple(Limit),
      
     BI = is_valid_time({H,H2,H3}),
     BL = is_valid_time({G,G2,G3}),
     
-     Result = if 
+    Result = if 
                  BI and BL -> Fun({H,H2,H3},{G,G2,G3}) ;
                  true -> false
-              end,
+	     end,
 
     {Result,{H,H2,H3}}.
 

@@ -35,21 +35,17 @@ handle_call(_Format, #xmlText{value=Val}) ->
 validate({Types, Val}) ->
     case wpart_valid:is_private(Types) of
 	true ->
-	    {ok, Val =/= undefined};
-    false ->
-	    case lists:keysearch(always, 1, Types) of
-		{_, {_, Bool}} ->
-		    if
-			Val == undefined, Bool == false ->
-			    {ok, false};
-			Val == undefined, Bool == true ->
-			    {error, {bad_bool_value, Val}};
-			Bool == false ->
-			    {error, {bad_bool_value, Val}};
-			true ->
-			    {ok, true}
-		    end;
-		_ ->
-		    {ok, Val =/= undefined}
-	    end
+	    {ok, Val};
+	false ->
+	    check_always(Types, Val)
+    end.
+
+check_always(Types, Vals) ->
+    case lists:all(fun(Val) ->
+			   lists:member(Val, Vals)
+		   end, proplists:get_value(always, Types, [])) of
+	true ->
+	    {ok, Vals};
+	false ->
+	    {error, {not_all_mandatory_fields_checked, Vals}}
     end.
