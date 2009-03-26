@@ -27,16 +27,30 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
+-spec(handle_call/1 :: (tuple()) -> tuple()).	     
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    Selected0 = proplists:get_value("selected", Attrs, ""),
+    Selected = lists:map(fun string:strip/1, string:tokens(Selected0, [$|])),
+
+    #xmlText{value=get_html_tag([{"preselected", Selected} | proplists:delete("selected", Attrs)], ""),
 	     type=cdata}.
 
+-spec(build_html_tag/3 :: (string(), list(tuple()), list()) -> string()).	     
 build_html_tag(Id, Params, Default) ->
-    Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
+    Options = proplists:get_value(options, Params, []),
+    Selected = if
+		   Default == [] ->
+		       proplists:get_value(selected, Params, []);
+		   true ->
+		       []
+	       end,
+    Attrs0 = wpart:normalize_html_attrs([{"options", Options},
+					 {"preselected", Selected} |
+					 proplists:get_value(html_attrs, Params, [])]),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -48,18 +62,40 @@ build_html_tag(Name, Prefix, Params, Default) ->
 
     wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
 		    
-get_html_tag(Attrs0, Default) ->
-    Attrs = if
-		Default == true -> 
-		    [{"checked", "checked"} | Attrs0];
-		true -> 
-		    Attrs0
-	    end,
-    
-    wpart_gen:build_html(wpart_gen:tpl_get(bool),
-			 [{"html", 
-			   wpart:proplist2html([{"value", proplists:get_value("name", Attrs, "")} | Attrs])}
-			 ]).
+get_html_tag(Attrs0, DefaultList) ->
+    Bool = wpart_gen:tpl_get(bool),
+
+    Preselected = proplists:get_value("preselected", Attrs0, []),
+    OptionsString = proplists:get_value("options", Attrs0, []),
+    Attrs = proplists:delete("preselected", 
+			     proplists:delete("options", Attrs0)),
+
+    Builder = fun(Option, Acc) ->
+		      [Value, Desc] = string:tokens(Option, [$:]),
+
+		      OptionAttrs = case checked(Value, DefaultList, Preselected) of
+					true ->
+					    [{"checked", "checked"} | Attrs];
+					false ->
+					    Attrs
+				    end,
+
+		      Acc ++ wpart_gen:build_html(Bool, [{"html", wpart:proplist2html(OptionAttrs)},
+							 {"value", Value},
+							 {"desc", Desc}])
+	      end,
+
+    case string:tokens(OptionsString, [$|]) of
+	[] ->
+	    "No options loaded.";
+	Options ->
+	    lists:foldl(Builder, "", Options)
+    end.
+
+-spec(checked/3 :: (string(), list(string()), list(string())) -> bool()).	     
+checked(Value, DefaultList, Preselected) ->
+    lists:member(Value, DefaultList) orelse
+	lists:member(Value, Preselected).
 
 load_tpl() ->
     wpart_gen:load_tpl(bool, 

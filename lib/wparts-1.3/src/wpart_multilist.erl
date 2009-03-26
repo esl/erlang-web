@@ -37,19 +37,9 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
-    D = case Default of
-            [] ->
-                [];
-            [[_|_]|_] = ListOfLists ->
-                ListOfLists;
-            [Integer|_] = ListofIntegers when is_integer(Integer) ->
-                lists:map(fun integer_to_list/1, ListofIntegers);
-            Integer when is_integer(Integer) ->
-                [integer_to_list(Integer)]
-        end,
     Options = proplists:get_value(options, Params, []),
     Selected = if
-		   D == [] ->
+		   Default == [] ->
 		       proplists:get_value(selected, Params, []);
 		   true ->
 		       []
@@ -59,13 +49,11 @@ build_html_tag(Id, Params, Default) ->
 					 proplists:get_value(html_attrs, Params, [])]),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
     
-    get_html_tag(Attrs, D).
+    get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     Description = wpart_derived:get_description(Name, Params),
-    %% This has been added just for backward compatibility.
-    %% We reeeeeeally need to re-design the multilist.
     D = case wpart_derived:find(N, Default) of
             [] ->
                 [];
