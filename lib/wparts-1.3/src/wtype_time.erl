@@ -42,35 +42,43 @@ validate({Types, undefined}) ->
     end;
 
 validate({Options,Input}) ->
-   case wpart_valid:is_private(Options) of
-    true ->
+    case wpart_valid:is_private(Options) of
+	true ->
 	    {ok, Input};
-    _ ->
-    Separators= [":"], 
-    
-    F = lists:keysearch(format, 1, Options),
-    
-    {value, {format,  Format}} = if F == false -> {value, {format, "HH:MM:SS"}};
-                                       true -> F
-                              end,
-    
-    Length = length(Separator = lists:filter(
-                            fun(X) -> string:str(Format, X) /= 0 
-                            end, 
-                            Separators)
-                   ),
-    case Length of
-	1   ->  Result = splitter(Input, Separator),
-                {R, ResList} = Result,
-                if ((R == ok) andalso (length(ResList) == 3) or (length(ResList) == 2)) ->
-                        {B,Inp} = check_limits(Options, Result, Separator, Format),
-                        if B -> {ok,Inp};
-                           true -> {error, {bad_range, Input}}
-                        end;
-                   true -> {error, {bad_time_format, Input}}
-                end;
-	_   -> {error, {bad_separator_in_time_form, Input}}
-    end
+	_ ->
+	    Separators= [":"], 
+	    
+	    F = lists:keysearch(format, 1, Options),
+	    
+	    {value, {format,  Format}} = if 
+					     F == false -> 
+						 {value, {format, "HH:MM:SS"}};
+					     true -> 
+						 F
+					 end,
+	    
+	    Length = length(Separator = lists:filter(
+					  fun(X) -> string:str(Format, X) /= 0 
+					  end, 
+					  Separators)
+			   ),
+	    case Length of
+		1   ->  Result = splitter(Input, Separator),
+			{R, ResList} = Result,
+			if ((R == ok) andalso (length(ResList) == 3) orelse (length(ResList) == 2)) ->
+				{B,Inp} = check_limits(Options, Result, Separator, Format),
+				if 
+				    B -> 
+					{ok,Inp};
+				   true -> 
+					{error, {bad_range, Input}}
+				end;
+			   true -> 
+				{error, {bad_time_format, Input}}
+			end;
+		_   -> 
+		    {error, {bad_separator_in_time_form, Input}}
+	    end
     end.
 
 %%====================================================================
@@ -117,23 +125,23 @@ check_limits(Options, {ok, Input_to_i}, Separator, Format) ->
     calendar(FormatStr, Input_to_i, Up_to_i, Down_to_i,S,G).
 
 %--------------------- handlers
-
-calendar(_,_,{error,_},_,_,_) -> {false, bad_up_limit_format};
-calendar(_,_,_,{error,_},_,_) -> {false, bad_down_limit_format};
+calendar(_,_,{error,_},_,_,_) -> 
+    {false, bad_up_limit_format};
+calendar(_,_,_,{error,_},_,_) -> 
+    {false, bad_down_limit_format};
 calendar(Format, Input, [], [],F,_) -> 
-        calendar(Format, Input, [], F);
-
+    calendar(Format, Input, [], F);
 
 calendar(Format, Input_to_i, {ok,Up_to_i}, [], S, _G) ->
-        calendar(Format, Input_to_i, Up_to_i, S);
+    calendar(Format, Input_to_i, Up_to_i, S);
 
 calendar(Format, Input_to_i, [], {ok,Down_to_i},_S,G) ->
-       calendar(Format, Input_to_i, Down_to_i, G);
+    calendar(Format, Input_to_i, Down_to_i, G);
 
 calendar(Format, Input_to_i, {ok,Up_to_i}, {ok,Down_to_i},S,G) ->
-       {R1,Inp1} = calendar(Format, Input_to_i, Up_to_i, S),
-       {R2,_Inp2} = calendar(Format, Input_to_i, Down_to_i, G),
-       {lists:all(fun(X) -> X == true end, [R1,R2]), Inp1}.
+    {R1,Inp1} = calendar(Format, Input_to_i, Up_to_i, S),
+    {R2,_Inp2} = calendar(Format, Input_to_i, Down_to_i, G),
+    {lists:all(fun(X) -> X == true end, [R1,R2]), Inp1}.
 
 %-------------------- reformaters
 calendar("HHMMSS", Input, [], Fun) ->
@@ -143,14 +151,15 @@ calendar("HHMMSS", Input, Limit, Fun) when length(Limit) == length(Input) ->
     calendar(Input, Limit, Fun);
 
 calendar("HHMMSS", [H,M], Limit, Fun) -> 
-            calendar([H,M,0], Limit, Fun);
+    calendar([H,M,0], Limit, Fun);
 
 calendar("HHMM", Input, Limit, Fun) when length(Limit) == length(Input) ->
-        [H,M] = Input,
-        [HL,ML] = Limit,
-        calendar([H,M,0],[HL,ML,0], Fun);
+    [H,M] = Input,
+    [HL,ML] = Limit,
+    calendar([H,M,0],[HL,ML,0], Fun);
 
-calendar(_,I,_,_) -> {false,I}.
+calendar(_,I,_,_) -> 
+    {false,I}.
 
 %---------------------- engine
 calendar(Input, [], _Fun)  when length(Input) == 3 ->
@@ -170,7 +179,10 @@ calendar(Input, Limit, Fun) when length(Input) == 3 ->
                  true -> false
 	     end,
 
-    {Result,{H,H2,H3}}.
+    {Result,{H,H2,H3}};
+
+calendar(_, _, _) ->
+    {false, not_used}.
 
 is_valid_time({H1,H2,H3}) ->
     Hour = if (H1 >= 0) and (H1 < 24) -> true;

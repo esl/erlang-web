@@ -37,15 +37,27 @@ validate({Types, Val}) ->
 	true ->
 	    {ok, Val};
 	false ->
-	    check_always(Types, Val)
+	    Val1 = format_val(Val),
+	    check_always(proplists:get_value(always, Types, []), Val1)
     end.
 
-check_always(Types, Vals) ->
+-spec(check_always/2 :: (list(string()), list(string())) -> {ok, list(string())} | {error, {not_all_mandatory_fields_checked, list(string())}}).	     
+check_always([], Vals) ->
+    {ok, Vals};
+check_always(Always, Vals) ->
     case lists:all(fun(Val) ->
 			   lists:member(Val, Vals)
-		   end, proplists:get_value(always, Types, [])) of
+		   end, Always) of
 	true ->
 	    {ok, Vals};
 	false ->
 	    {error, {not_all_mandatory_fields_checked, Vals}}
     end.
+
+-spec(format_val/1 :: (undefined | string() | list(string())) -> list(string())).	     
+format_val(undefined) ->
+    [];
+format_val(Val) when is_integer(hd(Val)) ->
+    [Val];
+format_val(Val) ->
+    Val.
