@@ -33,16 +33,33 @@ build_template(E) ->
 
 %% @doc Main template system function.
 %% <p>There are three types of wtpl tags:<br/>
-%% <ul><li><b>&lt;wtpl:parent path=Path&gt;</b> - this tag declares, which template file is the parent of current one. Path attribute points the place, where the parent file is stored.</li>
-%% <li><b>&lt;wtpl:include name=Name&gt;</b> - include tag declares the slot: a place where the content should be inserted to. Include tag creates something like a hole in the template - which should be filled up with corresponding wtpl:content content</li>
-%% <li><b>&lt;wtpl:content name=Name&gt;</b> - content tag surrounds the content, which should be inserted in place of the corresponding wtpl:include tag</li></ul></p>
+%% <ul><li><b>&lt;wtpl:parent path=Path&gt;</b> 
+%% - this tag declares, which template file is the 
+%% parent of current one. Path attribute points the 
+%% place, where the parent file is stored.</li>
+%% <li><b>&lt;wtpl:include name=Name&gt;</b> - 
+%% include tag declares the slot: a place where 
+%% the content should be inserted to. Include tag 
+%% creates something like a hole in the template
+%%  - which should be filled up with corresponding 
+%% wtpl:content content</li>
+%% <li><b>&lt;wtpl:content name=Name&gt;</b> - 
+%% content tag surrounds the content, which should 
+%% be inserted in place of the corresponding wtpl:include 
+%% tag</li></ul></p>
 %% <p>There are two ways to expand wtpl tag:<br/>
-%% <ul><li>place it in your template file and make e_mod_yaws render it</li>
+%% <ul><li>place it in your template file and make 
+%% e_mod_* render it</li>
 %% <li>expand it in controller - by pointing the .tpl file and
 %% providing the list of content tuples. </li></ul>
-%% When you want to expand the tag you should always remember about the limitation of one root element of the XHTML structre (you can e.g. iterate on each child or simply surround all the childs with div tag).</p>
-%% <p>For example, when you want to create some kind of site you can do it in this way:<br/>
-%% <ul><li>Create base file (the scaffold): which will define the standard look of your site. E.g.: <br/>
+%% When you want to expand the tag you should always remember 
+%% about the limitation of one root element of the XHTML
+%% structre (you can e.g. iterate on each child or 
+%% simply surround all the childs with div tag).</p>
+%% <p>For example, when you want to create some 
+%% kind of site you can do it in this way:<br/>
+%% <ul><li>Create base file (the scaffold): which will 
+%% define the standard look of your site. E.g.: <br/>
 %% <pre>&lt;html&gt;
 %%  &lt;body&gt;
 %%    Some sort of header<br/>     &lt;wtpl:include name="slot1"/&gt;
@@ -81,7 +98,7 @@ build_template(E) ->
 %% <br/></p>
 -spec(build_template/2 :: (string() | tuple(), list()) -> string()).	     
 build_template(Filename, Contents) when is_list(Filename) ->
-    E = e_cache:read_file(Filename),
+    E = eptic:read_file(Filename),
     build_template(E, Contents);
 build_template(E, Contents) ->
     wpart_xs:process_xml(expand(E, Contents)).
@@ -100,23 +117,12 @@ expand(#xmlElement{name = 'wtpl:parent'} = E, Contents) ->
 		       end, Slots),
 
     Path = wpartlib:attribute("attribute::path", E2),
-    case xmerl_scan:file(Path) of
-        {#xmlElement{} = Parent, _} ->
-            Expanded = expand(Parent, lists:flatten([Values | Contents])),
+    Parent = eptic:read_file(Path),
+    
+    Expanded = expand(Parent, lists:flatten([Values | Contents])),
 
-            Expanded#xmlElement{
-              content = fill_slots(Expanded#xmlElement.content, Contents)};
-        {error, enoent} ->
-	    case xmerl_scan:file(filename:join(e_conf:template_root(), Path)) of
-		{#xmlElement{} = Parent, _} ->
-		    Expanded = expand(Parent, lists:flatten([Values | Contents])),
-		    
-		    Expanded#xmlElement{
-		      content = fill_slots(Expanded#xmlElement.content, Contents)};
-		{error, enoent} ->
-		    erlang:error({error, enoent}, Path)
-	    end
-    end;
+    Expanded#xmlElement{
+      content = fill_slots(Expanded#xmlElement.content, Contents)};
 expand(#xmlElement{name = 'wtpl:include'} = E, Contents) ->
     fill_slots([E], Contents);
 expand(E, Contents) ->
