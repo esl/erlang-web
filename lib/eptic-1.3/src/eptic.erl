@@ -122,22 +122,24 @@ init([]) ->
 	       permanent, 2000, worker, dynamic},
     Components = {e_component, {e_component, start_link, []},
 		  permanent, 2000, worker, [e_component]},
+    Logger = {e_logger, {e_logger, start_link, []},
+	      permanent, 2000, worker, [e_logger]},
+
+    List0 = [Dict, Session, Components, Logger],
 
     {ok, NodeType} = application:get_env(eptic, node_type),
-
     List = case NodeType of
 	       A when A == backend;
 		      A == single_node_with_cache ->
 		   e_db:install(),
 
-		   [Dict, Session, Components, 
-		    {e_cluster, {e_cluster, start_link, []},
-		     permanent, 1000, worker, dynamic}];
+		   List0 ++ [{e_cluster, {e_cluster, start_link, []},
+			      permanent, 1000, worker, dynamic}];
 	       single_node ->
 		   e_db:install(),
-		   [Dict, Session, Components];
+		   List0;
 	       frontend ->
-		   [Dict, Session, Components]
+		   List0
 	   end,
 
     {ok, {{one_for_one, 1, 10}, List}}.
