@@ -99,7 +99,7 @@ init([]) ->
     if
 	LogRes == ok ->
 	    Filename = filename:join([LogDir, ?FILENAME ++ "1"]),
-	    case file:open(Filename, [delayed_write]) of
+	    case file:open(Filename, [write, delayed_write]) of
 		{ok, Fd} ->
 		    ets:new(?ETS, [named_table]),
 
@@ -232,7 +232,7 @@ wrap_log_file(State) ->
 log_msg(not_found, _, _) ->
     ok;
 log_msg(Rid, Msg, Fd) ->
-    io:format(Fd, "~w.", [{Rid, now(), Msg}]).
+    io:format(Fd, "~w. ", [{Rid, now(), Msg}]).
 
 -spec(do_garbage_collect/2 :: (pid() | '$end_of_table', tuple()) -> ok).	     
 do_garbage_collect('$end_of_table', _) ->
