@@ -65,6 +65,7 @@
 					    enoent).
 handle_request("/app/" ++ URL) ->
     e_dict:fset("__path", URL),
+    e_logger:log({?MODULE, {old_path_type, URL}}),
     case parse_url(URL) of
 	{view, View} -> view(View);
 	{error, R} -> error_page(501, URL, R);
@@ -228,18 +229,24 @@ controller(Mod, Fun, View) ->
     Funs = Mod:module_info(exports),
     case (lists:member({dataflow,1},Funs) andalso lists:member({error,2},Funs)) of
 	true ->
+	    e_logger:log({?MODULE, {entering_dataflow_for, {Mod, Fun}}}),
 	    Answ = apply(Mod, dataflow, [Fun]),
 	    controller_handler(Answ, {Mod,Fun,View});
 	_ ->
+	    e_logger:log({?MODULE, {skipping_dataflow, entering_validate, {Mod, Fun}}}),
 	    {ok, ValidArgs} = apply(Mod, validate, [Fun]),
 	    Ret = apply(Mod, Fun, ValidArgs),
+	    e_logger:log({?MODULE, {controller_response, Ret}}),
 	    {ret_view, Ret, View}
     end.
 
 -spec(controller_handler/2 :: ({list(atom()), list(atom())} | list(atom()), {atom(), atom(), string()}) ->
 	     {ret_view, controller_response(), string()}).
 controller_handler({Before, After}, {Mod,Fun,View}) ->
+    e_logger:log({?MODULE, {dataflow_before, Before}}),
+    e_logger:log({?MODULE, {dataflow_after, After}}),
     InitialArgs = get_dataflow_initial_args(),
+    e_logger:log({?MODULE, {dataflow_dispatcher_args, InitialArgs}}),
     Ret = case dataflow(Mod, Fun, Before, InitialArgs) of
 	      {ok, Args} ->
 		  RetVal = apply(Mod,Fun,[Args]),
@@ -248,15 +255,19 @@ controller_handler({Before, After}, {Mod,Fun,View}) ->
 	      {error, Val} -> 
 		  Val
 	  end,	  
+    e_logger:log({?MODULE, {controller_response, Ret}}),
     {ret_view, Ret, View};
 controller_handler(Before, {Mod,Fun,View}) ->
+    e_logger:log({?MODULE, {dataflow_before, Before}}),
     InitialArgs = get_dataflow_initial_args(),
+    e_logger:log({?MODULE, {dataflow_dispatcher_args, InitialArgs}}),
     Ret = case dataflow(Mod, Fun, Before, InitialArgs) of
 	      {ok, Args} ->
 		  apply(Mod,Fun,[Args]);
 	      {error, Val} -> 
 		  Val
-	  end,	  
+	  end,	 
+    e_logger:log({?MODULE, {controller_response, Ret}}),
     {ret_view, Ret, View}.
 
 -spec(get_dataflow_initial_args/0 :: () -> list(tuple())).	     

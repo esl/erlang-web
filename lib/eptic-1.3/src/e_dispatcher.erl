@@ -119,7 +119,9 @@ dispatch(Path) ->
     [{static, Static}] = ets:lookup(?MODULE, static),
     [{dynamic, Dynamic}] = ets:lookup(?MODULE, dynamic),
 
-    dispatch(Path, lists:append([Dynamic, Static])).
+    Result = dispatch(Path, lists:append([Dynamic, Static])),
+    e_logger:log({?MODULE, {dispatching_result, Result}}),
+    Result.
 
 -spec(fe_dispatch/1 :: (string()) -> {cache_type(), dispatcher_result()}).
 fe_dispatch(Url) ->

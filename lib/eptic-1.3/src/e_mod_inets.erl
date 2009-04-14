@@ -35,10 +35,13 @@
 %% @hidden
 %%====================================================================
 do(#mod{parsed_header = Headers} = A) ->
+    e_logger:register_pid(self()),
     case handle_args(A) of
 	{ok, Args} ->
 	    [$/ | URL] = A#mod.request_uri,
 	    e_dict:init_state(Args),
+
+	    e_logger:log({?MODULE, {url, URL}}),
 
 	    case A#mod.socket_type of 
 		{ssl, _} ->
@@ -74,11 +77,13 @@ do(#mod{parsed_header = Headers} = A) ->
 		    CookieHeader = cookie_bind(ClientCookie),
 		    cleanup(),
 
+		    e_logger:unregister_pid(self()),
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
 		    cookie_bind(ClientCookie),
 		    cleanup(),
 
+		    e_logger:unregister_pid(self()),
 		    {proceed, A#mod.data}
 	    end
     end.
@@ -99,13 +104,15 @@ fe_request(#mod{parsed_header = Headers} = A, Session) ->
 %%====================================================================
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())}).	     
 handle_args(#mod{method = Method, entity_body = Post} = Mod) ->
-    case Method of
-	"POST" ->
-	    {ok, [{"get", parse_get(Mod#mod.request_uri)},
-		  {"post", parse_post(Post)}]};
-	_ ->
-	    {ok, [{"get", parse_get(Mod#mod.request_uri)}]}
-    end.
+    Result = case Method of
+		 "POST" ->
+		     {ok, [{"get", parse_get(Mod#mod.request_uri)},
+			   {"post", parse_post(Post)}]};
+		 _ ->
+		     {ok, [{"get", parse_get(Mod#mod.request_uri)}]}
+	     end,
+    e_logger:log({?MODULE, {handle_args, Result}}),
+    Result.
 
 -spec(controller_exec/2 :: (e_mod_gen:controller_response(), string()) -> {list(tuple()), string()}).	     
 controller_exec(Ret, View) ->

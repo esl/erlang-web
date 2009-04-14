@@ -222,9 +222,9 @@ print_list(Logs) ->
 
 -spec(print_log_list/1 :: (list()) -> ok).	     
 print_log_list([{Rid, Time, Event} | Logs]) ->
-    io:format("~s~s~s~n", [string:right(integer_to_list(Rid), 15, $ ),
+    io:format("~s~s~s~n", [string:right(integer_to_list(Rid), 5, $ ),
 			   string:right(format_date(calendar:now_to_local_time(Time)), 25, $ ),
-			   string:right(lists:flatten(io_lib:format("~p", [Event])), 40, $ )]),
+			   string:right(lists:flatten(io_lib:format("~p", [Event])), 50, $ )]),
     print_log_list(Logs);
 print_log_list([]) ->
     ok.
@@ -232,9 +232,9 @@ print_log_list([]) ->
 -spec(print_header/0 :: () -> ok).	     
 print_header() ->
     io:format("~s~n", [string:centre("", 80, $=)]),
-    io:format("~s~s~s~n", [string:right("Request ID", 15, $ ),
+    io:format("~s~s~s~n", [string:right("Request ID", 5, $ ),
 			   string:right("Date", 25, $ ),
-			   string:right("Event", 40, $ )]),
+			   string:right("Event", 50, $ )]),
     io:format("~s~n~n", [string:centre("", 80, $=)]).
 
 -spec(print_footer/0 :: () -> ok).	     

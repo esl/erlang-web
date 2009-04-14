@@ -39,6 +39,7 @@
 %%====================================================================
 %% @hidden
 out(A) ->
+    e_logger:register_pid(self()),
     case handle_args(#arg{headers = Headers} = A) of
 	{ok, Args} ->
 	    e_dict:init_state(Args),
@@ -53,6 +54,8 @@ out(A) ->
 
             ClientCookie = cookie_up(Headers),
 	    URL = get_url(A#arg.appmoddata),
+
+	    e_logger:log({?MODULE, {url, URL}}),
             
 	    e_dict:fset("__path", URL),
 	    e_dict:fset("__cookie_key", ClientCookie),
@@ -74,6 +77,8 @@ out(A) ->
 	    CookieHeader = cookie_bind(ClientCookie),
 
 	    cleanup(),
+	    e_logger:unregister_pid(self()),
+
 	    [Result, CookieHeader];
 	GetMore ->
 	    GetMore
@@ -113,25 +118,27 @@ check_static(Arg = #arg{req = R}, URL) ->
 %%====================================================================
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())} | tuple()).
 handle_args(#arg{req = R} = Arg) ->
-    case e_multipart_yaws:is_multipart(Arg) of
-	true  -> 
-	    case e_multipart_yaws:parse(Arg) of
-		{ok, Data} ->
-		    {ok, [
-			  {"get", yaws_api:parse_query(Arg)},
-			  {"post", Data}
-			 ]};
-		GetMore ->
-		    GetMore
-	    end;
-	false when R#http_request.method == 'POST' ->
-	    {ok, [
-		  {"get", yaws_api:parse_query(Arg)},
-		  {"post", yaws_api:parse_post(Arg)}
-		 ]};
-	false ->
-	    {ok, [{"get", yaws_api:parse_query(Arg)}]}
-    end.
+    Res = case e_multipart_yaws:is_multipart(Arg) of
+	      true  -> 
+		  case e_multipart_yaws:parse(Arg) of
+		      {ok, Data} ->
+			  {ok, [
+				{"get", yaws_api:parse_query(Arg)},
+				{"post", Data}
+			       ]};
+		      GetMore ->
+			  GetMore
+		  end;
+	      false when R#http_request.method == 'POST' ->
+		  {ok, [
+			{"get", yaws_api:parse_query(Arg)},
+			{"post", yaws_api:parse_post(Arg)}
+		       ]};
+	      false ->
+		  {ok, [{"get", yaws_api:parse_query(Arg)}]}
+	  end,
+    e_logger:log({?MODULE, {handle_args, Res}}),
+    Res.
 
 -spec(controller_exec/2 :: (e_mod_gen:controller_response(), string()) -> list(tuple()) | 
 									      {html, string()} |

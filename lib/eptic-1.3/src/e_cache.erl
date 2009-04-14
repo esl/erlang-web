@@ -39,6 +39,7 @@
 %%
 -spec(read_file/1 :: (string()) -> term()).	     
 read_file(Filename) ->
+    e_logger:log({?MODULE, {reading_file, Filename}}),
     Mod = e_conf:template_cache_mod(),
     Mod:read_file(Filename, e_conf:template_expander()).
 
