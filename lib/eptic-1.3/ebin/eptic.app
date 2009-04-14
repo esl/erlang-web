@@ -6,6 +6,7 @@
 		e_dict,e_dispatcher,e_file,e_json,e_lang,
 		e_mod_gen,e_mod_inets,e_mod_yaws,e_multipart_inets,e_multipart_yaws,
 		eptic,e_session,e_validator,e_component,e_cache_ets,e_cache_disk,e_annotation,
+		e_logger, e_logger_viewer,
 		e_start]},
 	{applications, [kernel, stdlib]},
 	{registered, []},

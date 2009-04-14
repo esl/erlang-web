@@ -24,6 +24,7 @@
 
 %% API
 -export([start_link/0]).
+-export([register_pid/1, unregister_pid/1]).
 -export([log/1]).
 
 %% gen_server callbacks
@@ -36,10 +37,14 @@
 		current_file = 1,
 		fd,
 		max_entries,
-		current_entry = 1}).
+		current_entry = 1,
+		next_id = 1}).
 
 -define(SERVER, ?MODULE).
 -define(FILENAME, "e_logger.log.").
+-define(GC_TIMEOUT, 120000). %% 2 minutes (in milisecs)
+-define(ENTRY_TIMEOUT, 120000000). %% minutes (in microsecs)
+-define(ETS, e_logger_pid2rid).
 
 %%====================================================================
 %% API
@@ -53,7 +58,15 @@ start_link() ->
 
 -spec(log/1 :: (term()) -> ok).	     
 log(Msg) ->
-    gen_server:cast(?SERVER, {log, Msg}).
+    gen_server:cast(?SERVER, {log, self(), Msg}).
+
+-spec(register_pid/1 :: (pid()) -> ok).	     
+register_pid(Pid) ->
+    gen_server:cast(?SERVER, {register_pid, Pid}).
+
+-spec(unregister_pid/1 :: (pid()) -> ok).	     
+unregister_pid(Pid) ->
+    gen_server:cast(?SERVER, {unregister_pid, Pid}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -82,12 +95,17 @@ init([]) ->
     MaxLogs = e_conf:get_conf({logger, max_files}, 5),
     MaxSize = e_conf:get_conf({logger, max_entries}, 1 bsl 10),
     Enabled = e_conf:get_conf({logger, enabled}, true),
-    
+
     if
 	LogRes == ok ->
 	    Filename = filename:join([LogDir, ?FILENAME ++ "1"]),
 	    case file:open(Filename, [delayed_write]) of
 		{ok, Fd} ->
+		    ets:new(?ETS, [named_table]),
+
+		    timer:apply_after(?GC_TIMEOUT, gen_server, call, 
+				      [?SERVER, garbage_collect]),
+
 		    {ok, #state{max_files = MaxLogs,
 				max_entries = MaxSize,
 				log_dir = LogDir,
@@ -111,9 +129,13 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(garbage_collect, _, State) ->
+    do_garbage_collect(ets:first(?ETS), now()),
+
+    timer:apply_after(?GC_TIMEOUT, gen_server, call, 
+		      [?SERVER, garbage_collect]),
+
+    {reply, collected, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -124,17 +146,27 @@ handle_call(_Request, _From, State) ->
 handle_cast(_, #state{enabled = false} = State) ->
     {noreply, State};
 
-handle_cast({log, Msg}, State) ->
-    Result = if
-		   State#state.max_entries =< State#state.current_entry ->
-		       wrap_log_file(State);
-		   true ->
-		       {ok, State#state{current_entry = State#state.current_entry+1}}
-	       end,
+handle_cast({register_pid, Pid}, #state{next_id = Id} = State) ->
+    ets:insert(?ETS, {Pid, now(), Id}),
 
+    {noreply, State#state{next_id = Id+1}};
+
+handle_cast({unregister_pid, Pid}, State) ->
+    ets:delete(?ETS, Pid),
+
+    {noreply, State};
+
+handle_cast({log, Pid, Msg}, State) ->
+    Result = if
+		 State#state.max_entries =< State#state.current_entry ->
+		     wrap_log_file(State);
+		 true ->
+		     {ok, State#state{current_entry = State#state.current_entry+1}}
+	     end,
+    
     case Result of
 	{ok, NewState} ->
-	    log_msg(Msg, NewState#state.fd),
+	    log_msg(pid2rid(Pid), Msg, NewState#state.fd),
 	    
 	    {noreply, NewState};
 	Else ->
@@ -185,7 +217,8 @@ wrap_log_file(State) ->
 				   current_entry = 1}
 	       end,
 
-    Filename = filename:join([State#state.log_dir, ?FILENAME++integer_to_list(NewState#state.current_file)]),
+    Filename = filename:join([State#state.log_dir, 
+			      ?FILENAME++integer_to_list(NewState#state.current_file)]),
     case file:open(Filename, [delayed_write]) of
 	{ok, Fd} ->
 	    {ok, NewState#state{fd = Fd}};
@@ -195,7 +228,33 @@ wrap_log_file(State) ->
 	    Error
     end.
 
--spec(log_msg/2 :: (term(), pid()) -> ok).	     
-log_msg(Msg, Fd) ->
-    Log = lists:flatten(io_lib:format("[~p ~p] ~p~n~n"), [date(), time(), Msg]),
-    file:write(Fd, Log).
+-spec(log_msg/3 :: (not_found | integer(), term(), pid()) -> ok).
+log_msg(not_found, _, _) ->
+    ok;
+log_msg(Rid, Msg, Fd) ->
+    io:format(Fd, "~w.", [{Rid, now(), Msg}]).
+
+-spec(do_garbage_collect/2 :: (pid() | '$end_of_table', tuple()) -> ok).	     
+do_garbage_collect('$end_of_table', _) ->
+    ok;
+do_garbage_collect(Pid, Now) ->
+    [{_, Timestamp, _}] = ets:lookup(?ETS, Pid),
+    case timer:now_diff(Timestamp, Now) of
+	Diff when Diff > ?ENTRY_TIMEOUT ->
+	    ets:delete(?ETS, Pid);
+	_ ->
+	    ok
+    end,
+
+    do_garbage_collect(ets:next(?ETS, Pid), Now).
+
+-spec(pid2rid/1 :: (pid()) -> integer() | not_found).	     
+pid2rid(Pid) ->
+    case ets:lookup(?ETS, Pid) of
+	[{_, _, Rid}] ->
+	    Rid;
+	_ ->
+	    error_logger:error_msg("~p module, Rid related to Pid ~p has not been found!~n~n",
+				   [?MODULE, Pid]),
+	    not_found
+    end.

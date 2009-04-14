@@ -137,6 +137,7 @@ expand_string([$}|T], Op0, Acc) ->
 		    [Token|Tokens] = string:tokens(Key,":"),
 		    case search(wpart:fget(Token), Tokens) of
 			[] -> "[]";
+			V when is_list(V) -> V;
 			V -> io_lib:format("~p",[V])
 		    end
 	    end,
