@@ -59,7 +59,8 @@ install() ->
 		true ->
 		    error_logger:error_msg("~p module, CouchDB returned an error during install ids tab~n"
 					   "Error: ~s~n"
-					   "Reason: ~s~n", [?MODULE, IError, IReason])
+					   "Reason: ~s~n", 
+					   [?MODULE, IError, IReason])
 	    end;
 	{error, IReason} ->
 	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", [?MODULE, IReason])
@@ -83,7 +84,8 @@ install() ->
 					   "Reason: ~s~n", [?MODULE, Error, Reason])
 	    end;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", [?MODULE, Reason])
+	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", 
+				   [?MODULE, Reason])
     end.
 
 %%
@@ -128,7 +130,8 @@ read(Prefix0) ->
 		    []
 	    end;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during read/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason]),
+	    error_logger:error_msg("~p module, error during read/1, prefix: ~p, reason: ~p~n", 
+				   [?MODULE, Prefix, Reason]),
 	    {error, Reason}
     end.
 
@@ -157,7 +160,8 @@ read(Prefix0, Id) ->
 	{ok, {{_, 404, _}, _, _}} ->
 	    not_found;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", [?MODULE, Id, Reason]),
+	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", 
+				   [?MODULE, Id, Reason]),
 	    {error, Reason}
     end.
 
@@ -182,7 +186,8 @@ delete(Prefix0, Id) ->
 		{ok, {{_, 404, _}, _, _}} ->
 		    {error, not_found};
 		{error, Reason1} ->
-		    error_logger:error_msg("~p module, error during delete/2, reason: ~p~n", [?MODULE, Reason1])
+		    error_logger:error_msg("~p module, error during delete/2, reason: ~p~n", 
+					   [?MODULE, Reason1])
 	    end;
 	Else ->
 	    {error, Else}
@@ -200,7 +205,7 @@ write(Prefix0, Element) ->
 
     Url = CouchURL ++ Name ++ "/" ++ Prefix ++ get_id(element(2, Element)),
 
-    Json = e_json:encode([{element, Element}, {pub_date, {date(), time()}}]),
+    Json = e_json:encode([{element, insert_element_id(Prefix, Element)}, {pub_date, {date(), time()}}]),
     case http:request(put, {Url, [], "application/json", Json}, [], []) of
 	{ok, {{_, 201, _}, _, _}} ->
 	    ok;
@@ -219,7 +224,8 @@ write(Prefix0, Element) ->
 	    
 	    {error, {Error, Reason}};
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during write/2, reason: ~p~n", [?MODULE, Reason])
+	    error_logger:error_msg("~p module, error during write/2, reason: ~p~n", 
+				   [?MODULE, Reason])
     end.
 
 %%
@@ -248,7 +254,8 @@ update(Prefix0, Element) ->
 		    
 		    {error, {Error, Reason}};
 		{error, Reason} ->
-		    error_logger:error_msg("~p module, error during update/2, reason: ~p~n", [?MODULE, Reason])
+		    error_logger:error_msg("~p module, error during update/2, reason: ~p~n", 
+					   [?MODULE, Reason])
 	    end;
 	Else ->
 	    {error, Else}
@@ -284,7 +291,8 @@ size(Prefix0) ->
 		    0
 	    end;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during size/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason]),
+	    error_logger:error_msg("~p module, error during size/1, prefix: ~p, reason: ~p~n", 
+				   [?MODULE, Prefix, Reason]),
 	    {error, Reason}
     end.
 
@@ -311,7 +319,8 @@ get_next_id(Prefix0) ->
 	      {ok, {{_, 404, _}, _, _}} ->
 		  new;
 	      {error, Reason} ->
-		  error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason]),
+		  error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", 
+					 [?MODULE, Prefix, Reason]),
 		  {error, Reason}
 	  end,
     
@@ -329,7 +338,8 @@ get_next_id(Prefix0) ->
 
 		    {error, {Error0, Reason0}};
 		{error, Reason1} ->
-		    error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason1]),
+		    error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", 
+					   [?MODULE, Prefix, Reason1]),
 		    {error, Reason1}
 	    end;
 	{N, Rev} ->
@@ -345,7 +355,8 @@ get_next_id(Prefix0) ->
 		    
 		    {error, {Error0, Reason0}};
 		{error, Reason1} ->
-		    error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", [?MODULE, Prefix, Reason1]),
+		    error_logger:error_msg("~p module, error during get_next_id/1, prefix: ~p, reason: ~p~n", 
+					   [?MODULE, Prefix, Reason1]),
 		    {error, Reason1}
 	    end
     end.
@@ -364,20 +375,24 @@ get_rev(Url) ->
 	{ok, {{_, 404, _}, _, _}} ->
 	    not_found;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during get_rev/1, Url: ~p, reason: ~p~n", [?MODULE, Url, Reason]),
+	    error_logger:error_msg("~p module, error during get_rev/1, Url: ~p, reason: ~p~n", 
+				   [?MODULE, Url, Reason]),
 	    Reason
     end.
 
+-spec(get_prefix/1 :: (atom() | string()) -> string()).	     
 get_prefix(Prefix) when is_list(Prefix) ->
     Prefix ++ "_";
 get_prefix(Prefix) when is_atom(Prefix)  ->
     atom_to_list(Prefix) ++ "_".
 
+-spec(get_id/1 :: (integer() | string()) -> string()).	     
 get_id(Id) when is_integer(Id) ->
     integer_to_list(Id);
 get_id(Id) when is_list(Id) ->
     Id.
 
+-spec(is_prefix/2 :: (string(), string()) -> bool()).	     
 is_prefix([], _) ->
     true;
 is_prefix([P | PRest], [P | ERest]) ->
@@ -399,6 +414,13 @@ read_row(URL, Id, Acc) ->
 	{ok, {{_, 404, _}, _, _}} ->
 	    Acc;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", [?MODULE, Id, Reason]),
+	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", 
+				   [?MODULE, Id, Reason]),
 	    Acc
     end.
+
+-spec(insert_element_id/2 :: (atom(), tuple()) -> tuple()).
+insert_element_id(Prefix, Element0) when element(2, Element0) == undefined ->
+    setelement(2, Element0, get_next_id(Prefix));
+insert_element_id(_, Element) ->
+    Element.

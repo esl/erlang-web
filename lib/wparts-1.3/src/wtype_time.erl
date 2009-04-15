@@ -14,7 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @author Michal Zajda <info@erlang-consulting.com>
+%%% @author Michal Zajda <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -25,6 +25,7 @@
 
 -export([handle_call/2, validate/1]).
 -export([get_time/2, is_valid_time/1]).
+-export([check_min/2, check_max/2]).
 
 handle_call(_Format, XML) -> XML.
 
@@ -46,143 +47,79 @@ validate({Options,Input}) ->
 	true ->
 	    {ok, Input};
 	_ ->
-	    Separators= [":"], 
-	    
-	    F = lists:keysearch(format, 1, Options),
-	    
-	    {value, {format,  Format}} = if 
-					     F == false -> 
-						 {value, {format, "HH:MM:SS"}};
-					     true -> 
-						 F
-					 end,
-	    
-	    Length = length(Separator = lists:filter(
-					  fun(X) -> string:str(Format, X) /= 0 
-					  end, 
-					  Separators)
-			   ),
-	    case Length of
-		1   ->  Result = splitter(Input, Separator),
-			{R, ResList} = Result,
-			if ((R == ok) andalso (length(ResList) == 3) orelse (length(ResList) == 2)) ->
-				{B,Inp} = check_limits(Options, Result, Separator, Format),
-				if 
-				    B -> 
-					{ok,Inp};
-				   true -> 
-					{error, {bad_range, Input}}
-				end;
-			   true -> 
-				{error, {bad_time_format, Input}}
-			end;
-		_   -> 
-		    {error, {bad_separator_in_time_form, Input}}
+	    Format = proplists:get_value(format, Options, "HH:MM:SS"),
+	    case convert_input(Format, Input, []) of
+		{error, bad_format} ->
+		    {error, {bad_time_format, Input}};
+		Time ->
+		    case is_valid_time(Time) of
+			true ->
+			    case check_min(Options, Time) of
+				{ok, Time} ->
+				    check_max(Options, Time);
+				ErrorMin ->
+				    ErrorMin
+			    end;
+			false ->
+			    {error, {not_valid_time, Time}}
+		    end
 	    end
+    end.
+
+check_min(Options, Time) ->
+    case proplists:get_value(min, Options) of
+	undefined ->
+	    {ok, Time};
+	Min when Time > Min ->
+	    {ok, Time};
+	_ ->
+	    {error, {bad_range, Time}}
+    end.
+
+check_max(Options, Time) ->
+    case proplists:get_value(max, Options) of
+	undefined ->
+	    {ok, Time};
+	Max when Time < Max ->
+	    {ok, Time};
+	_ ->
+	    {error, {bad_range, Time}}
     end.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
-splitter(Input, [Separator]) ->
-    {ok, DateList} = regexp:split(Input, Separator),	
-    Input_to_i = lists:map(
-                            fun(L) -> 
-                               catch list_to_integer(L) 
-                            end,
-                            DateList),
-
-    case lists:all(fun is_integer/1, Input_to_i) of
-        true -> {ok, Input_to_i};
-        _ -> {error, {bad_date_input, Input}}	
-    end.
-
-check_limits(_, {error, X}, _, _) -> {error, X};
-
-check_limits(Options, {ok, Input_to_i}, Separator, Format) -> 
-
-    U = lists:keysearch(max, 1, Options),
-    D = lists:keysearch(min, 1, Options),
-
-    Up_to_i = if U == false -> [];
-                 true ->    {value, {max,  Up_limit}} = U,
-                            splitter(Up_limit, Separator)
-              end,
-
-    Down_to_i = if D == false -> [];
-                   true ->  {value, {min,  Down_limit}} = D, 
-                             splitter(Down_limit, Separator)
-                end,
- 
-
-    [Inside] = Separator,
-    FormatStr = lists:concat(string:tokens(Format,Inside)),
-
-    S = fun(X,Y) -> X =< Y end, 
-    G = fun(X,Y) -> X >= Y end,
-
-    calendar(FormatStr, Input_to_i, Up_to_i, Down_to_i,S,G).
-
-%--------------------- handlers
-calendar(_,_,{error,_},_,_,_) -> 
-    {false, bad_up_limit_format};
-calendar(_,_,_,{error,_},_,_) -> 
-    {false, bad_down_limit_format};
-calendar(Format, Input, [], [],F,_) -> 
-    calendar(Format, Input, [], F);
-
-calendar(Format, Input_to_i, {ok,Up_to_i}, [], S, _G) ->
-    calendar(Format, Input_to_i, Up_to_i, S);
-
-calendar(Format, Input_to_i, [], {ok,Down_to_i},_S,G) ->
-    calendar(Format, Input_to_i, Down_to_i, G);
-
-calendar(Format, Input_to_i, {ok,Up_to_i}, {ok,Down_to_i},S,G) ->
-    {R1,Inp1} = calendar(Format, Input_to_i, Up_to_i, S),
-    {R2,_Inp2} = calendar(Format, Input_to_i, Down_to_i, G),
-    {lists:all(fun(X) -> X == true end, [R1,R2]), Inp1}.
-
-%-------------------- reformaters
-calendar("HHMMSS", Input, [], Fun) ->
-    calendar(Input, [], Fun);
-
-calendar("HHMMSS", Input, Limit, Fun) when length(Limit) == length(Input) ->
-    calendar(Input, Limit, Fun);
-
-calendar("HHMMSS", [H,M], Limit, Fun) -> 
-    calendar([H,M,0], Limit, Fun);
-
-calendar("HHMM", Input, Limit, Fun) when length(Limit) == length(Input) ->
-    [H,M] = Input,
-    [HL,ML] = Limit,
-    calendar([H,M,0],[HL,ML,0], Fun);
-
-calendar(_,I,_,_) -> 
-    {false,I}.
-
-%---------------------- engine
-calendar(Input, [], _Fun)  when length(Input) == 3 ->
-    Inp = list_to_tuple(Input),
-    BI = is_valid_time(Inp),
-    {BI,Inp};
-
-calendar(Input, Limit, Fun) when length(Input) == 3 ->
-    {H,H2,H3} = list_to_tuple(Input),
-    {G,G2,G3} = list_to_tuple(Limit),
-     
-    BI = is_valid_time({H,H2,H3}),
-    BL = is_valid_time({G,G2,G3}),
-    
-    Result = if 
-                 BI and BL -> Fun({H,H2,H3},{G,G2,G3}) ;
-                 true -> false
-	     end,
-
-    {Result,{H,H2,H3}};
-
-calendar(_, _, _) ->
-    {false, not_used}.
+-spec(convert_input/3 :: (string(), string(), list(tuple())) -> 
+	     {error, bad_format} | {tuple(), tuple()}).	
+convert_input("HH" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Hour ->
+	    convert_input(Format, Input, [{hour, Hour} | Acc])
+    end;
+convert_input("NN" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Minute ->
+	    convert_input(Format, Input, [{minute, Minute} | Acc])
+    end;
+convert_input("SS" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Second ->
+	    convert_input(Format, Input, [{second, Second} | Acc])
+    end;
+convert_input([_ | Format], [_ | Input], Acc) ->
+    convert_input(Format, Input, Acc);
+convert_input([], [], Acc) ->
+    {proplists:get_value(hour, Acc, 0),
+     proplists:get_value(minute, Acc, 0),
+     proplists:get_value(second, Acc, 0)};
+convert_input(_, _, _) ->
+    {error, bad_format}.
 
 is_valid_time({H1,H2,H3}) ->
     Hour = if (H1 >= 0) and (H1 < 24) -> true;
@@ -197,8 +134,7 @@ is_valid_time({H1,H2,H3}) ->
               true -> false
            end,
 
-   lists:all(fun(X) -> X == true end, [Hour,Minute,Sec]);
-
+   lists:all(fun(X) -> X end, [Hour,Minute,Sec]);
 is_valid_time(_) -> false.
 
 get_time(Format, Time) ->

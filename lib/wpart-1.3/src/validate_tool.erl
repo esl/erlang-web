@@ -19,7 +19,6 @@
 %%% Description : 
 %%%
 %%%-------------------------------------------------------------------
-
 -module(validate_tool).
 -export([validate_cu/2]).
 -export([replace_primary/4, do_validate_ok/3, do_validate_ok/4, 
@@ -90,14 +89,14 @@ do_validate_error(Mod,Reason,Fun,Type,ParentType) ->
 replace_primary(Result,undefined,_Mod,_Type) ->
     Result;
 replace_primary(Result,Pr,Mod,Type) ->
-     Arg = list_to_atom(atom_to_list(Type) ++ "_types"),
-     [_Name | Rest] = tuple_to_list(apply(Mod, get_record_info, [Arg])),
-     {R,No} = find_primary(Rest,1,any),
-     Final = if R =/= ok -> {error, no_primary_key};
-        true ->
-            replace_elem(Result,Pr,No)
-     end,
-     Final.
+    Arg = list_to_atom(atom_to_list(Type) ++ "_types"),
+    [_Name | Rest] = tuple_to_list(apply(Mod, get_record_info, [Arg])),
+    case find_primary(Rest, 1) of
+	{ok, N} ->
+	    replace_elem(Result, Pr, N);
+	_ ->
+	    {error, no_primary_key}
+    end.
 
 -spec(replace_elem/3 :: (list(), integer(), integer()) -> list()).
 replace_elem(Result,Pr,No) ->
@@ -106,16 +105,15 @@ replace_elem(Result,Pr,No) ->
    NewBack = [Pr|T],
    Front ++ NewBack.
 
--spec(find_primary/3 :: (list(), integer(), atom()) -> {ok | false, integer()}).
-find_primary([],No,ok) ->
-    {ok,No};
-find_primary([],No,false)->
-    {false, No};
-find_primary(Rest,No,_OK) ->
-    [{_Type, Options}|T] = Rest,
-    X = lists:keysearch(primary_key,1,Options),
-    if X == {value, {primary_key}} -> find_primary([],No,ok);
-       true -> find_primary(T,No+1,false)
+-spec(find_primary/2 :: (list(), integer()) -> {ok, integer()} | no_primary_key).
+find_primary([], _)->
+    no_primary_key;
+find_primary([{_, Options} | Rest], No) ->
+    case lists:keysearch(primary_key, 1, Options) of
+	{_, {primary_key}} ->
+	    {ok, No};
+	_ ->
+	    find_primary(Rest, No+1)
     end.
 
 -spec(get_values/3 :: (atom(), list(), list()) -> {list(string()), list(string())}).	     
@@ -147,5 +145,3 @@ post_get(TypeS,[H|Next],List,R,Reason_list) ->
 			   Reason_list ++ [io_lib:format("~p", [Reason])])
 	    end
    end.
-
-   

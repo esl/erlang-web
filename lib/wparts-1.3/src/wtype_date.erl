@@ -31,6 +31,8 @@
 %% API
 -export([handle_call/2,validate/1,get_date/2]).
 
+-export([check_min/2, check_max/2]).
+
 %%====================================================================
 %% API
 %%====================================================================
@@ -104,124 +106,165 @@ validate({Options,Input}) ->
 	true ->
 	    {ok, Input};
 	_ ->
-	    Separators= ["-","/"," ",".", "_"], 
-	    F = lists:keysearch(format, 1, Options),
-	    {value, {format,  Format}} = if F == false -> {value, {format, "YYYY-MM-DD"}};
-					    true -> F
-					 end,
-	    Length = length(Separator = lists:filter(
-					  fun(X) -> string:str(Format, X) /= 0 
-					  end, 
-					  Separators)
-			   ),
-	    case Length of
-		1   ->  Result = splitter(Input, Format, Separator),
-			{R, ResList} = Result,
-			if ((R == ok) andalso (length(ResList))) == 3 ->
-				{B,Inp} = check_limits(Options, Result),
-				if B -> {ok,Inp};
-				   true -> {error, {bad_range, Input}}
-				end;
-			   true -> {error, {bad_date_format, Input}}
-			end;
-		_   -> {error, {bad_separator_in_date_form, Input}}
+	    Format = proplists:get_value(format, Options, "YYYY-MM-DD"),
+	    case convert_input(Format, Input, []) of
+		{error, bad_format} ->
+		    {error, {bad_date_format, Input}};
+		Date ->
+		    case calendar:valid_date(Date) of
+			true ->
+			    case check_min(Options, Date) of
+				{ok, Date} ->
+				    check_max(Options, Date);
+				ErrorMin ->
+				    ErrorMin
+			    end;
+			false ->
+			    {error, {not_valid_date, Input}}
+		    end
 	    end
+    end.
+
+check_min(Options, Date) ->
+    case proplists:get_value(min, Options) of
+	undefined ->
+	    {ok, Date};
+	Min when Date > Min ->
+	    {ok, Date};
+	_ ->
+	    {error, {bad_range, Date}}
+    end.
+
+check_max(Options, Date) ->
+    case proplists:get_value(max, Options) of
+	undefined ->
+	    {ok, Date};
+	Max when Date < Max ->
+	    {ok, Date};
+	_ ->
+	    {error, {bad_range, Date}}
     end.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+-spec(convert_input/3 :: (string(), string(), list(tuple())) -> 
+	     {error, bad_format} | tuple()).	     
+convert_input("YYYY" ++ Format, [I1, I2, I3, I4 | Input], Acc) ->
+    case catch list_to_integer([I1, I2, I3, I4]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Year ->
+	    convert_input(Format, Input, [{year, Year} | Acc])
+    end;
+convert_input("YY" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Year when Year >= 70 -> %% epoch year
+	    convert_input(Format, Input, [{year, 2000 + Year} | Acc]);
+	Year ->
+	    convert_input(Format, Input, [{year, 1900 + Year} | Acc])
+    end;
+convert_input("MM" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Month ->
+	    convert_input(Format, Input, [{month, Month} | Acc])
+    end;
+convert_input("DD" ++ Format, [I1, I2 | Input], Acc) ->
+    case catch list_to_integer([I1, I2]) of
+	{'EXIT', _} ->
+	    {error, bad_format};
+	Day ->
+	    convert_input(Format, Input, [{day, Day} | Acc])
+    end;
+convert_input("SMONTH" ++ Format, Input, Acc) ->
+    case smonth_to_int(Input, 1) of
+	{error, bad_format} ->
+	    {error, bad_format};
+	{Smonth, NewInput} ->
+	    convert_input(Format, NewInput, [{month, Smonth} | Acc])
+    end;
+convert_input("MONTH" ++ Format, Input, Acc) ->
+    case month_to_int(Input, 1) of
+	{error, bad_format} ->
+	    {error, bad_format};
+	{Month, NewInput} ->
+	    convert_input(Format, NewInput, [{month, Month} | Acc])
+    end;
+convert_input("DAY" ++ Format, Input, Acc) ->
+    case skip_day(Input, 1) of
+	{ok, NewInput} ->
+	    convert_input(Format, NewInput, Acc);
+	Else ->
+	    Else
+    end;
+convert_input("SDAY" ++ Format, Input, Acc) ->
+    case skip_sday(Input, 1) of
+	{ok, NewInput} ->
+	    convert_input(Format, NewInput, Acc);
+	Else ->
+	    Else
+    end;
+convert_input([_ | Format], [_ | Input], Acc) ->
+    convert_input(Format, Input, Acc);
+convert_input([], [], Acc) ->
+    {proplists:get_value(year, Acc, 0),
+     proplists:get_value(month, Acc, 1),
+     proplists:get_value(day, Acc, 1)};
+convert_input(_, _, _) ->
+    {error, bad_format}.
 
-splitter(Input, Format, [Separator]) ->
-    {ok, DateList} = regexp:split(Input, Separator),
-    {ok, FormatList} = regexp:split(Format, Separator),
-    Input_to_i = validate_field(DateList, FormatList, []),
-    case lists:all(fun is_integer/1, Input_to_i) of
-        true -> {ok, Input_to_i};
-        _ -> {error, {bad_date_input, Input}}	
+-spec(smonth_to_int/2 :: (string(), integer()) -> 
+	     {error, bad_format} | {integer(), string()}).
+smonth_to_int(_, 13) ->
+    {error, bad_format};
+smonth_to_int(Input, N) ->
+    case lists:prefix(smonth(N), Input) of
+	true ->
+	    {N, lists:sublist(Input, length(smonth(N))+1, length(Input))};
+	false ->
+	    smonth_to_int(Input, N+1)
     end.
 
-validate_field([],[],List) ->
-    lists:map(fun(L) ->
-		      element(2, L)
-	      end, lists:keysort(1, List));
-validate_field([], [_|_], _) ->
-    [error];
-validate_field([_|_], [], _) ->
-    [error];
-validate_field([H1|T1],[H2|T2],List) ->
-    R = field(H2, H1),
-    validate_field(T1,T2,[R|List]).
-
-field("YYYY", Value) ->
-    catch {1, list_to_integer(Value)};
-field("YY", Value) ->
-    catch {1, list_to_integer(Value)};
-field("MM", Value) ->
-    catch {2, list_to_integer(Value)};
-field("DD", Value) ->
-    catch {3, list_to_integer(Value)};
-field("SMONTH", Value) ->
-    {2, smonth_to_int(Value)};
-field("MONTH", Value) ->
-    {2, month_to_int(Value)};
-field("SDAY", Value) ->
-    {3, sday_to_int(Value)};
-field("DAY", Value) ->
-    {3, day_to_int(Value)};
-field(_Format, _Value) ->
-    bad_format.
-
-check_limits(_, {error, X}) -> {error, X};
-
-check_limits(Options, {ok, Input_to_i}) -> 
-    U = lists:keysearch(max, 1, Options),
-    D = lists:keysearch(min, 1, Options),
-
-    Limit = 
-	fun(Val) ->
-		case Val of
-		    false -> [];
-		    {value, {max, {H,M,S}}} -> 
-			case lists:all(fun is_integer/1, [H,M,S]) of
-			    true -> {ok, {H,M,S}};
-			    _ -> {error, {bad_limit_format, {H,M,S}}}	
-			end;
-		    _ -> {error, {bad_limit_format, Val}}
-		end
-	end,
-    MaxFun = fun(X,Y) -> X =< Y end, 
-    MinFun = fun(X,Y) -> X >= Y end,
-    test_limits(list_to_tuple(Input_to_i), Limit(D), Limit(U), MinFun, MaxFun).
-%----------------------------------------------------------------------------
-test_limits(_,{error,_},_,_,_) -> {false, bad_min_limit_format};
-test_limits(_,_,{error,_},_,_) -> {false, bad_max_limit_format};
-test_limits(Input, [], {ok,Max}, _, MaxFun) ->
-    Result = test_limit(Input, Max, MaxFun),
-    {Result, Input};
-test_limits(Input, {ok,Min}, [], MinFun, _) ->
-    Result = test_limit(Input, Min, MinFun),
-    {Result, Input};
-test_limits(Input, [], [],_,_) ->
-    {true, Input};
-test_limits(Input, {ok,Min}, {ok,Max}, MinFun, MaxFun) ->
-    R1 = test_limit(Input, Min, MinFun),
-    R2 = test_limit(Input, Max, MaxFun),
-    Result = if R1 and R2 -> true;
-		true -> false
-	     end,
-    {Result,Input}.
-    
-test_limit(Input, Limit, LimitFun) ->
-    BI = calendar:valid_date(Input),
-    BL = calendar:valid_date(Limit),
-    if BI and BL ->
-	    GI = calendar:date_to_gregorian_days(Input),
-	    GL = calendar:date_to_gregorian_days(Limit),
-	    LimitFun(GI,GL);
-       true -> false
+-spec(month_to_int/2 :: (string(), integer()) -> 
+	     {error, bad_format} | {integer(), string()}).
+month_to_int(_, 13) ->
+    {error, bad_format};
+month_to_int(Input, N) ->
+    case lists:prefix(month(N), Input) of
+	true ->
+	    {N, lists:sublist(Input, length(month(N))+1, length(Input))};
+	false ->
+	    month_to_int(Input, N+1)
     end.
-    
+
+-spec(skip_day/2 :: (string(), integer()) -> 
+	     {error, bad_format} | {ok, string()}).
+skip_day(_, 8) ->
+    {error, bad_format};
+skip_day(Input, N) ->
+    case lists:prefix(day0(N), Input) of
+	true ->
+	    {ok, lists:sublist(Input, length(day0(N))+1, length(Input))};
+	false ->
+	    skip_day(Input, N+1)
+    end.
+
+-spec(skip_sday/2 :: (string(), integer()) -> 
+	     {error, bad_format} | {ok, string()}).
+skip_sday(_, 8) ->
+    {error, bad_format};
+skip_sday(Input, N) ->
+    case lists:prefix(sday0(N), Input) of
+	true ->
+	    {ok, lists:sublist(Input, length(sday0(N))+1, length(Input))};
+	false ->
+	    skip_sday(Input, N+1)
+    end.   
+
 convert(N, Len) ->
     case integer_to_list(N) of
         List when length(List) >= Len ->
@@ -243,20 +286,6 @@ smonth(10) -> "Oct";
 smonth(11) -> "Nov";
 smonth(12) -> "Dec".
 
-smonth_to_int("Jan") -> 1;
-smonth_to_int("Feb") -> 2;
-smonth_to_int("Mar") -> 3;
-smonth_to_int("Apr") -> 4;
-smonth_to_int("May") -> 5;
-smonth_to_int("Jun") -> 6;
-smonth_to_int("Jul") -> 7;
-smonth_to_int("Aug") -> 8;
-smonth_to_int("Sep") -> 9;
-smonth_to_int("Oct") -> 10;
-smonth_to_int("Nov") -> 11;
-smonth_to_int("Dec") -> 12;
-smonth_to_int(_) -> bad_month.
-    
 month(1) -> "January";
 month(2) -> "February";
 month(3) -> "March";
@@ -269,20 +298,6 @@ month(9) -> "September";
 month(10) -> "October";
 month(11) -> "November";
 month(12) -> "December".
-
-month_to_int("January") -> 1;
-month_to_int("February") -> 2;
-month_to_int("March") -> 3;
-month_to_int("April") -> 4;
-month_to_int("May") -> 5;
-month_to_int("June") -> 6;
-month_to_int("July") -> 7;
-month_to_int("August") -> 8;
-month_to_int("September") -> 9;
-month_to_int("October") -> 10;
-month_to_int("November") -> 11;
-month_to_int("December") -> 12;
-month_to_int(_) -> bad_month.
 
 -spec(sday/1 :: ({integer(), integer(), integer()}) -> string()).	     
 sday(Date) ->
@@ -297,15 +312,6 @@ sday0(5) -> "Fri";
 sday0(6) -> "Sat";
 sday0(7) -> "Sun".
 
-sday_to_int("Mon") -> 1;
-sday_to_int("Tue") -> 2;
-sday_to_int("Wed") -> 3;
-sday_to_int("Thu") -> 4;
-sday_to_int("Fri") -> 5;
-sday_to_int("Sat") -> 6;
-sday_to_int("Sun") -> 7;
-sday_to_int(_) -> bad_day.
-
 -spec(day/1 :: ({integer(), integer(), integer()}) -> string()).	     
 day(Date) ->
     day0(calendar:day_of_the_week(Date)).
@@ -317,12 +323,3 @@ day0(4) -> "Thursday";
 day0(5) -> "Friday";
 day0(6) -> "Saturday";
 day0(7) -> "Sunday".
-
-day_to_int("Monday") -> 1;
-day_to_int("Tuesday") -> 2;
-day_to_int("Wednesday") -> 3;
-day_to_int("Thursday") -> 4;
-day_to_int("Friday") -> 5;
-day_to_int("Saturday") -> 6;
-day_to_int("Sunday") -> 7;
-day_to_int(_) -> bad_day.

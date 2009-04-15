@@ -111,7 +111,9 @@ delete(Tab, Key) ->
 -spec(write/2 :: (atom(), tuple()) -> ok | {error, any()}).
 write(Tab, Element) ->
     Trans = fun() ->
-		    mnesia:write(Tab, Element, write)
+		    mnesia:write(Tab, 
+				 insert_element_id(Tab, Element), 
+				 write)
 	    end,
     
     case mnesia:transaction(Trans) of
@@ -144,3 +146,10 @@ size(Tab) ->
 -spec(get_next_id/1 :: (atom()) -> integer() | {error, any()}).	
 get_next_id(Tab) ->
     mnesia:dirty_update_counter(ids_tab, Tab, 1).
+
+-spec(insert_element_id/2 :: (atom(), tuple()) -> tuple()).	     
+insert_element_id(Tab, Element0) 
+  when element(2, Element0) == undefined ->
+    setelement(2, Element0, get_next_id(Tab));
+insert_element_id(_, Element) ->
+    Element.
