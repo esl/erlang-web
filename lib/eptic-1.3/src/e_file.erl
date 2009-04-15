@@ -79,7 +79,12 @@ copy(Src, Suffix) ->
 %%
 -spec(get_relative_name/1 :: (string()) -> string()).
 get_relative_name(Filename) ->	     
-    string:sub_string(Filename, length(e_conf:server_root())+9).
+    case lists:prefix(e_conf:server_root(), Filename) of
+	true ->
+	    string:sub_string(Filename, length(e_conf:server_root())+9);
+	false ->
+	    Filename
+    end.
 
 %%
 %% @spec get_size(Filename :: string()) -> Size :: integer()

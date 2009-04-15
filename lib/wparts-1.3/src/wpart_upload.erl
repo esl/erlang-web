@@ -52,22 +52,23 @@ get_html_tag(Attrs, Default) when Default == undefined; Default == [] ->
     wpart_gen:build_html(wpart_gen:tpl_get(upload),
 			 [{"html", wpart:proplist2html(Attrs)}]);
 get_html_tag(Attrs, Default) ->
-    Path = case lists:member($<, Default) of
-	       true ->
-		   "";
-	       false ->
-		   case Default of
+    case lists:member($<, Default) of
+	true ->
+	    wpart_gen:build_html(wpart_gen:tpl_get(upload),
+				 [{"html", wpart:proplist2html(Attrs)}]);
+	false ->
+	    Path = case Default of
 		       "docroot" ++ P ->
 			   P;
 		       Else ->
 			   Else
 		   end
-	   end,
-	       
-    wpart_gen:build_html(wpart_gen:tpl_get(upload),
-			 [{"html", wpart:proplist2html(Attrs)},
-			  {"comment", wpart_gen:build_html(wpart_gen:tpl_get(upload_edit),
-							   [{"path", Path}])}]).
+    
+		wpart_gen:build_html(wpart_gen:tpl_get(upload),
+				     [{"html", wpart:proplist2html(Attrs)},
+				      {"comment", wpart_gen:build_html(wpart_gen:tpl_get(upload_edit),
+								       [{"path", Path}])}])
+    end.
     
 load_tpl() ->
     wpart_gen:load_tpl(upload_edit, 
