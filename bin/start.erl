@@ -120,23 +120,33 @@ copy_bin_files({Version, Path}) ->
     Copier = fun(X) ->
 		     Source = filename:join(Prefix, X),
 		     Dest = filename:join("bin", X),
-		     case file:copy(Source, Dest) of
-			 {ok, _} -> confirm_created(Dest);
-			 {error, Reason} -> handle_error(Reason)
-		     end,
-		     file:write_file_info(Dest, #file_info{mode=8#00744})
+		     case filelib:is_file(Dest) of
+			 true ->
+			     inform_exists(Dest);
+			 false ->
+			     case file:copy(Source, Dest) of
+				 {ok, _} -> confirm_created(Dest);
+				 {error, Reason} -> handle_error(Reason)
+			     end,
+			     file:write_file_info(Dest, #file_info{mode=8#00744})
+		     end
 	     end,
     lists:foreach(Copier, ToCopyList).
 
 create_script(FileName, Content) ->
-    case file:open(FileName, [write]) of
-	{ok, Fd} ->
-	    io:format(Fd, Content, []),
-	    file:close(Fd),
-	    file:write_file_info(FileName, 
-				 #file_info{mode=8#00744}),
-	    confirm_created(FileName);
-	{error, Reason} -> handle_error(Reason)
+    case filelib:is_file(FileName) of
+	true ->
+	    inform_exists(FileName);
+	false ->
+	    case file:open(FileName, [write]) of
+		{ok, Fd} ->
+		    io:format(Fd, Content, []),
+		    file:close(Fd),
+		    file:write_file_info(FileName, 
+					 #file_info{mode=8#00744}),
+		    confirm_created(FileName);
+		{error, Reason} -> handle_error(Reason)
+	    end
     end.
 			
 create_start_scripts({_, Path}) ->
@@ -261,13 +271,18 @@ erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
 create_start_erl_data({Version, _}) ->
     Filename = filename:join("releases", "start_erl.data"),
 
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    io:format(Fd, "0.1 ~s", [Version]),
-	    file:close(Fd),
-	    confirm_created(Filename);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    io:format(Fd, "0.1 ~s", [Version]),
+		    file:close(Fd),
+		    confirm_created(Filename);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 create_basic_config_files() ->
@@ -279,99 +294,129 @@ create_basic_config_files() ->
 conf_dispatcher() ->
     Filename = filename:join(["config", "dispatch.conf"]),
 
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    io:format(Fd, "%%~n"
-		      "%% ENTRIES FOR THE AUTOCOMPLETE WPART~n"
-		      "%%~n", []),
-
-	    Entries = [{static, "^/autocomplete\.css$", enoent},
-		       {static, "^/jquery\.autocomplete\.js$", enoent},
-		       {static, "^/jquery\.js$", enoent},
-		       {static, "^/indicator\.gif$", enoent}],
-	    lists:foreach(fun(Entry) ->
-				  io:format(Fd, "~p.~n", [Entry])
-			  end, Entries),
-
-	    io:format(Fd, "~n%%~n"
-		      "%% WELCOME PAGE~n"
-		      "%%~n"
-		      "~p.~n", [{static, "^/?$", "welcome.html"}]),
-
-	    file:close(Fd),
-	    confirm_created(Filename);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    io:format(Fd, "%%~n"
+			      "%% ENTRIES FOR THE AUTOCOMPLETE WPART~n"
+			      "%%~n", []),
+		    
+		    Entries = [{static, "^/autocomplete\.css$", enoent},
+			       {static, "^/jquery\.autocomplete\.js$", enoent},
+			       {static, "^/jquery\.js$", enoent},
+			       {static, "^/indicator\.gif$", enoent}],
+		    lists:foreach(fun(Entry) ->
+					  io:format(Fd, "~p.~n", [Entry])
+				  end, Entries),
+		    
+		    io:format(Fd, "~n%%~n"
+			      "%% WELCOME PAGE~n"
+			      "%%~n"
+			      "~p.~n", [{static, "^/?$", "welcome.html"}]),
+		    
+		    file:close(Fd),
+		    confirm_created(Filename);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 conf_errors() ->
     Filename = filename:join(["config", "errors.conf"]),
 
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    io:format(Fd, "{error, 501, \"templates/501.html\"}.\n"
-		      "{error, 404, \"templates/404.html\"}.\n", []),
-	    file:close(Fd),
-	    confirm_created(Filename),
-	    
-	    ErrorPage = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-		"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
-		"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
-		"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
-		"<head>\n"
-		"<title>~p Error</title>\n"
-		"</head>\n"
-		"<body>\n"
-		"<center>\n"
-		"<h1>~p Error</h1>\n"
-		"</center>\n"
-		"</body>\n"
-		"</html>",
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    io:format(Fd, "{error, 501, \"templates/501.html\"}.\n"
+			      "{error, 404, \"templates/404.html\"}.\n", []),
+		    file:close(Fd),
+		    confirm_created(Filename),
+		    
+		    ErrorPage = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+			"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
+			"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
+			"<head>\n"
+			"<title>~p Error</title>\n"
+			"</head>\n"
+			"<body>\n"
+			"<center>\n"
+			"<h1>~p Error</h1>\n"
+			"</center>\n"
+			"</body>\n"
+			"</html>",
 
-	    Filename404 = filename:join("templates", "404.html"),
-	    case file:open(Filename404, [write]) of
-		{ok, Fd404} ->
-		    io:format(Fd404, ErrorPage, [404, 404]),
-		    file:close(Fd404),
-		    confirm_created(Filename404);
-		{error, Reason1} ->
-		    handle_error(Reason1)
-	    end,
-	    
-	    Filename501 = filename:join(["templates", "501.html"]),
-	    case file:open(Filename501, [write]) of
-		{ok, Fd501} ->
-		    io:format(Fd501, ErrorPage, [501, 501]),
-		    file:close(Fd501),
-		    confirm_created(Filename501);
-		{error, Reason2} ->
-		    handle_error(Reason2)
-	    end;
-	{error, Reason} ->
-	    handle_error(Reason)
+		    Filename404 = filename:join("templates", "404.html"),
+		    case filelib:is_file(Filename404) of
+			true ->
+			    inform_exists(Filename404);
+			false ->
+			    case file:open(Filename404, [write]) of
+				{ok, Fd404} ->
+				    io:format(Fd404, ErrorPage, [404, 404]),
+				    file:close(Fd404),
+				    confirm_created(Filename404);
+				{error, Reason1} ->
+				    handle_error(Reason1)
+			    end
+		    end,
+		    
+		    Filename501 = filename:join(["templates", "501.html"]),
+		    case filelib:is_file(Filename501) of
+			true ->
+			    inform_exists(Filename501);
+			false ->
+			    case file:open(Filename501, [write]) of
+				{ok, Fd501} ->
+				    io:format(Fd501, ErrorPage, [501, 501]),
+				    file:close(Fd501),
+				    confirm_created(Filename501);
+				{error, Reason2} ->
+				    handle_error(Reason2)
+			    end;
+			{error, Reason} ->
+			    handle_error(Reason)
+		    end
+	    end
     end.
 
 conf_project() ->
     Filename = filename:join(["config", "project.conf"]),
 
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    io:format(Fd, "{http_port, 8080}.~n", []),
-	    file:close(Fd),
-	    confirm_created(Filename);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    io:format(Fd, "{http_port, 8080}.~n", []),
+		    file:close(Fd),
+		    confirm_created(Filename);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 conf_autocomplete() ->
     Wparts = code:priv_dir(wparts),
     lists:foreach(fun(File) ->
 			  Dest = filename:join(["docroot", File]),
-			  case file:copy(filename:join([Wparts, File]), Dest) of
-			      {ok, _} ->
-				  confirm_created(Dest);
-			      {error, Reason} ->
-				  handle_error({Dest, Reason})
+			  case filelib:is_file(Dest) of
+			      true ->
+				  inform_exists(Dest);
+			      false ->
+				  case file:copy(filename:join([Wparts, File]), Dest) of
+				      {ok, _} ->
+					  confirm_created(Dest);
+				      {error, Reason} ->
+					  handle_error({Dest, Reason})
+				  end
 			  end
 		  end, ["autocomplete.css", "indicator.gif", "jquery.autocomplete.js", 
 			"jquery.js"]).
@@ -379,43 +424,53 @@ conf_autocomplete() ->
 create_welcome_page() ->
     Filename = filename:join(["templates", "welcome.html"]),
 
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    Content = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-		"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n"
-		"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
-		"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n\n"
-    
-		"<head>\n"
-		"<title>Erlang Web</title>\n"
-		"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n"
-		"</head>\n"
-		"<body>\n"
-		"<h1>Welcome to the Erlang Web!</h1>\n"
-		"</body>\n"
-		"</html>\n",
-	    io:format(Fd, Content, []),
-	    file:close(Fd),
-	    confirm_created(Filename);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Content = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+			"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n"
+			"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
+			"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n\n"
+	    
+			"<head>\n"
+			"<title>Erlang Web</title>\n"
+			"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n"
+			"</head>\n"
+			"<body>\n"
+			"<h1>Welcome to the Erlang Web!</h1>\n"
+			"</body>\n"
+			"</html>\n",
+		    io:format(Fd, Content, []),
+		    file:close(Fd),
+		    confirm_created(Filename);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 create_rel_file({Version, _}, Server) ->
     Name = "start",
     Filename = filename:join(["releases", "0.1", Name ++ ".rel"]),
     
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    Apps = get_apps_for_release(Server),
-	    ReleaseInfo = {release, {Name, "0.1"}, {erts, Version},
-			   Apps},
-	    
-	    io:format(Fd, "~p.~n", [ReleaseInfo]),
-	    file:close(Fd),
-	    confirm_created(Filename);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Apps = get_apps_for_release(Server),
+		    ReleaseInfo = {release, {Name, "0.1"}, {erts, Version},
+				   Apps},
+		    
+		    io:format(Fd, "~p.~n", [ReleaseInfo]),
+		    file:close(Fd),
+		    confirm_created(Filename);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 get_apps_for_release(Server) ->
@@ -442,42 +497,63 @@ generate_boot_file() ->
 
 copy_conf_files() ->
     YawsConfig = "config/yaws.conf",
-    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
-    confirm_created(YawsConfig),
+    case filelib:is_file(YawsConfig) of
+	true ->
+	    inform_exists(YawsConfig);
+	false ->
+	    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
+	    confirm_created(YawsConfig)
+    end,
 
     MimeTypes = "docroot/conf/mime.types",
-    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
-    confirm_created(MimeTypes),
+    case filelib:is_file(MimeTypes) of
+	true ->
+	    inform_exists(MimeTypes);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
+	    confirm_created(MimeTypes)
+    end,
 
     InetsConfig = "config/inets.conf",
-    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
-    confirm_created(InetsConfig),
-    
-    ErrorsConfig = "config/errors_description.conf",
-    file:copy(code:priv_dir(eptic) ++ "/errors.conf", ErrorsConfig),
-    confirm_created(ErrorsConfig).
+    case filelib:is_file(InetsConfig) of
+	true ->
+	    inform_exists(InetsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
+	    confirm_created(InetsConfig)
+    end.
 
 create_sys_config_file(yaws) ->
     Filename = "releases/0.1/sys.config",
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    Content = [{yaws, [{conf, "config/yaws.conf"}]}],
-	    io:format(Fd, "~p.~n", [Content]),
-	    confirm_created(Filename),
-	    file:close(Fd);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Content = [{yaws, [{conf, "config/yaws.conf"}]}],
+		    io:format(Fd, "~p.~n", [Content]),
+		    confirm_created(Filename),
+		    file:close(Fd);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end;
 create_sys_config_file(inets) ->
     Filename = "releases/0.1/sys.config",
-    case file:open(Filename, [write]) of
-	{ok, Fd} ->
-	    Content = [{inets, [{services, [{httpd, "config/inets.conf"}]}]}],
-	    io:format(Fd, "~p.~n", [Content]),
-	    confirm_created(Filename),
-	    file:close(Fd);
-	{error, Reason} ->
-	    handle_error(Reason)
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Content = [{inets, [{services, [{httpd, "config/inets.conf"}]}]}],
+		    io:format(Fd, "~p.~n", [Content]),
+		    confirm_created(Filename),
+		    file:close(Fd);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
     end.
 
 copy_escripts(RootDir) ->
@@ -493,9 +569,15 @@ copy_escripts(RootDir) ->
 	    confirm_created("Emakefile"),
 	    
 	    lists:foreach(fun(File) ->
-				  file:copy(filename:join([RootDir, File]), File),
-				  file:write_file_info(File, 
-						       #file_info{mode=8#00744}),
-				  confirm_created(File)
+				  case filelib:is_file(File) of
+				      true ->
+					  inform_exists(File);
+				      false ->
+					  file:copy(filename:join([RootDir, File]), File),
+					  file:write_file_info(File, 
+							       #file_info{mode=8#00744}),
+					  confirm_created(File)
+				  end
 			  end, Files)
     end.
+ 
