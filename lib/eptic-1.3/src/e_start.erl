@@ -67,6 +67,7 @@ start_node(single_node_with_cache, Server) ->
     application:start(eptic_fe).
 
 start_web_server(inets) ->
+    inets:stop(),
     application:set_env(inets, services, [{httpd, filename:join([e_conf:server_root(), "config", "inets.conf"])},
 					  {httpd, filename:join([e_conf:server_root(), "config", "inets_https.conf"])}]),
     

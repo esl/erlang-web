@@ -62,6 +62,8 @@ install() ->
 					   "Reason: ~s~n", 
 					   [?MODULE, IError, IReason])
 	    end;
+	{ok, _} ->
+	    ok;
 	{error, IReason} ->
 	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", [?MODULE, IReason])
     end,
@@ -83,6 +85,8 @@ install() ->
 					   "Error: ~s~n"
 					   "Reason: ~s~n", [?MODULE, Error, Reason])
 	    end;
+	{ok, _} ->
+	    ok;
 	{error, Reason} ->
 	    error_logger:error_msg("~p module, error during install(), reason: ~p~n", 
 				   [?MODULE, Reason])
@@ -124,7 +128,7 @@ read(Prefix0) ->
 				       end, tuple_to_list(Rows)),
 
 		    lists:foldl(fun([{id, Id}, _, _], Acc) ->
-					read_row(URL, Id, Acc)
+					read_row(Prefix0, URL, Id, Acc)
 				end, [], Ids);
 		true ->
 		    []
@@ -149,14 +153,10 @@ read(Prefix0, Id) ->
 
     case http:request(Url) of
 	{ok, {{_, 200, _}, _, Json}} ->
-	    {ok, [Element]} = e_json:decode(Json),
+	    {ok, [Element0]} = e_json:decode(Json),
+	    Element = lists:reverse(proplists:delete('_rev', proplists:delete('_id', Element0))),
 	    
-	    case lists:keysearch(element, 1, Element) of
-		false ->
-		    not_found;
-		{_, {_, E}} ->
-		    E
-	    end;
+	    list_to_tuple([Prefix0 | lists:map(fun({_, Val}) -> Val end, Element)]);
 	{ok, {{_, 404, _}, _, _}} ->
 	    not_found;
 	{error, Reason} ->
@@ -198,14 +198,17 @@ delete(Prefix0, Id) ->
 %% @equiv e_db:write/2
 %%
 -spec(write/2 :: (atom(), tuple()) -> ok | {error, any()}).
-write(Prefix0, Element) ->
+write(Prefix0, Element0) ->
     Name = e_conf:project_name(),
     CouchURL = e_conf:couchdb_address(),
     Prefix = get_prefix(Prefix0),
+    Element1 = insert_element_id(Prefix0, Element0),
 
-    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ get_id(element(2, Element)),
+    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ get_id(element(2, Element1)),
 
-    Json = e_json:encode([{element, insert_element_id(Prefix, Element)}, {pub_date, {date(), time()}}]),
+    Element = wpart_db:build_record_structure(Prefix0, Element1),
+    Json = e_json:encode(Element),
+    error_logger:info_msg("~p module, inserting ~p~n", [?MODULE, Json]),
     case http:request(put, {Url, [], "application/json", Json}, [], []) of
 	{ok, {{_, 201, _}, _, _}} ->
 	    ok;
@@ -242,7 +245,7 @@ update(Prefix0, Element) ->
     
     case get_rev(Url) of
 	{ok, Rev} ->
-	    Json = e_json:encode([{element, Element}, {pub_date, {date(), time()}}, {'_rev', Rev}]),
+	    Json = e_json:encode([{'_rev', Rev} | wpart_db:build_record_structure(Prefix0, Element)]),
 	    case http:request(put, {Url, [], "application/json", Json}, [], []) of
 		{ok, {{_, 201, _}, _, _}} ->
 		    ok;
@@ -360,7 +363,7 @@ get_next_id(Prefix0) ->
 		    {error, Reason1}
 	    end
     end.
-	    
+
 get_rev(Url) ->
     case http:request(Url) of
 	{ok, {{_, 200, _}, _, Json}} ->
@@ -400,17 +403,12 @@ is_prefix([P | PRest], [P | ERest]) ->
 is_prefix(_, _) ->
     false.
 
-read_row(URL, Id, Acc) ->
+read_row(Prefix, URL, Id, Acc) ->
     case http:request(URL ++ "/" ++ Id) of
 	{ok, {{_, 200, _}, _, Json}} ->
-	    {ok, [Element]} = e_json:decode(Json),
-
-	    case lists:keysearch(element, 1, Element) of
-		false ->
-		    Acc;
-		{_, {_, E}} ->
-		    [E | Acc]
-	    end;
+	    {ok, [Element0]} = e_json:decode(Json),
+	    Element = lists:reverse(proplists:delete('_rev', proplists:delete('_id', Element0))),
+	    [list_to_tuple([Prefix | lists:map(fun({_, Val}) -> Val end, Element)]) | Acc];
 	{ok, {{_, 404, _}, _, _}} ->
 	    Acc;
 	{error, Reason} ->

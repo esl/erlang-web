@@ -85,8 +85,10 @@ tuple_to_object([{Key, Value}], Acc) when is_atom(Key) ->
 tuple_to_object([{Key, Value}|T], Acc) when is_atom(Key) ->
     Item = [encode(atom_to_list(Key)), ":", encode(Value), ","],
     tuple_to_object(T, [Item|Acc]);
+tuple_to_object([{Key, Value}|T], []) ->
+    tuple_to_object(T, [[encode(Key), ":", encode(Value), ","]]);
 tuple_to_object([{Key, Value}|T], Acc) ->
-    Item = lists:concat([$,, encode(Value), $:, encode(Key)]),
+    Item = [encode(Key), ":", encode(Value), ","],
     tuple_to_object(T, [Item|Acc]). 
 
 -spec(list_to_json_array/2 :: (list(), string()) -> string()).	     
@@ -99,7 +101,7 @@ list_to_json_array([Item|T], Acc) ->
 
 -spec(string_to_json_string/2 :: (string(), string()) -> string()).	     
 string_to_json_string([], Acc) ->
-    [$"|lists:reverse([$"|Acc])];
+    [34|lists:reverse([34|Acc])]; % $"
 string_to_json_string([$\n|T], Acc) ->
     string_to_json_string(T, [$\n,$\\|Acc]);
 string_to_json_string([$\r|T], Acc) ->
@@ -112,8 +114,8 @@ string_to_json_string([$\\|T], Acc) ->
     string_to_json_string(T, [$\\,$\\|Acc]);
 string_to_json_string([$\/|T], Acc) ->
     string_to_json_string(T, [$\/,$\\|Acc]);
-string_to_json_string([$"|T], Acc) ->
-    string_to_json_string(T, [$",$\\|Acc]);
+string_to_json_string([34|T], Acc) -> % $"
+    string_to_json_string(T, [34,$\\|Acc]);
 string_to_json_string([$ |T], Acc) ->
     string_to_json_string(T, [$ |Acc]);
 string_to_json_string([H|T], Acc) ->
@@ -141,79 +143,81 @@ scan([91|T], Acc) -> %% $[
 	    scan(T0, [Else | Acc])
     end;
 scan([34|T], Acc) ->
-	{String, T0} = scan_string(T, []),
-	scan(T0, [String|Acc]);
+    {String, T0} = scan_string(T, []),
+    scan(T0, [String|Acc]);
 scan([N|T], Acc) when N >= $0, N =< $9; N == $- ->
-	{Number, T0} = scan_number([N|T], [], false),
-	scan(T0, [Number|Acc]);
+    {Number, T0} = scan_number([N|T], [], false),
+    scan(T0, [Number|Acc]);
 scan("true" ++ T, Acc) ->
-	scan(T, [true|Acc]);
+    scan(T, [true|Acc]);
 scan("false" ++ T, Acc) ->
-	scan(T, [false|Acc]);
+    scan(T, [false|Acc]);
 scan("null" ++ T, Acc) ->
-	scan(T, [[]|Acc]);
+    scan(T, [[]|Acc]);
 scan("\r\n" ++ T, Acc) ->
     scan(T, Acc);
 scan(T, Acc) ->
-	{lists:reverse(Acc), T}.
+    {lists:reverse(Acc), T}.
 
 -spec(scan_taglist/2 :: (string(), list(tuple())) -> {list(tuple()), string()}).	     
 scan_taglist([$}|T], Acc) ->
-	{lists:reverse(Acc), T};
-scan_taglist([$:|T], [{Key, _}|Acc]) ->
-	{[Value], T0} = scan(T, []),
-	scan_taglist(T0, [{Key, Value}|Acc]);
+    {lists:reverse(Acc), T};
+scan_taglist([$:|T], [{Key, _}|Acc]) ->  
+    {[Value], T0} = scan(T, []),
+    scan_taglist(T0, [{Key, Value}|Acc]);
 scan_taglist([$,|T], Acc) ->
-	{[Key], T0} = scan(T, []),
-	scan_taglist(T0, [{list_to_atom(Key), []}|Acc]);
+    {[Key], T0} = scan(T, []),
+    scan_taglist(T0, [{list_to_atom(Key), []}|Acc]);
 scan_taglist(TagList, Acc) ->
-	{[Key], T0} = scan(TagList, []),
-	scan_taglist(T0, [{list_to_atom(Key), []}|Acc]).
+    {[Key], T0} = scan(TagList, []),
+    scan_taglist(T0, [{list_to_atom(Key), []}|Acc]).
 
 -spec(scan_list/2 :: (string(), list(term())) -> {list(term()), string()}).	     
 scan_list([$]|T], Acc) ->
-	{lists:reverse(Acc), T};
+    {lists:reverse(Acc), T};
 scan_list([$,|T], Acc) ->
-	{[Item], T0} = scan(T, []),
-	scan_list(T0, [Item|Acc]);
+    {[Item], T0} = scan(T, []),
+    scan_list(T0, [Item|Acc]);
 scan_list([H|T], Acc) ->
-	{[Item], T0} = scan([H|T], []),
-	scan_list(T0, [Item|Acc]).
+    {[Item], T0} = scan([H|T], []),
+    scan_list(T0, [Item|Acc]).
 
 -spec(scan_string/2 :: (string(), string()) -> {string(), string()}).	     
 scan_string([$\\,C|T], Acc) ->
-	scan_string(T, [esc(C)|Acc]);
+    scan_string(T, [esc(C)|Acc]);
 scan_string([34|T], Acc) ->
-	{lists:reverse(Acc), T};
+    {lists:reverse(Acc), T};
 scan_string([H|T], Acc) ->
-	scan_string(T,[H|Acc]).
+    scan_string(T,[H|Acc]).
 
 -spec(scan_number/3 :: (string(), string(), bool()) -> {integer() | float(), string()}).	     
 scan_number([$.|T], Acc, _) ->
-	scan_number(T, [$.|Acc], true);
+    scan_number(T, [$.|Acc], true);
 scan_number([$e|T], Acc, _) ->
-	scan_number(T, [$e|Acc], true);
+    scan_number(T, [$e|Acc], true);
 scan_number([$E|T], Acc, _) ->
-	scan_number(T, [$E|Acc], true);
+    scan_number(T, [$E|Acc], true);
+scan_number([$+|T], Acc, _) ->
+    scan_number(T, [$+|Acc], true);
 scan_number([N|T], Acc, Float) when N >= $0, N =< $9 ->
-	scan_number(T, [N|Acc], Float);
+    scan_number(T, [N|Acc], Float);
 scan_number(T, Acc, false) ->
-	{list_to_integer(lists:reverse(Acc)), T};
+    {list_to_integer(lists:reverse(Acc)), T};
 scan_number(T, Acc, true) ->
-	{list_to_float(lists:reverse(Acc)), T}.
+    {list_to_float(lists:reverse(Acc)), T}.
 
 -spec(esc/1 :: (char()) -> char()).	     
 esc($\\) -> 
-	$\\;
+    $\\;
 esc($b) -> 
-	$\b;
+    $\b;
 esc($f) -> 
-	$\f;
+    $\f;
 esc($n) -> 
-	$\n;
+    $\n;
 esc($r) -> 
-	$\r;
+    $\r;
 esc($t) -> 
-	$\t;
+    $\t;
 esc(C) ->
-	C.
+    C.
