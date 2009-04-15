@@ -23,8 +23,8 @@
 
 -export([handle_call/2, validate/1]).
 
-handle_call(_, XML) ->
-	XML.
+handle_call(_, Val) ->
+    Val.
 
 validate({Options,undefined}) -> 
     case wpart_valid:is_private(Options) of

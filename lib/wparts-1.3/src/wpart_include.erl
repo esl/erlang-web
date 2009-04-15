@@ -14,8 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
-%%% @author <info@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
@@ -36,7 +35,7 @@ handle_call(E) ->
 	As == false, Format == false ->
 	    #xmlText{value = Tpl};
 	As == false ->
-	    wpartlib:format(#xmlText{value = Tpl}, E);
+	    #xmlText{value = wpartlib:format(Tpl, E)};
 	Format == false ->
 	    wpart:fset(As, Tpl);
 	true ->

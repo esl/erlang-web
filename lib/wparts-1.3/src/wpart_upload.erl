@@ -62,12 +62,12 @@ get_html_tag(Attrs, Default) ->
 			   P;
 		       Else ->
 			   Else
-		   end
-    
-		wpart_gen:build_html(wpart_gen:tpl_get(upload),
-				     [{"html", wpart:proplist2html(Attrs)},
-				      {"comment", wpart_gen:build_html(wpart_gen:tpl_get(upload_edit),
-								       [{"path", Path}])}])
+		   end,
+	    
+	    wpart_gen:build_html(wpart_gen:tpl_get(upload),
+				 [{"html", wpart:proplist2html(Attrs)},
+				  {"comment", wpart_gen:build_html(wpart_gen:tpl_get(upload_edit),
+								   [{"path", Path}])}])
     end.
     
 load_tpl() ->

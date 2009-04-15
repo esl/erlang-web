@@ -26,8 +26,8 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include_lib("kernel/include/file.hrl").
 
-handle_call(_Format, XML) -> 
-    XML.
+handle_call(_Format, Val) -> 
+    Val.
 
 -spec(validate/1 :: ({list(), undefined | string()}) -> {ok, undefined | string()} | {error, {bad_extension | too_big, string()}}).	     
 validate({Types, undefined}) ->

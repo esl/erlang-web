@@ -25,8 +25,8 @@
 %% API
 -export([handle_call/2,validate/1]).
 
-handle_call(_, XML) ->
-	XML.
+handle_call(Format, String) ->
+    wtype_string:handle_call(Format, String).
 
 validate(X) -> 
     wtype_string:validate(X).

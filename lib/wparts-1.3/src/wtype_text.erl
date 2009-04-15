@@ -25,8 +25,10 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(_Format, #xmlText{value=Text}) ->
-	#xmlText{value=Text}.
+handle_call(Format, #xmlText{value=Text}) ->
+    #xmlText{value=handle_call(Format, Text)};
+handle_call(_Format, Text) ->
+    Text.
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of

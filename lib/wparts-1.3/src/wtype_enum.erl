@@ -25,7 +25,8 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(_Format, XML) -> XML.
+handle_call(_Format, Val) -> 
+    Val.
 
 validate({Types,undefined}) -> 
     case wpart_valid:is_private(Types) of

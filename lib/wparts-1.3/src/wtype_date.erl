@@ -49,7 +49,8 @@
 %% Second: SS
 %% @end 
 handle_call(Format, #xmlText{value={_Date, _Time}} = XML) ->
-    error_logger:warning_msg("~p module - this function is deprecated - use wtype_datetime:handle_call instead~n", [?MODULE]),
+    error_logger:warning_msg("~p module - this function is deprecated - "
+			     "use wtype_datetime:handle_call instead~n", [?MODULE]),
     wtype_datetime:handle_call(Format, XML);
 handle_call(Format, #xmlText{value=Val}) ->
     #xmlText{value=handle_call(Format, Val)};

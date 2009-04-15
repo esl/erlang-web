@@ -25,8 +25,12 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(_Format, #xmlText{value=String}) ->
-    #xmlText{value=String}.
+handle_call(Format, #xmlText{value=String}) ->
+    #xmlText{value=handle_call(Format, String)};
+handle_call("stars", String) ->
+    [$* || _ <- String];
+handle_call(_, String) ->
+    String.
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of

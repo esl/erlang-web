@@ -14,7 +14,6 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% @version $Rev$
 %%% @author Michal Ptaszek  <info@erlang-consulting.com>
 %%% @doc 
 %%% @end
@@ -25,8 +24,10 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-handle_call(_, E) ->
-    E#xmlText{type = cdata}.
+handle_call(_, #xmlText{} = E) ->
+    E#xmlText{type = cdata};
+handle_call(_, Text) ->
+    Text.
 
 %%
 %% Taken from yaws_api module

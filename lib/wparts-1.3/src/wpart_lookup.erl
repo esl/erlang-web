@@ -15,8 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2006, Erlang Training & Consulting, Inc.
-%%% @version $Rev$
-%%% @author Martin Carlson <info@erlang-consulting.com>
+%%% @author Martin Carlson <martin@erlang-consulting.com>
 %%% @doc 
 %%% 
 %%% @end
@@ -46,7 +45,7 @@ handle_call(E) ->
 				   text
 			   end,
 
-		    wpartlib:format(#xmlText{value = Value,
-					     type = Type}, E)
+		    #xmlText{value = wpartlib:format(Value, E),
+			     type = Type}
 	    end
     end.

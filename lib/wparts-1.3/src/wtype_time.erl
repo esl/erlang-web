@@ -27,7 +27,10 @@
 -export([get_time/2, is_valid_time/1]).
 -export([check_min/2, check_max/2]).
 
-handle_call(_Format, XML) -> XML.
+handle_call(Format, #xmlText{value = Time}) -> 
+    #xmlText{value = handle_call(Format, Time)};
+handle_call(Format, Time) ->
+    format(Format, Time, []).
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
