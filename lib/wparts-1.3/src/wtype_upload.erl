@@ -43,6 +43,8 @@ validate({Types, undefined}) ->
     end;
 validate({_Types, []}) ->
     {ok, undefined};
+validate({Types, {file, Filename}}) ->
+    validate({Types, Filename});
 validate({Types, File}) -> 
     case wpart_valid:is_private(Types) of
 	true ->

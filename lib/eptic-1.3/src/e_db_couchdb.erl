@@ -26,6 +26,8 @@
 -export([install/0, start/0]).
 -export([read/1, read/2, delete/2, write/2, update/2, size/1, get_next_id/1]).
 
+-include_lib("eptic/include/e_db_couchdb.hrl").
+
 %%
 %% @spec install() -> ok
 %% @doc Sets up the CouchDB database for Erlang Web needs.
@@ -110,29 +112,17 @@ read(Prefix0) ->
     Name = e_conf:project_name(),
     CouchURL = e_conf:couchdb_address(),
 
-    URL = CouchURL ++ Name,
+    URL = CouchURL ++ Name ++ "/_temp_view?group=true",
 
     Prefix = get_prefix(Prefix0),
-
-    case http:request(URL ++ "/_all_docs") of
+    Query = read_all_query(Prefix),
+    case http:request(post, {URL, [], "application/json", Query}, [], []) of
 	{ok, {{_, 200, _}, _, Json0}} ->
 	    {ok, [Json]} = e_json:decode(Json0),
-	    
-	    {_, {_, N}} = lists:keysearch(total_rows, 1, Json),
-	    if
-		N > 0 ->
-		    {_, {_, Rows}} = lists:keysearch(rows, 1, Json),
 
-		    Ids = lists:filter(fun([{id, E}, _, _]) ->
-					       is_prefix(Prefix, E)
-				       end, tuple_to_list(Rows)),
-
-		    lists:foldl(fun([{id, Id}, _, _], Acc) ->
-					read_row(Prefix0, URL, Id, Acc)
-				end, [], Ids);
-		true ->
-		    []
-	    end;
+	    lists:map(fun(Doc) ->
+			      process_doc(Prefix0, Doc)
+		      end, tuple_to_list(proplists:get_value(rows, Json, {})));
 	{error, Reason} ->
 	    error_logger:error_msg("~p module, error during read/1, prefix: ~p, reason: ~p~n", 
 				   [?MODULE, Prefix, Reason]),
@@ -160,7 +150,7 @@ read(Prefix0, Id) ->
 	{ok, {{_, 404, _}, _, _}} ->
 	    not_found;
 	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", 
+	    error_logger:error_msg("~p module, error during read/1, id: ~p, reason: ~p~n", 
 				   [?MODULE, Id, Reason]),
 	    {error, Reason}
     end.
@@ -403,22 +393,23 @@ is_prefix([P | PRest], [P | ERest]) ->
 is_prefix(_, _) ->
     false.
 
-read_row(Prefix, URL, Id, Acc) ->
-    case http:request(URL ++ "/" ++ Id) of
-	{ok, {{_, 200, _}, _, Json}} ->
-	    {ok, [Element0]} = e_json:decode(Json),
-	    Element = lists:reverse(proplists:delete('_rev', proplists:delete('_id', Element0))),
-	    [list_to_tuple([Prefix | lists:map(fun({_, Val}) -> Val end, Element)]) | Acc];
-	{ok, {{_, 404, _}, _, _}} ->
-	    Acc;
-	{error, Reason} ->
-	    error_logger:error_msg("~p module, error during read_row/3, id: ~p, reason: ~p~n", 
-				   [?MODULE, Id, Reason]),
-	    Acc
-    end.
-
 -spec(insert_element_id/2 :: (atom(), tuple()) -> tuple()).
 insert_element_id(Prefix, Element0) when element(2, Element0) == undefined ->
     setelement(2, Element0, get_next_id(Prefix));
 insert_element_id(_, Element) ->
     Element.
+
+-spec(read_all_query/1 :: (string()) -> string()).	     
+read_all_query(Prefix) ->
+    e_json:encode([{map, ?CDB_READ_ALL_MAP(Prefix)}]).
+
+-spec(process_doc/2 :: (atom(), list()) -> tuple()).
+process_doc(Type, Doc) ->
+    Key = proplists:get_value(key, Doc),
+    
+    list_to_tuple([Type | lists:map(fun({_Field, Val}) ->
+					    Val
+				    end, 
+				    lists:reverse(
+				      proplists:delete('_id', 
+						       proplists:delete('_rev', Key))))]).
