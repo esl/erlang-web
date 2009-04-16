@@ -198,7 +198,6 @@ write(Prefix0, Element0) ->
 
     Element = wpart_db:build_record_structure(Prefix0, Element1),
     Json = e_json:encode(Element),
-    error_logger:info_msg("~p module, inserting ~p~n", [?MODULE, Json]),
     case http:request(put, {Url, [], "application/json", Json}, [], []) of
 	{ok, {{_, 201, _}, _, _}} ->
 	    ok;
