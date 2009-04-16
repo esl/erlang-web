@@ -18,18 +18,19 @@
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
-
 -module(wtype_float).
 -behaviour(wtype).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
--export([handle_call/2,validate/1]).
+-export([handle_call/2, validate/1]).
 
 handle_call(_Format, #xmlText{value=Float}) ->
     #xmlText{value=float_to_list(Float)};
-handle_call(_Format, Float) when is_float(Float) ->
-    float_to_list(Float).
+handle_call("", Float) when is_float(Float) ->
+    float_to_list(Float);
+handle_call(Precision, Float) when is_float(Float) ->
+    lists:flatten(io_lib:format("~.*..f", [list_to_integer(Precision), Float])).
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
