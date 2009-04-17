@@ -21,7 +21,7 @@
 %%%-------------------------------------------------------------------
 -module(validate_tool).
 -export([validate_cu/2]).
--export([replace_primary/4, do_validate_ok/3, do_validate_ok/4, 
+-export([do_validate_ok/3, do_validate_ok/4, 
 	 do_validate_error/4, do_validate_error/5]).
 
 %% @doc Create Update validation, retrieves all fields declared in record.
@@ -33,7 +33,7 @@ validate_cu(Type, Fun) ->
     Funs = Mod:module_info(exports),
     ParentType = case lists:member({get_parent_type,0},Funs) of
 		     true ->
-			 apply(Mod, get_parent_type, []);
+			 Mod:get_parent_type();
 		     _ ->
 			 Type
 		 end,    
@@ -47,75 +47,68 @@ validate_cu(Type, Fun) ->
 
 -spec(do_validate_ok/3 :: (list(), atom(), atom()) -> {ok, tuple()}).
 do_validate_ok(List,Mod,Type) ->
-    do_validate_ok(List,Type, Mod,Type).
+    do_validate_ok(List, Type, Mod, Type).
 
 -spec(do_validate_ok/4 :: (list(), atom(), atom(), atom()) -> {ok, tuple()}).     
 do_validate_ok(List,Type,Mod,ParentType) ->
-    Fields = apply(Mod, get_record_info, [Type]),
-
+    Fields = Mod:get_record_info(Type),
+    
     {Result, _Bad} = get_values(Type, Fields, List),
 
     %% special case of primary key, if it's not in post - it's creating not editing
     Pr = case eptic:fget("post", "__primary_key") of
-	     undefined -> undefined;
-	     P -> list_to_integer(P)
-	 end,
-    Final = replace_primary(Result,Pr,Mod,Type),
-    FinalTuple = list_to_tuple([ParentType] ++ Final),
-    {ok, FinalTuple}.
+	     undefined -> 
+		 undefined;
+	     PK ->
+		 TypeOpts = tl(tuple_to_list(Mod:get_record_info(
+					       list_to_atom(atom_to_list(Type) ++ "_types")))),
+		 {PKPos, {PKType, PKOpts}} = case wpart_utils:find_pk(TypeOpts) of
+						 no_pk ->
+						     {1, hd(TypeOpts)};
+						 Else ->
+						     Else
+					     end,
 
--spec(do_validate_error/4 :: (atom(), term(), atom(), atom()) -> {error, not_valid | {atom(), integer()}}).	     
+		 case wpart_utils:string2term(PKType, PK, PKOpts) of
+		     {ok, PKTerm} ->
+			 {PKPos, PKTerm};
+		     _ ->
+			 undefined
+		 end
+	 end,
+    Final = replace_primary(Result, Pr),
+
+    {ok, list_to_tuple([ParentType | Final])}.
+
+-spec(do_validate_error/4 :: (atom(), term(), atom(), atom()) -> 
+	     {error, not_valid | {atom(), integer()}}).	     
 do_validate_error(Mod,Reason,Fun,Type) ->
     do_validate_error(Mod,Reason, Fun, Type, Type).
 
--spec(do_validate_error/5 :: (atom(), term(), atom(), atom(), atom()) -> {error, not_valid | {atom(), integer()}}). 
+-spec(do_validate_error/5 :: (atom(), term(), atom(), atom(), atom()) -> 
+	     {error, not_valid | {atom(), integer()}}). 
 do_validate_error(Mod,Reason,Fun,Type,ParentType) ->
     Fields = apply(Mod, get_record_info, [Type]),
 
     {Not_ValidatedValues, Reason_list} = get_values(Type, Fields, Reason),
     
-    wpart:fset("__not_validated", list_to_tuple([ParentType]++ Not_ValidatedValues)),
-    
+    wpart:fset("__not_validated", list_to_tuple([ParentType | Not_ValidatedValues])),
     wpart:fset("__error", string:join(Reason_list, ", ")),
     
-    %% special case of primary key - if error on edit returns {ok,[]} to get oryginal 
+    %% special case of primary key - if error on edit returns {ok,[]} to get original 
     %% values from DB or set special initial values.
     case eptic:fget("post", "__primary_key") of
 	undefined -> {error, not_valid};
 	P -> {error, {Fun, list_to_integer(P)}}
     end.
 
--spec(replace_primary/4 :: (list(), undefined | integer(), atom(), atom()) -> {error, no_primary_key} | list()).	     
-replace_primary(Result,undefined,_Mod,_Type) ->
+-spec(replace_primary/2 :: (list(), undefined | {integer(), term()}) -> list()).
+replace_primary(Result, undefined) ->
     Result;
-replace_primary(Result,Pr,Mod,Type) ->
-    Arg = list_to_atom(atom_to_list(Type) ++ "_types"),
-    [_Name | Rest] = tuple_to_list(apply(Mod, get_record_info, [Arg])),
-    case find_primary(Rest, 1) of
-	{ok, N} ->
-	    replace_elem(Result, Pr, N);
-	_ ->
-	    {error, no_primary_key}
-    end.
-
--spec(replace_elem/3 :: (list(), integer(), integer()) -> list()).
-replace_elem(Result,Pr,No) ->
-   {Front, Back} = lists:split((No - 1),Result),
-   [_H|T] = Back,
-   NewBack = [Pr|T],
-   Front ++ NewBack.
-
--spec(find_primary/2 :: (list(), integer()) -> {ok, integer()} | no_primary_key).
-find_primary([], _)->
-    no_primary_key;
-find_primary([{_, Options} | Rest], No) ->
-    case lists:keysearch(primary_key, 1, Options) of
-	{_, {primary_key}} ->
-	    {ok, No};
-	_ ->
-	    find_primary(Rest, No+1)
-    end.
-
+replace_primary(Result, {PKPos, PK}) ->
+    {Front, [_ | Back]} = lists:split(PKPos-1, Result),
+    lists:append([Front, [PK | Back]]).
+    
 -spec(get_values/3 :: (atom(), list(), list()) -> {list(string()), list(string())}).	     
 get_values(Type,Fields,List) ->
     TypeS = atom_to_list(Type),

@@ -106,7 +106,7 @@ start() ->
 %% @spec read(Type :: atom()) -> [Element] | {error, Reason}
 %%   Element = tuple()
 %% @equiv e_db:read/1
-%%	    
+%%
 -spec(read/1 :: (atom() | string()) -> [tuple()] | {error, any()}).
 read(Prefix0) ->
     Name = e_conf:project_name(),
@@ -191,10 +191,11 @@ delete(Prefix0, Id) ->
 write(Prefix0, Element0) ->
     Name = e_conf:project_name(),
     CouchURL = e_conf:couchdb_address(),
-    Prefix = get_prefix(Prefix0),
-    Element1 = insert_element_id(Prefix0, Element0),
+    Prefix1 = atom_to_list(Prefix0),
+    Prefix = get_prefix(Prefix1),
+    Element1 = insert_element_id(Prefix1, Element0),
 
-    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ get_id(element(2, Element1)),
+    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ element(2, wpart_utils:pk2string(Element1)),
 
     Element = wpart_db:build_record_structure(Prefix0, Element1),
     Json = e_json:encode(Element),
@@ -230,7 +231,7 @@ update(Prefix0, Element) ->
     CouchURL = e_conf:couchdb_address(),
     Prefix = get_prefix(Prefix0),
 
-    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ get_id(element(2, Element)),
+    Url = CouchURL ++ Name ++ "/" ++ Prefix ++ element(2, wpart_utils:pk2string(Element)),
     
     case get_rev(Url) of
 	{ok, Rev} ->
@@ -392,11 +393,21 @@ is_prefix([P | PRest], [P | ERest]) ->
 is_prefix(_, _) ->
     false.
 
--spec(insert_element_id/2 :: (atom(), tuple()) -> tuple()).
-insert_element_id(Prefix, Element0) when element(2, Element0) == undefined ->
-    setelement(2, Element0, get_next_id(Prefix));
-insert_element_id(_, Element) ->
-    Element.
+-spec(insert_element_id/2 :: (string(), tuple()) -> tuple()).
+insert_element_id(Prefix, Element) ->
+    Pos = case wpart_utils:find_pk(tl(tuple_to_list((list_to_atom("wtype_" ++ Prefix)):
+						    get_record_info(list_to_atom(Prefix ++ "_types"))))) of
+	      no_pk ->
+		  2;
+	      {P, _} ->
+		  P
+	  end,
+    if
+	element(Pos, Element) == undefined ->
+	    setelement(Pos, get_next_id(Prefix), Element);
+	true ->
+	    Element
+    end.
 
 -spec(read_all_query/1 :: (string()) -> string()).	     
 read_all_query(Prefix) ->
@@ -412,3 +423,5 @@ process_doc(Type, Doc) ->
 				    lists:reverse(
 				      proplists:delete('_id', 
 						       proplists:delete('_rev', Key))))]).
+
+    

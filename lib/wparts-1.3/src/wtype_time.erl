@@ -101,7 +101,7 @@ convert_input("HH" ++ Format, [I1, I2 | Input], Acc) ->
 	Hour ->
 	    convert_input(Format, Input, [{hour, Hour} | Acc])
     end;
-convert_input("NN" ++ Format, [I1, I2 | Input], Acc) ->
+convert_input("MM" ++ Format, [I1, I2 | Input], Acc) ->
     case catch list_to_integer([I1, I2]) of
 	{'EXIT', _} ->
 	    {error, bad_format};

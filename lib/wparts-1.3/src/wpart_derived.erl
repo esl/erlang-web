@@ -148,10 +148,6 @@ build_tags(Type, FormType, Prefix) ->
 		  undefined -> [];
 		  V -> V
 	      end,
-    PrimaryKey = case wpart:fget("__primary_key") of
-		     undefined -> -1;
-		     P -> P
-		 end,
 
     Module = list_to_atom("wtype_" ++ Type),
     Fields = apply(Module, get_record_info,
@@ -159,9 +155,10 @@ build_tags(Type, FormType, Prefix) ->
     [_ | Types] = tuple_to_list(apply(Module, get_record_info,
 				      [list_to_atom(Type ++ "_types")])),
     FormOptions = (catch Module:get_record_info(list_to_atom(Type ++ "_form"))),
+    %% @todo handle the form options, such as fieldsets partitions and so on
 
     HtmlBuild = fun({Name, {T, Params}}, Acc) ->
-			case lists:keysearch(private, 1, Params) of
+			case lists:keymember(private, 1, Params) of
 			    false ->
 				[build_html_tag(T, Name, Prefix,
 						Params, Default,
@@ -174,12 +171,20 @@ build_tags(Type, FormType, Prefix) ->
 		end,
     Result = lists:reverse(lists:foldl(HtmlBuild, [], lists:zip(Fields, Types))),
 
-    if
-	PrimaryKey =/= -1 -> 
-	    ["<input type=\"hidden\" name=\"__primary_key\" value=\"" 
-	     ++ integer_to_list(PrimaryKey) ++ "\"/>" | Result];
-	true -> 
-	    Result
+    case wpart:fget("__primary_key") of
+	undefined ->
+	    Result;
+	Val ->
+	    {_PKPos, {PKType, PKOpts}} = case wpart_utils:find_pk(Types) of
+					     no_pk ->
+						 {1, hd(Types)};
+					     Else ->
+						 Else
+					 end,
+			     
+	    ["<input type=\"hidden\" name=\"__primary_key\" value=\"",
+	     wpart_utils:term2string(PKType, Val, proplists:get_value(format, PKOpts, "")), 
+	     "\"/>\n", Result]
     end.
 
 -spec(form_type/1 :: (atom()) -> atom()).	     

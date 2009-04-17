@@ -20,6 +20,9 @@
 %%%-------------------------------------------------------------------
 -module(wpart_utils).
 -export([xml2proplist/1, proplist2html/1, normalize_html_attrs/1]).
+-export([find_pk/1, pk2string/1, 
+	 term2string/3, term2string/2, 
+	 string2term/3, string2term/2]).
 
 %% taken from Yaws server
 -export([url_encode/1, url_decode/1, integer_to_hex/1, hex_to_integer/1]).
@@ -154,3 +157,108 @@ normalize_html_attrs1({Key, Value}) when is_integer(Value) ->
     {Key, integer_to_list(Value)};
 normalize_html_attrs1(Else) ->
     Else.
+
+%%
+%% @spec string2term(Type :: atom(), String :: string()) -> Result
+%%                   Result = {ok, Term :: any()} | {error, Reason :: term()}
+%%
+%% @doc The same as <i>string2term(Type, String, [])</i>.
+%%
+-spec(string2term/2 :: (atom(), string()) -> {ok, any()} | {error, any()}).	     
+string2term(Type, String) ->
+    string2term(Type, String, []).
+
+%%
+%% @spec string2term(Type, String, Parameters) -> Result
+%%                   Type = atom()
+%%                   String = string()
+%%                   Parameters = list()
+%%                   Result = {ok, Term :: any()} | {error, Reason :: term()}
+%%
+%% @doc Converts the string to the particular type.
+%% <p>Type-specific validators are used for casting the string representation
+%% of the term (e.g. taken from the HTML form) to the Erlang internal one.</p>
+%% <p>The <i>Parameters</i> should be a list of constraints such as taken from
+%% the Type_types record.</p>
+%%
+-spec(string2term/3 :: (atom(), string(), list()) -> {ok, any()} | {error, any()}).
+string2term(Type, String, Params0) ->
+    Params = proplists:delete(private, Params0),
+    (list_to_atom("wtype_" ++ atom_to_list(Type))):validate({Params, String}).
+
+%%
+%% @spec term2string(Type :: atom(), Term :: term()) -> String :: string()
+%%
+%% @doc The same as <i>term2string(Type, Term, "")</i>.
+%%
+-spec(term2string/2 :: (atom(), term()) -> string()).	     
+term2string(Type, Term) ->
+    term2string(Type, Term, "").
+
+%%
+%% @spec term2string(Type :: atom(), Term :: term(), Format :: string()) -> String :: string()
+%%
+%% @doc Converts the Term to the string representation using the Format.
+%% The type-specific handle_call is used to do the conversion.
+%%
+-spec(term2string/3 :: (atom(), term(), string()) -> string()).
+term2string(Type, Term, Format) ->
+    (list_to_atom("wtype_" ++ atom_to_list(Type))):handle_call(Format, Term).
+
+%%
+%% @spec pk2string(Record :: tuple()) -> Result
+%%                 Result = {PKPosition, PKString}
+%%                 PKPosition = integer()
+%%                 PKString = string()
+%%
+%% @doc Converts the primary key field of the record to its string representation
+%% The returning value is a tuple consisting of the primary key 
+%% position in the record (note that first element of the tuple is 
+%% the record name) and the converted primary key. 
+%%
+-spec(pk2string/1 :: (tuple()) -> {integer(), string()}).	     
+pk2string(Record) ->
+    TypeS = atom_to_list(element(1, Record)),
+    TypesDesc = tl(tuple_to_list((list_to_atom("wtype_" ++ TypeS)):
+				 get_record_info(list_to_atom(TypeS ++ "_types")))),
+    {PKPos, {PKType, PKDesc}} = case find_pk(TypesDesc, 1) of
+				    no_pk ->
+					{1, hd(TypesDesc)};
+				    Else ->
+					Else
+				end,
+    
+    {PKPos, term2string(PKType, element(PKPos+1, Record), 
+			proplists:get_value(format, PKDesc, ""))}.
+
+%%
+%% @spec find_pk(TypeOptions :: list()) -> Result
+%%               Result = no_pk | {PKPosition :: integer(), PKOptions :: list()}
+%%
+%% @doc Search the primary key in the list of the type's options.
+%% TypeOptions == tl(get_record_info(Type_types)).
+%% 
+-spec(find_pk/1 :: (list({atom(), list()})) -> {integer(), {atom(), list()}} | no_pk).
+find_pk(TypeDecl) ->
+    find_pk(TypeDecl, 1).
+
+-spec(find_pk/2 :: (list({atom(), list()}), integer()) -> {integer(), {atom(), list()}} | no_pk).
+find_pk([{_, Options} = TypeDecl | Rest], Pos) ->
+    case check_for_pk(Options) of
+	true ->
+	    {Pos, TypeDecl};
+	false ->
+	    find_pk(Rest, Pos+1)
+    end;
+find_pk([], _) ->
+    no_pk.
+
+-spec(check_for_pk/1 :: (list()) -> bool()).	     
+check_for_pk([primary_key | _]) ->
+    true;
+check_for_pk([{primary_key} | _]) ->
+    true;
+check_for_pk([_ | Rest]) ->
+    check_for_pk(Rest);
+check_for_pk([]) ->
+    false.
