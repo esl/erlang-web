@@ -19,7 +19,6 @@
 %%% Description : 
 %%%
 %%%-------------------------------------------------------------------
-
 -module(wpart_valid).
 -export([validate/1, validate/2, validate/3, is_private/1]).
 

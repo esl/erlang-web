@@ -84,9 +84,13 @@ generate_long_name(Prefix, Name) ->
 get_description(Name, Tuples) ->
     get_param(Name, description, Tuples).
 
--spec(get_comment/2 :: (term(), list()) -> term()).	     
-get_comment(Name, Tuples) ->
-    get_param(Name, comment, Tuples).
+-spec(get_description/1 :: (list()) -> string()).	     
+get_description(Tuples) ->
+    find(description, Tuples).
+
+-spec(get_comment/1 :: (list()) -> string()).
+get_comment(Tuples) ->
+    find(comment, Tuples).
 
 -spec(get_param/3 :: (term(), atom(), list()) -> term()).
 get_param(Name, Param, Params) ->
@@ -106,6 +110,8 @@ find(Name, List) ->
     case lists:keysearch(Name, 1, List) of
 	{value, {_, undefined}} ->
 	    "";
+	{value, {_, {key, Key}}} ->
+	    wpart_lang:get_translation(Key);
 	{value, {_, Val}} ->
 	    Val;
 	false ->
@@ -130,8 +136,8 @@ build_html_tag(FormType, Type, Name, Prefix, Params, Defaults) ->
     wpart_gen:build_html(wpart_gen:tpl_get(form_type(FormType)), 
 			 [{"id", LName},
 			  {"error", e_error:description(LName)},
-			  {"description", get_description(Name, Params)},
-			  {"comment", get_comment(Name, Params)},
+			  {"description", get_description(Params)},
+			  {"comment", get_comment(Params)},
 			  {"input", Input}]).
 
 -spec(build_html_tag/4 :: (atom(), atom(), string(), list()) -> string()).	     
@@ -182,9 +188,10 @@ build_tags(Type, FormType, Prefix) ->
 						 Else
 					 end,
 			     
-	    ["<input type=\"hidden\" name=\"__primary_key\" value=\"",
-	     wpart_utils:term2string(PKType, Val, proplists:get_value(format, PKOpts, "")), 
-	     "\"/>\n", Result]
+	    [lists:append(["<input type=\"hidden\" name=\"__primary_key\" value=\"",
+			   wpart_utils:term2string(PKType, Val, 
+						   proplists:get_value(format, PKOpts, "")), 
+			   "\"/>\n"]) | Result]
     end.
 
 -spec(form_type/1 :: (atom()) -> atom()).	     

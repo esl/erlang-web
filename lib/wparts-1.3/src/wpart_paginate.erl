@@ -103,18 +103,28 @@ action("numbered_links", E) ->
 			    list_to_integer(N)
 		    end,
 	    ListLen = length(List),
+	    Trim = list_to_integer(wpart:has_attribute("attribute::trim", integer_to_list(ListLen), E)),
 
 	    PrevPages = if
-			    Start > 1 ->
+			    Start > 1, 
+			    Trim+1 >= Start ->
 				lists:map(fun create_numbered_links/1,
 					  lists:seq(1, Start-1));
+			    Start > 1 ->
+				["... " | lists:map(fun create_numbered_links/1,
+						    lists:seq(Start-Trim, Start-1))];
 			    true ->
 				[]
 			end,
+	    Pages = ((ListLen-1) div PerPage),
 	    NextPages = if
-			    Start < ((ListLen-1) div PerPage)+1 ->
+			    Start < Pages+1,
+			    Start+Trim > Pages ->
 				lists:map(fun create_numbered_links/1,
-					  lists:seq(Start+1, ((ListLen-1) div PerPage)+1));
+					  lists:seq(Start+1, Pages+1));
+			    Start < Pages+1 ->
+				lists:map(fun create_numbered_links/1,
+					  lists:seq(Start+1, Start+Trim)) ++ [" ..."];
 			    true ->
 				[]
 			end,
