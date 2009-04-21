@@ -45,7 +45,7 @@ transform_function({function, LineNo, FunName, _, _} = Fun, Type) ->
     Fun.
     
 save_annotations(Hrl, [{Type, ModName, FunName} | Rest]) ->
-    io:format(Hrl, "-define(~s, -ew_user_annotation({~p, ~p, ~p})).~n~n",
+    io:format(Hrl, "-define(~s(Args), -ew_user_annotation({Args, ~p, ~p, ~p})).~n~n",
 	      [generate_define_name(FunName), Type, ModName, FunName]),
     save_annotations(Hrl, Rest);
 save_annotations(Hrl, []) ->
