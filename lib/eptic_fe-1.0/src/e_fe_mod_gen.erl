@@ -31,6 +31,7 @@
 %%
 -spec(handle_request/1 :: (string()) -> term()).	     
 handle_request("/app/" ++ URL) ->
+    e_logger:log({?MODULE, {old_path_type, URL}}),
     case e_mod_gen:parse_url(URL) of
 	{M, F, View} -> 
 	    eptic:fset("__cache_type", normal),

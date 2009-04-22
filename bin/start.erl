@@ -230,9 +230,9 @@ else
 	    ;;
 	*)
 	    NODE_TYPE=single_node
-    shift
-    shift
     esac
+    shift
+    shift
 fi
 
 erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",

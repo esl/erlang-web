@@ -56,12 +56,11 @@ update_makefile(Name, Vsn) ->
 	    Entry = {list_to_atom(filename:join([Filename, "src", "*"])),
 		     [{outdir, filename:join([Filename, "ebin"])},
 		      {i, filename:join([Filename, "include"])},
-		      {parse_transform, e_annotation},
 		      debug_info,
 		      strict_record_tests,
 		      netload]},
 
-	    io:format(Fd, "~p.~n", [Entry]),
+	    io:format(Fd, "~n~p.~n", [Entry]),
 	    confirm_updated("Emakefile"),
 	    
 	    file:close(Fd);

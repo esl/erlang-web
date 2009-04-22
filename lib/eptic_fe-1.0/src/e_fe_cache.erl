@@ -94,7 +94,7 @@ invalidate(_, '$end_of_table', _) ->
 invalidate(Cache, BKey, Regexp) ->
     Key = binary_to_list(BKey),
     Next = ets:next(Cache, BKey),
-    case re:run([$/|Key], Regexp,[{capture,first}]) of
+    case re:run(Key, Regexp,[{capture,first}]) of
 	nomatch ->
 	    invalidate(Cache, Next, Regexp);
 	{match, _} ->

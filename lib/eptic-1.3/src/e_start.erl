@@ -38,6 +38,8 @@
 start([Type]) ->
     start([Type, inets]);
 start([Type, Server]) ->
+    application:load(eptic),
+
     application:set_env(eptic, template_root, "templates"),
     application:set_env(eptic, node_type, Type),
 

@@ -24,10 +24,13 @@
 -include_lib("inets/src/httpd.hrl").
 
 do(#mod{parsed_header = Headers} = A) ->
+    e_logger:register_pid(self()),
     case handle_args(A) of
 	{ok, Args} ->
 	    [$/ | URL] = A#mod.request_uri,
 	    e_dict:init_state(Args),
+
+	    e_logger:log({?MODULE, {url, URL}}),
 
 	    case A#mod.socket_type of 
 		{ssl, _} ->
@@ -58,11 +61,15 @@ do(#mod{parsed_header = Headers} = A) ->
 
 		    e_fe_proxy:cleanup_backend(e_multipart_inets),
 		    e_dict:terminate_state(),
+
+		    e_logger:unregister_pid(self()),
 		    
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
 		    e_mod_inets:cookie_bind(ClientCookie),
 		    e_dict:terminate_state(),
+
+		    e_logger:unregister_pid(self()),
 
 		    {proceed, A#mod.data}
 	    end
@@ -79,13 +86,15 @@ is_cacheable() ->
     
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())}).	     
 handle_args(#mod{method = Method, entity_body = Post} = Mod) ->
-    case Method of
-	"POST" ->
-	    {ok, [{"get", e_mod_inets:parse_get(Mod#mod.request_uri)},
-		  {"post", parse_post(Post)}]};
-	_ ->
-	    {ok, [{"get", e_mod_inets:parse_get(Mod#mod.request_uri)}]}
-    end.
+    Result = case Method of
+		 "POST" ->
+		     {ok, [{"get", e_mod_inets:parse_get(Mod#mod.request_uri)},
+			   {"post", parse_post(Post)}]};
+		 _ ->
+		     {ok, [{"get", e_mod_inets:parse_get(Mod#mod.request_uri)}]}
+	     end,
+    e_logger:log({?MODULE, {handle_args, Result}}),
+    Result.
 
 -spec(parse_post/1 :: (string()) -> list(tuple())).	     
 parse_post(String) ->

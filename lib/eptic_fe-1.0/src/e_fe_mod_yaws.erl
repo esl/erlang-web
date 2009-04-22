@@ -26,6 +26,7 @@
 -include("eptic.hrl").
 
 out(A) ->
+    e_logger:register_pid(self()),
     case handle_args(#arg{headers = Headers} = A) of
 	{ok, Args} ->
 	    e_dict:init_state(Args),
@@ -40,6 +41,8 @@ out(A) ->
 
             ClientCookie = e_mod_yaws:cookie_up(Headers),
 	    URL = e_mod_yaws:get_url(A#arg.appmoddata),
+
+	    e_logger:log({?MODULE, {url, URL}}),
             
 	    e_dict:fset("__path", URL),
 	    e_dict:fset("__cookie_key", ClientCookie),
@@ -63,8 +66,12 @@ out(A) ->
 	    e_fe_proxy:cleanup_backend(e_multipart_yaws),
 	    e_dict:terminate_state(),
 
+	    e_logger:unregister_pid(self()),
+
 	    [Result, CookieHeader];
 	GetMore ->
+	    e_logger:unregister_pid(self()),
+
 	    GetMore
     end.
 
@@ -104,31 +111,33 @@ is_cacheable() ->
 
 -spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())} | tuple()).
 handle_args(#arg{req = R} = Arg) ->
-    case e_multipart_yaws:is_multipart(Arg) of
-	true  -> 
-	    {ok, Node} = application:get_env(eptic_fe, be_server_name),
-	    case rpc:call(Node, e_multipart_yaws, parse, [Arg]) of
-		{ok, Data} ->
-		    e_cluster:synchronize_docroot(),
-		    {ok, [
-			  {"get", yaws_api:parse_query(Arg)},
-			  {"post", Data}
-			 ]};
-		{badrpc, Reason} ->
-		    error_logger:error_msg("~p module, error during multipart parse, reason: ~p~n",
-					   [?MODULE, Reason]),
-		    {ok, [{"get", yaws_api:parse_query(Arg)}]};
-		GetMore ->
-		    GetMore
-	    end;
-	false when R#http_request.method == 'POST' ->
-	    {ok, [
-		  {"get", yaws_api:parse_query(Arg)},
-		  {"post", yaws_api:parse_post(Arg)}
-		 ]};
-	false ->
-	    {ok, [{"get", yaws_api:parse_query(Arg)}]}
-    end.
+    Res = case e_multipart_yaws:is_multipart(Arg) of
+	      true  -> 
+		  {ok, Node} = application:get_env(eptic_fe, be_server_name),
+		  case rpc:call(Node, e_multipart_yaws, parse, [Arg]) of
+		      {ok, Data} ->
+			  e_cluster:synchronize_docroot(),
+			  {ok, [
+				{"get", yaws_api:parse_query(Arg)},
+				{"post", Data}
+			       ]};
+		      {badrpc, Reason} ->
+			  error_logger:error_msg("~p module, error during multipart parse, reason: ~p~n",
+						 [?MODULE, Reason]),
+			  {ok, [{"get", yaws_api:parse_query(Arg)}]};
+		      GetMore ->
+			  GetMore
+		  end;
+	      false when R#http_request.method == 'POST' ->
+		  {ok, [
+			{"get", yaws_api:parse_query(Arg)},
+			{"post", yaws_api:parse_post(Arg)}
+		       ]};
+	      false ->
+		  {ok, [{"get", yaws_api:parse_query(Arg)}]}
+	  end,
+    e_logger:log({?MODULE, {handle_args, Res}}),
+    Res.
 
 -spec(controller_exec/3 :: (term(), string(), string()) -> term()).
 controller_exec({ret_view, Ret, View}, _, URL) ->

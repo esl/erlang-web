@@ -134,7 +134,9 @@ fe_dispatch(Url) ->
 		 nomatch -> nomatch
 	     end,
 
-    fe_process(Action, Url).
+    Result = fe_process(Action, Url),
+    e_logger:log({?MODULE, {dispatching_result, Result}}),
+    Result.
 
 %%
 %% @spec error_page(ErrorCode :: integer()) -> TemplatePath :: string() | not_found

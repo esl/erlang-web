@@ -23,10 +23,19 @@
 -module(e_cluster).
 -behaviour(gen_server).
 
+-include_lib("eptic/include/e_annotation.hrl").
+
+%% ANNOTATIONS CALLBACKS
+-export([invalidate/4, invalidate_if/4]).
+-export([invalidate_groups/4, invalidate_groups_if/4]).
+-export([backend_call/4]).
+
+%% GEN_SERVER CALLBACKS
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2]).
 -export([handle_info/2, terminate/2, code_change/3]).
 
+%% API
 -export([dispatcher_reload/0, invalidate/1]).
 -export([be_request/4, synchronize_docroot/1, synchronize_docroot0/2]).
 -export([invalidate_groups/1]).
@@ -304,5 +313,82 @@ copy_file_chunk(Fd, Filename, Servers) ->
 	    error_logger:error_msg("~p module, error during reading the file ~p, reason: ~p~n",
 				   [?MODULE, Filename, Reason])
     end.
-	
 
+%%
+%% ANNOTATIONS
+%% 	
+?AFTER.
+invalidate(Regexps, _Mod, _Fun, FunResult) ->
+    case application:get_env(eptic, node_type) of
+	{ok, NodeType} when NodeType == backend;
+			    NodeType == single_node_with_cache ->
+	    e_cluster:invalidate(Regexps);
+	_ ->
+	    ok
+    end,
+    {proceed, FunResult}.
+
+?AFTER.
+invalidate_if({Regexps, {CMod, CFun}}, _Mod, _Fun, FunResult) ->
+    case CMod:CFun(FunResult) of
+	true ->
+	    case application:get_env(eptic, node_type) of
+		{ok, NodeType} when NodeType == backend;
+				    NodeType == single_node_with_cache ->
+		    e_cluster:invalidate(Regexps);
+		_ ->
+		    ok
+	    end;
+	_ ->
+	    ok
+    end,
+    {proceed, FunResult};
+invalidate_if({Regexp, CFun}, Mod, Fun, FunResult) when is_atom(CFun) ->
+    invalidate_if({Regexp, {Mod, CFun}}, Mod, Fun, FunResult).
+
+?AFTER.
+invalidate_groups(Groups, _Mod, _Fun, FunResult) ->
+    case application:get_env(eptic, node_type) of
+	{ok, NodeType} when NodeType == backend;
+			    NodeType == single_node_with_cache ->
+	    e_cluster:invalidate_groups(Groups);
+	_ ->
+	    ok
+    end,
+    {proceed, FunResult}.
+
+?AFTER.
+invalidate_groups_if({Groups, {CMod, CFun}}, _Mod, _Fun, FunResult) ->
+    case CMod:CFun(FunResult) of
+	true ->
+	    case application:get_env(eptic, node_type) of
+		{ok, NodeType} when NodeType == backend;
+			    NodeType == single_node_with_cache ->
+		    e_cluster:invalidate_groups(Groups);
+		_ ->
+		    ok
+	    end;
+	_ ->
+	    ok
+    end,
+    {proceed, FunResult};
+invalidate_groups_if({Groups, CFun}, Mod, Fun, FunResult) when is_atom(CFun) ->
+    invalidate_groups_if({Groups, {Mod, CFun}}, Mod, Fun, FunResult).
+
+?BEFORE.
+backend_call(_, Mod, Fun, FunArgs) ->
+    case application:get_env(eptic, node_type) of
+	{ok, frontend} ->
+	    {ok, NodeName} = application:get_env(eptic_fe, be_server_name),
+	    case rpc:call(NodeName, Mod, Fun, FunArgs) of
+		{badrpc, Reason} ->
+		    error_logger:error_msg("~p module, error during RPC call to backend node ~p "
+					   "in backend_call annotation, reason: ~p~n~n",
+					   [?MODULE, NodeName, Reason]),
+		    {skip, {badrpc, Reason}};
+		Result ->
+		    {skip, Result}
+	    end;
+	_ ->
+	    {proceed, FunArgs}
+    end.

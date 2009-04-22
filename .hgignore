@@ -1,3 +1,4 @@
 syntax: glob
 *beam
 *~
+*annotations.hrl

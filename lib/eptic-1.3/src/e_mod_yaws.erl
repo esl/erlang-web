@@ -81,6 +81,8 @@ out(A) ->
 
 	    [Result, CookieHeader];
 	GetMore ->
+	    e_logger:unregister_pid(self()),
+	    
 	    GetMore
     end.
 
