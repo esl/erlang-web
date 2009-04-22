@@ -127,7 +127,12 @@ init([]) ->
 
     List0 = [Dict, Session, Components, Logger],
 
-    {ok, NodeType} = application:get_env(eptic, node_type),
+    NodeType = case application:get_env(eptic, node_type) of
+		   undefined ->
+		       single_node;
+		   {ok, T} -> 
+		       T
+	       end,
     List = case NodeType of
 	       A when A == backend;
 		      A == single_node_with_cache ->

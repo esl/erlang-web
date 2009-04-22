@@ -3,10 +3,7 @@
 -export([parse_transform/2]).
 
 parse_transform(Tree, _Options) ->
-%    io:format("Tree: ~p~n~n", [Tree]),
-    NewTree = transform_tree(Tree, [], [], []),
-%    io:format("NewTree: ~p~n~n", [NewTree]),
-    NewTree.
+    transform_tree(Tree, [], [], []).
 
 transform_tree([{attribute, _, module, Name} = A | Rest], Tree, [], []) ->
     put(module_name, Name),
@@ -15,6 +12,8 @@ transform_tree([{attribute, _, ew_user_annotation, {Args, before, Mod, Func}} | 
     transform_tree(Rest, Tree, [{Args, Mod, Func} | Before], After);
 transform_tree([{attribute, _, ew_user_annotation, {Args, 'after', Mod, Func}} | Rest], Tree, Before, After) ->
     transform_tree(Rest, Tree, Before, [{Args, Mod, Func} | After]);
+transform_tree([F | Rest], Tree, [], []) ->
+    transform_tree(Rest, [F | Tree], [], []);
 transform_tree([{function, _, _, _, _} = F | Rest], Tree, Before, After) ->
     NewF = transform_function(F, lists:reverse(Before), lists:reverse(After)),
     transform_tree(Rest, [NewF | Tree], [], []);
@@ -30,12 +29,15 @@ transform_function({function, Line, FunName, Arity, Clauses}, Before, After) ->
     {function, Line, FunName, Arity, NewClauses}.
 
 transform_clause([OrgClause | Rest], Before, After, Clauses) ->
-    BeforeClause = transform_clause(OrgClause, Before),
-    transform_clause(Rest, Before, After, [BeforeClause | Clauses]);
+    BeforeClause = transform_clause_before(OrgClause, Before),
+    AfterClause = transform_clause_after(BeforeClause, After),
+    transform_clause(Rest, Before, After, [AfterClause | Clauses]);
 transform_clause([], _, _, Clauses) ->
     lists:reverse(Clauses).
 
-transform_clause({clause, L, CArgs, Guards, Body}, Annotations0) ->
+transform_clause_before(Clause, []) ->
+    Clause;
+transform_clause_before({clause, L, CArgs, Guards, Body}, Annotations0) ->
     TgtFunM = get(module_name),
     TgtFunN = get(function_name),
     Arity = get(function_arity),
@@ -124,6 +126,87 @@ transform_clause({clause, L, CArgs, Guards, Body}, Annotations0) ->
 	       {call, L, 
 		{var, L, AFunName},
 		[prepare_arguments_list(CArgs, L),
+		 Annotations,
+		 {var, L, AFunName}]}],
+    
+    {clause, L, CArgs, Guards, NewBody}.
+
+transform_clause_after(Clause, []) ->
+    Clause;
+transform_clause_after({clause, L, CArgs, Guards, Body}, Annotations0) ->
+    TgtFunM = get(module_name),
+    TgtFunN = get(function_name),
+
+    Annotations = prepare_annotations(Annotations0, L),
+
+    OrgFunName = get_unique_atom(),
+    AFunName = get_unique_atom(),
+    FuncResult = get_unique_atom(),
+    AArgs = get_unique_atom(),
+    Mod = get_unique_atom(),
+    Func = get_unique_atom(),
+    Rest = get_unique_atom(),
+    Self = get_unique_atom(),
+    NewResult = get_unique_atom(),
+    EMod = get_unique_atom(),
+    EFunc = get_unique_atom(),
+
+    NewBody = [{match, L,
+		{var, L, OrgFunName},
+		{'fun', L, 
+		 {clauses,
+		  [{clause, L, [], [],
+		    Body}]}}},
+	       {match, L, 
+		{var, L, AFunName},
+		{'fun', L,
+		 {clauses,
+		  [{clause, L,
+		    [{var, L, FuncResult},
+		     {cons, L,
+		      {tuple, L,
+		       [{var, L, AArgs}, {var, L, Mod}, {var, L, Func}]},
+		      {var, L, Rest}},
+		     {var, L, Self}],
+		    [],
+		    [{'case', L,
+		      {call, L,
+		       {remote, L, {var, L, Mod}, {var, L, Func}},
+		       [{var, L, AArgs},
+			{atom, L, TgtFunM},
+			{atom, L, TgtFunN},
+			{var, L, FuncResult}]},
+		      [{clause, L,
+			[{tuple, L, [{atom, L, proceed}, {var, L, NewResult}]}],
+			[],
+			[{call, L,
+			  {var, L, Self},
+			  [{var, L, NewResult}, {var, L, Rest}, {var, L, Self}]}]},
+		       {clause, L, 
+			[{tuple, L, [{atom, L, skip}, {var, L, NewResult}]}],
+			[],
+			[{var, L, NewResult}]},
+		       {clause, L,
+			[{tuple, L,
+			  [{atom, L, error},
+			   {tuple, L,
+			    [{var, L, EMod},
+			     {var, L, EFunc},
+			     {var, L, NewResult}]}]}],
+			[],
+			[{call, L, 
+			  {atom, L, apply},
+			  [{var, L, EMod},
+			   {var, L, EFunc},
+			   {var, L, NewResult}]}]}]}]},
+		   {clause, L, 
+		    [{var, L, FuncResult}, {nil, L}, {var, L, '_'}],
+		    [],
+		    [{var, L, FuncResult}]}]}}},
+	       {call, L,
+		{var, L, AFunName},
+		[{call, L,
+		  {var, L, OrgFunName}, []},
 		 Annotations,
 		 {var, L, AFunName}]}],
     

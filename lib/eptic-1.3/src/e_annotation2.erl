@@ -25,10 +25,11 @@ transform_tree([Element | Rest], Tree, AnnotationType) ->
     transform_tree(Rest, [Element | Tree], AnnotationType);
 transform_tree([], Tree, _) ->
     HrlName = filename:join([filename:dirname(get(module_path)), "..", "include", 
-			     atom_to_list(get(module_name)) ++ ".hrl"]),
+			     atom_to_list(get(module_name)) ++ "_annotations.hrl"]),
     case file:open(HrlName, [write]) of
 	{ok, Fd} ->
-	    io:format(Fd, "-compile({parse_transform, e_user_annotation}).~n~n", []),
+	    io:format(Fd, "-compile({parse_transform, e_user_annotation}).~n"
+		      "-compile(nowarn_shadow_vars).~n~n", []),
 	    save_annotations(Fd, lists:reverse(get(ew_annotations)));
 	{error, Reason} ->
 	    io:format("Error during annotation header creation: ~p. Reason: ~p~n",
