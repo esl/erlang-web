@@ -135,3 +135,16 @@
 %%     end.
 -define(BACKEND_CALL,
 	-backend_call([])).
+
+
+
+
+
+
+-compile({parse_transform, e_annotation2}).
+
+-define(BEFORE,
+	-ew_annotation_before([])).
+
+-define(AFTER,
+	-ew_annotation_after([])).
