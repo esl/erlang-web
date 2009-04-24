@@ -49,14 +49,14 @@ out(A) ->
 	    e_dict:fset("__cacheable", is_cacheable()),
 
 	    ControllerFun = fun() -> 
-				    URL = [$/ | URL],
-				    case e_fe_mod_gen:handle_request(URL) of
+				    PURL = [$/ | URL],
+				    case e_fe_mod_gen:handle_request(PURL) of
 					enoent ->
 					    enoent;
 					{ready, Ready} ->
 					    Ready;
 					{not_ready, NotReady, View} ->
-					    controller_exec(NotReady, View, URL)
+					    controller_exec(NotReady, View, PURL)
 				    end
 			    end,
 
