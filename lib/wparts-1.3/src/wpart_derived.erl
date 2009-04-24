@@ -30,7 +30,8 @@ handle_call(E) ->
     case wpartlib:has_attribute("attribute::type", E) of
 	false -> 
 	    error_logger:error_msg("~p module, error during processing the handle_call/1 function.~n"
-				   "wpart:derived tag must have the type attribute~n~n"),
+				   "wpart:derived tag must have the type attribute~n~n",
+				   [?MODULE]),
 	    #xmlText{value=""};
 	Type -> 
 	    FormType = case wpartlib:has_attribute("attribute::form_type", E) of
@@ -132,13 +133,30 @@ build_html_tag(FormType, Type, Name, Prefix, Params, Defaults) ->
     Module = list_to_atom("wpart_" ++ atom_to_list(Type)),
     LName = generate_long_name(Prefix, Name),
     Input = Module:build_html_tag(LName, Params, find(LName, Defaults)),
+    Span = wpart_gen:tpl_get(span),
+
+    Proplist0 = [{"id", LName}, {"input", Input}, {"description", get_description(Params)}],
+    Proplist1 = case e_error:description(LName) of
+		    [] ->
+			Proplist0;
+		    ErrorDesc ->
+			[{"error", wpart_gen:build_html(Span, [{"content", ErrorDesc},
+							       {"id", LName ++ "_error"},
+							       {"class", "form_error"}])}
+			 | Proplist0]
+		end,
+    Proplist = case get_comment(Params) of
+		   [] ->
+		       Proplist1;
+		   CommentDesc ->
+		       [{"comment", wpart_gen:build_html(Span, [{"content", CommentDesc},
+								{"id", LName ++ "_comment"},
+								{"class", "form_comment"}])}
+			| Proplist1]
+	       end,
 
     wpart_gen:build_html(wpart_gen:tpl_get(form_type(FormType)), 
-			 [{"id", LName},
-			  {"error", e_error:description(LName)},
-			  {"description", get_description(Params)},
-			  {"comment", get_comment(Params)},
-			  {"input", Input}]).
+			 Proplist).
 
 -spec(build_html_tag/4 :: (atom(), atom(), string(), list()) -> string()).	     
 build_html_tag(Type, _Name, Prefix, _Params) ->
@@ -219,4 +237,7 @@ load_tpl() ->
 		       filename:join([code:priv_dir(wparts),"html","list_item.tpl"])),
     
     wpart_gen:load_tpl(div_item, 
-		       filename:join([code:priv_dir(wparts),"html","div_item.tpl"])).
+		       filename:join([code:priv_dir(wparts),"html","div_item.tpl"])),
+    
+    wpart_gen:load_tpl(span, 
+		       filename:join([code:priv_dir(wparts),"html","span.tpl"])).

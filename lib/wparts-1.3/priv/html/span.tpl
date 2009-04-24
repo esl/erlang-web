@@ -1,0 +1,1 @@
+<span <% html %>> <% content %> </span>

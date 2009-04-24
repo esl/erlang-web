@@ -232,12 +232,22 @@ controller(Mod, Fun, View) ->
 	    e_logger:log({?MODULE, {entering_dataflow_for, {Mod, Fun}}}),
 	    Answ = apply(Mod, dataflow, [Fun]),
 	    controller_handler(Answ, {Mod,Fun,View});
-	_ ->
-	    e_logger:log({?MODULE, {skipping_dataflow, entering_validate, {Mod, Fun}}}),
-	    {ok, ValidArgs} = apply(Mod, validate, [Fun]),
-	    Ret = apply(Mod, Fun, ValidArgs),
-	    e_logger:log({?MODULE, {controller_response, Ret}}),
-	    {ret_view, Ret, View}
+	false ->
+	    case lists:member({validate, 1}, Funs) of
+		true ->
+		    e_logger:log({?MODULE, {skipping_dataflow, entering_validate, {Mod, Fun}}}),
+		    {ok, ValidArgs} = apply(Mod, validate, [Fun]),
+		    Ret = apply(Mod, Fun, ValidArgs),
+		    e_logger:log({?MODULE, {controller_response, Ret}}),
+
+		    {ret_view, Ret, View};
+		false ->
+		    e_logger:log({?MODULE, {skipping_dataflow_and_validate, entering_directly, {Mod, Fun}}}),
+		    Ret = apply(Mod, Fun, [get_dataflow_initial_args()]),
+		    e_logger:log({?MODULE, {controller_response, Ret}}),
+		    
+		    {ret_view, Ret, View}
+	    end
     end.
 
 -spec(controller_handler/2 :: ({list(atom()), list(atom())} | list(atom()), {atom(), atom(), string()}) ->
