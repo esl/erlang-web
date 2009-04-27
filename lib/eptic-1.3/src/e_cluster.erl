@@ -159,7 +159,7 @@ handle_cast({fe_node_up, Node, Worker}, State) ->
 	    Pid = connect_to_fe(Node, State#state.ping_timeout),
 	    {noreply, State#state{workers = [{Pid, Node} | lists:keydelete(Worker, 1, State#state.workers)]}};
 	true ->
-	    {e_fe_proxy, Node} ! {be, node()},
+	    timer:send_after(1000, {e_fe_proxy, Node}, {be, node()}),
 	    {noreply, State#state{workers = lists:keydelete(Worker, 1, State#state.workers)}}
     end;
 
@@ -222,6 +222,9 @@ handle_info({nodedown, Node}, State) ->
     connect_to_fe(Node, State#state.ping_timeout),
 
     {noreply, State};
+
+handle_info({'EXIT', From, normal}, State) ->
+    {noreply, State#state{workers = proplists:delete(From, State#state.workers)}};
 
 handle_info({'EXIT', From, _}, State) ->
     Node = proplists:get_value(From, State#state.workers),

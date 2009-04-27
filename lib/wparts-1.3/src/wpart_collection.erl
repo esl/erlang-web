@@ -20,7 +20,7 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_collection).
--behaviour(wpart).
+%-behaviour(wpart).
 
 -export([handle_call/1, build_html_tag/4, load_tpl/0]).
 
