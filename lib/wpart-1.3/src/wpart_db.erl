@@ -15,8 +15,8 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : wpart_db.erl
-%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% Description : 
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @end
 %%%
 %%%-------------------------------------------------------------------
 -module(wpart_db).
@@ -51,7 +51,7 @@ build_record_structure0(TypeName, TypeValues0, Prefix) ->
 					      [{Prefix ++ atom_to_list(Name), Val} | Acc];
 					  false ->
 					      [build_record_structure(Type, Val, 
-								      Prefix ++ atom_to_list(Type) ++ "_") |
+								      Prefix ++ atom_to_list(Name) ++ "_") |
 					       Acc]
 				      end
 			      end,

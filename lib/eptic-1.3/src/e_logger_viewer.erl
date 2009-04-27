@@ -15,9 +15,9 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : e_logger_viewer.erl
-%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% Description : Viewer for the logs recorded by the e_logger facility.
-%%%
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
+%%% @doc Viewer for the logs recorded by the e_logger facility.
+%%% @end
 %%% Created : 14 Apr 2009 by Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%%-------------------------------------------------------------------
 -module(e_logger_viewer).

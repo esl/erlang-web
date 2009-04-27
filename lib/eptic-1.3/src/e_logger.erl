@@ -31,8 +31,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--record(state, {enabled,
-		log_dir, 
+-record(state, {log_dir, 
 		max_files,
 		current_file = 1,
 		fd,
@@ -94,30 +93,33 @@ init([]) ->
     
     MaxLogs = e_conf:get_conf({logger, max_files}, 5),
     MaxSize = e_conf:get_conf({logger, max_entries}, 1 bsl 10),
-    Enabled = e_conf:get_conf({logger, enabled}, true),
 
-    if
-	LogRes == ok ->
-	    Filename = filename:join([LogDir, ?FILENAME ++ "1"]),
-	    case file:open(Filename, [write, delayed_write]) of
-		{ok, Fd} ->
-		    ets:new(?ETS, [named_table]),
-
-		    timer:apply_after(?GC_TIMEOUT, gen_server, call, 
-				      [?SERVER, garbage_collect]),
-
-		    {ok, #state{max_files = MaxLogs,
-				max_entries = MaxSize,
-				log_dir = LogDir,
-				enabled = Enabled,
-				fd = Fd}};
-		Error ->
-		    error_logger:error_msg("~p module, error during creating the log file (~p), "
-					   "reason: ~p~n", [?MODULE, Filename, Error]),
-		    {stop, {could_not_open_log_file, Error}}
-	    end;
+    case e_conf:get_conf({logger, enabled}, true) of
 	true ->
-	    {stop, {could_not_create_log_dir, LogRes}}
+	    if
+		LogRes == ok ->
+		    Filename = filename:join([LogDir, ?FILENAME ++ "1"]),
+		    case file:open(Filename, [write, delayed_write]) of
+			{ok, Fd} ->
+			    ets:new(?ETS, [named_table]),
+			    
+			    timer:apply_after(?GC_TIMEOUT, gen_server, call, 
+					      [?SERVER, garbage_collect]),
+			    
+			    {ok, #state{max_files = MaxLogs,
+					max_entries = MaxSize,
+					log_dir = LogDir,
+					fd = Fd}};
+			Error ->
+			    error_logger:error_msg("~p module, error during creating the log file (~p), "
+						   "reason: ~p~n", [?MODULE, Filename, Error]),
+			    {stop, {could_not_open_log_file, Error}}
+		    end;
+		true ->
+		    {stop, {could_not_create_log_dir, LogRes}}
+	    end;
+	false ->
+	    ignore
     end.
 
 %%--------------------------------------------------------------------
@@ -143,9 +145,6 @@ handle_call(garbage_collect, _, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_, #state{enabled = false} = State) ->
-    {noreply, State};
-
 handle_cast({register_pid, Pid}, #state{next_id = Id} = State) ->
     ets:insert(?ETS, {Pid, now(), Id}),
 
