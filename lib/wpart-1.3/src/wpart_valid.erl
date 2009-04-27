@@ -16,12 +16,12 @@
 %%%-------------------------------------------------------------------
 %%% File    : wpart_valid.erl
 %%% Author  : Michal Zajda <michal.zajda@erlang-consulting.com>
-%%% Description : 
-%%%
+%%% Description : Validation of custom types by dividing them into basic types 
+%%%               and routing to the validate function in proper wtypes
 %%%-------------------------------------------------------------------
 
 -module(wpart_valid).
--export([validate/1, is_private/1]).
+-export([validate/1, validate/3, is_private/1]).
 
 
 %% @doc the initial call from a controller
@@ -40,7 +40,7 @@ validate(TypeName) ->
 
 %% @doc Function validates field by field from a record definition, when field aprears 
 %% to be nested type its predessor is formed and passed with TypeName
--spec(validate/5 ::  (atom()|list(), list(), list(tuple()), list(), integer()) ->
+-spec(validate/5 ::  (undefined|list(), list(), list(tuple()), list(), integer()) ->
 	     {integer(),list(tuple())}).
 validate(_, _, [[]], Acc, ErrorCount) ->
     {ErrorCount,Acc};
@@ -158,3 +158,8 @@ is_private(Params) ->
 	false -> 
 	    false
     end.
+
+
+%% @doc back compatibility function.
+validate(_,_,_) ->
+    depricated.
