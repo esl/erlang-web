@@ -58,4 +58,6 @@ validate(Input) -> {error, {it_is_not_multiple_list_value, Input}}.
 one_element_check([T | _] = Input) when is_list(T) ->
     {ok, Input};
 one_element_check([T | _] = Input) when is_integer(T) ->
-    {ok, [Input]}.
+    {ok, [Input]};
+one_element_check([]) ->
+    {error, {empty, []}}.

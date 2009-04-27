@@ -28,7 +28,9 @@
 handle_call(_Format, #xmlText{value=String}) ->
     #xmlText{value=String};
 handle_call(_Format, String) when is_list(String) ->
-    String.
+    String;
+handle_call(_Format, undefined) ->
+    [].
 
 validate({Types,undefined}) -> 
     case wpart_valid:is_private(Types) of
