@@ -521,6 +521,15 @@ copy_conf_files() ->
 	false ->
 	    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
 	    confirm_created(InetsConfig)
+    end,
+    
+    ErrorsConfig = "config/errors_description.conf",
+    case filelib:is_file(ErrorsConfig) of
+	true ->
+	    inform_exists(ErrorsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/errors.conf", ErrorsConfig),
+	    confirm_created(ErrorsConfig)
     end.
 
 create_sys_config_file(yaws) ->

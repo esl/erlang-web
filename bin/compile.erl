@@ -75,7 +75,10 @@ make_release(RelVsn, Server) ->
 			       [Name | _] = string:tokens(AppName, "-"),
 			       list_to_atom(Name)
 		       end, Dir),
-    [application:load(App) || App <- ToLoad],
+    [application:load(App) || App <- if 
+					 Server == inets -> [inets | ToLoad];
+					 true -> ToLoad
+				     end],
     
     Loaded = lists:map(fun({Name, _, Vsn}) ->
 			       {Name, Vsn}
