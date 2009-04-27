@@ -56,26 +56,7 @@ do_validate_ok(List,Type,Mod,ParentType) ->
     {Result, _Bad} = get_values(Type, Fields, List),
 
     %% special case of primary key, if it's not in post - it's creating not editing
-    Pr = case eptic:fget("post", "__primary_key") of
-	     undefined -> 
-		 undefined;
-	     PK ->
-		 TypeOpts = tl(tuple_to_list(Mod:get_record_info(
-					       list_to_atom(atom_to_list(Type) ++ "_types")))),
-		 {PKPos, {PKType, PKOpts}} = case wpart_utils:find_pk(TypeOpts) of
-						 no_pk ->
-						     {1, hd(TypeOpts)};
-						 Else ->
-						     Else
-					     end,
-
-		 case wpart_utils:string2term(PKType, PK, PKOpts) of
-		     {ok, PKTerm} ->
-			 {PKPos, PKTerm};
-		     _ ->
-			 undefined
-		 end
-	 end,
+    Pr = get_primary_key(Mod, Type),
     Final = replace_primary(Result, Pr),
 
     {ok, list_to_tuple([ParentType | Final])}.
@@ -97,9 +78,9 @@ do_validate_error(Mod,Reason,Fun,Type,ParentType) ->
     
     %% special case of primary key - if error on edit returns {ok,[]} to get original 
     %% values from DB or set special initial values.
-    case eptic:fget("post", "__primary_key") of
+    case get_primary_key(Mod, Type)  of
 	undefined -> {error, not_valid};
-	P -> {error, {Fun, list_to_integer(P)}}
+	{_, Term} -> {error, {Fun, Term}}
     end.
 
 -spec(replace_primary/2 :: (list(), undefined | {integer(), term()}) -> list()).
@@ -138,3 +119,27 @@ post_get(TypeS,[H|Next],List,R,Reason_list) ->
 			   Reason_list ++ [io_lib:format("~p", [Reason])])
 	    end
    end.
+
+-spec(get_primary_key/2 :: (atom(), atom()) -> undefined | {integer(), term()}). 
+get_primary_key(Mod, Type) ->
+    case eptic:fget("post", "__primary_key") of
+	undefined -> 
+	    undefined;
+	PK ->
+	    TypeOpts = tl(tuple_to_list(Mod:get_record_info(
+					  list_to_atom(atom_to_list(Type) ++ "_types")))),
+	    {PKPos, {PKType, PKOpts}} = case wpart_utils:find_pk(TypeOpts) of
+					    no_pk ->
+						{1, hd(TypeOpts)};
+					    Else ->
+						Else
+					end,
+
+	    case wpart_utils:string2term(PKType, PK, PKOpts) of
+		{ok, PKTerm} ->
+		    {PKPos, PKTerm};
+		_ ->
+		    undefined
+		 end
+    end.
+    
