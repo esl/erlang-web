@@ -1,9 +1,32 @@
 #!/usr/bin/env escript
 
+%% The contents of this file are subject to the Erlang Web Public License,
+%% Version 1.0, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Web Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang-consulting.com/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% The Initial Developer of the Original Code is Erlang Training & Consulting
+%% Ltd. Portions created by Erlang Training & Consulting Ltd are Copyright 2008,
+%% Erlang Training & Consulting Ltd. All Rights Reserved.
+
+%%%-----------------------------------------------------------------------------
+%%% File    : add.erl
+%%% @author Michal Ptaszek <info@erlang.consulting.com>
+%%% @doc Script for automatic application adding for Erlang Web framework.
+%%% @end
+%%%-----------------------------------------------------------------------------
+
 main([]) ->
     {Name, Vsn} = get_description(),
 
     create_new_application(Name, Vsn),
+    update_app_file(Name, Vsn),
     update_makefile(Name, Vsn).
 
 get_description() ->
@@ -37,7 +60,8 @@ create_new_application(Name, Vsn) ->
 			  ok -> confirm_created(X);
 			  {error, eexist} -> inform_exists(X);
 			  {error, Reason} -> handle_error(Reason)
-		      end
+		      end,
+		      code:add_patha(X)
 	      end,
 
     Creator(Filename),
@@ -47,6 +71,25 @@ create_new_application(Name, Vsn) ->
 					filename:join(Filename, Name0)
 				end, AppDirs),
     lists:foreach(Creator, AppDirsComplete).
+
+update_app_file(NameS, Vsn) ->
+    NameA = list_to_atom(NameS),
+    AppFile = filename:join([code:lib_dir(NameA, ebin), NameS ++ ".app"]),
+    case file:open(AppFile, [write]) of
+	{ok, Fd} ->
+	    io:format(Fd, "~p.~n",
+		      [{application, NameA, 
+			[{description, NameS ++ " description"},
+			 {vsn, Vsn},
+			 {modules, []},
+			 {registered, []},
+			 {applications, [kernel, stdlib]}]}]),
+	    file:close(Fd),
+	    confirm_created(AppFile);
+	{error, Reason} ->
+	    io:format("Error during opening ~s for writing, reason: ~p~n",
+		      [AppFile, Reason])
+    end.
 
 update_makefile(Name, Vsn) ->
     Filename = filename:join("lib", Name ++ "-" ++ Vsn),
