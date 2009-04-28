@@ -59,7 +59,11 @@ parse(A) when is_record(A, arg) ->
 	    {get_more, Cont, add_chunk(Res, A#arg.state)};
 	{result, Res} ->
 	    Handler = add_chunk(Res, A#arg.state),
-	    {ok, element(2, Handler)}
+	    {ok, lists:map(fun({Key, {file, Val}}) ->
+				   {Key, Val};
+			      (Else) ->
+				   Else
+			   end, element(2, Handler))}
     end.
 
 %%====================================================================
