@@ -231,7 +231,7 @@ split_cookies([Cookies0]) ->
 with_formatted_error(F) ->
     case catch F() of
 	{'EXIT', Reason} ->
-	    e_mod_gen:error_page(501, "", Reason);
+	    e_mod_gen:error_page(501, e_dict:fget("__path"), Reason);
 	Result ->
 	    Result
     end.
