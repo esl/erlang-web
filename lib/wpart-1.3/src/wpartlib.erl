@@ -132,7 +132,14 @@ expand_string([$}|T], Op0, Acc) ->
     Value = case string:tokens(lists:reverse(Op0), "[]") of
 		[Format, Key] ->
 		    [Token|Tokens] = string:tokens(Key,":"),
-		    wtype:format("[" ++ Format ++ "]", search(wpart:fget(Token), Tokens));
+		    V = search(wpart:fget(Token), Tokens),
+		    try
+			wtype:format("[" ++ Format ++ "]", V)
+		    catch
+			error:Reason ->
+			    erlang:error({format_error, Format, Key, V,
+					  {Reason, erlang:get_stacktrace()}})
+		    end;
 		[Key] ->
 		    [Token|Tokens] = string:tokens(Key,":"),
 		    case search(wpart:fget(Token), Tokens) of
