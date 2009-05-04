@@ -92,7 +92,7 @@ model(Args0) ->
     
     Hrl = case proplists:get_value(hrl, Args) of
 	      undefined ->
-		  filename:join(["..", ModelName ++ ".hrl"]);
+		  filename:join(["..", "include", ModelName ++ ".hrl"]);
 	      ValH ->
 		  ValH
 	  end,
@@ -142,7 +142,7 @@ create_model(Fd, Name, Hrl) ->
     io:format(Fd, "-module(wtype_~s).~n"
 	      "-export([get_record_info/1]).~n"
 	      "-export([create/1, read/1, update/1, delete/1]).~n"
-	      "-export([prepare_initial/0, prepare_validated/0]).~n~n"
+	      "-export([prepare_initial/0, prepare_validated/0, prepare_edit/1]).~n~n"
 	      "-include(~p).~n~n",
 	      [Name, Hrl]),
 
@@ -176,6 +176,10 @@ create_model(Fd, Name, Hrl) ->
 	      "    ~s = wpart:fget(\"__not_validated\"),~n"
 	      "    wpart_db:build_record_structure(~s, ~s).~n~n",
 	      [VarName, Name, VarName]),
+
+    io:format(Fd, "prepare_edit(Item) ->~n"
+	      "    wpart_db:build_record_structure(~s, Item).~n~n",
+	      [Name]),
     
     file:close(Fd).
 

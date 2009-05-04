@@ -76,7 +76,12 @@ dispatcher_reload() ->
 %% Erlang manual - http://www.erlang.org/doc/man/re.html).
 %% 
 -spec(invalidate/1 :: (list(string())) -> ok).	     
-invalidate(List) ->
+invalidate(List0) ->
+    List = lists:map(fun({expand, Entry}) ->
+			     wpartlib:expand_string(Entry);
+			(Other) ->
+			     Other
+		     end, List0),
     gen_server:cast(?MODULE, {invalidate, List}).
 
 %%

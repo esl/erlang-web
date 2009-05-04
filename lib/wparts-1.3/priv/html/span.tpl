@@ -1,1 +1,1 @@
-<span <% html %>> <% content %> </span>
+<span id="<% id %>" class="<% class %>" <% html %>> <% content %> </span>

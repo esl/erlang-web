@@ -68,7 +68,7 @@ load_conf() ->
 %%
 %% @spec load_conf(Filename :: string()) -> ok
 %% @doc Loads the configuration from the given file.
-%% The previous configuration is erased. 
+%% The previous configuration is overwritten. 
 %% File given as a parameter must be parsable by the file:consult call.<br/>
 %% The content of the configuration is stored inside the
 %% <b>e_conf</b> ets table.
@@ -96,7 +96,7 @@ load_conf(Filename) ->
 	undefined ->
 	    ets:new(?MODULE, [named_table, public]);
 	_ ->
-	    ets:delete_all_objects(?MODULE)
+	    ok
     end,
    
     ets:insert(?MODULE, Ext),
