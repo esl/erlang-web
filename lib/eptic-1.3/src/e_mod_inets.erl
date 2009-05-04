@@ -165,7 +165,7 @@ format_response(Else) ->
 with_formatted_error(F) ->
     case catch F() of
 	{'EXIT', Reason} ->
-	    format_response(e_mod_gen:error_page(501, "", Reason));
+	    format_response(e_mod_gen:error_page(501, e_dict:fget("__path"), Reason));
 	Response ->
 	    format_response(Response)
     end.
