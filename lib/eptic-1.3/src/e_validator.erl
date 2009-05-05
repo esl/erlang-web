@@ -33,10 +33,13 @@
 %% Description:
 %%--------------------------------------------------------------------
 email(Value) ->
-    L = length(Value),
-    {match, 1, L} = 
-	regexp:match(Value, "(([A-Za-z\.]|_|-)+@[A-Za-z]+\.[A-Za-z\.]+[a-z])"),
-    Value.
+    case re:run(Value, "^(([A-Za-z\.]|_|-)+@[A-Za-z]+\.[A-Za-z\.]+[a-z])$",
+		[{capture, first, list}]) of
+	nomatch ->
+	    throw(exception_not_email_address);
+	_ ->
+	    Value
+    end.
     
 %%====================================================================
 %% Internal functions

@@ -71,7 +71,7 @@ get_html_tag(Name, Default, Type, Extra) ->
 								{"counter_start", Counter}]),
 
     {XML, _} = xmerl_scan:string(HTML),
-    element(2, regexp:gsub(lists:flatten(wpart_xs:template(XML)), "\n", "")).
+    re:replace(lists:flatten(wpart_xs:template(XML)), "\n", "", [global, dotall, {return, list}]).
 
 get_content(String) ->
     {XML, _} = xmerl_scan:string(String),

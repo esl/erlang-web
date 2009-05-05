@@ -154,8 +154,7 @@ expand_string([H|T], Acc0, Acc) ->
     expand_string(T, [H|Acc0], Acc).
 
 substitute_erl(Erl, From, To) ->
-    {ok, NewErl, _} = regexp:gsub(Erl, From, To),
-    NewErl.
+    re:replace(Erl, From, To, [dotall, global, {return, list}]).
 
 decode_erl(Code) ->
     lists:foldl(fun({From, To}, Erl) ->
