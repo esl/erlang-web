@@ -28,14 +28,26 @@ handle_call(E) ->
     File = wpart:has_attribute("attribute::file", E),
     As = wpart:has_attribute("attribute::as", E),
     Format = wpart:has_attribute("attribute::format", E),
+    Type = wpart:has_attribute("attribute::type", E),
 
     {ok, Bin} = file:read_file(sanitise_filename(File)),
     Tpl = binary_to_list(Bin),
     if
 	As == false, Format == false ->
-	    #xmlText{value = Tpl};
+	    if 
+		Type == "cdata" ->
+		    #xmlText{value = Tpl, type=cdata};
+		true ->
+		    #xmlText{value = Tpl}
+	    end;
 	As == false ->
-	    #xmlText{value = wpartlib:format(Tpl, E)};
+	    Val = wpartlib:format(Tpl, E),
+	    if
+		Type == "cdata" ->
+		    #xmlText{value = Val, type=cdata};
+		true ->
+		    #xmlText{value = Val}
+	    end;
 	Format == false ->
 	    wpart:fset(As, Tpl);
 	true ->

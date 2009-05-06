@@ -41,6 +41,8 @@ handle_call(E) ->
 		    Type = case wpartlib:has_attribute("attribute::type", E) of
 			       "html" ->
 				   cdata;
+			       "cdata" ->
+				   cdata;
 			       _ ->
 				   text
 			   end,
