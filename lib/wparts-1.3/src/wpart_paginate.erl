@@ -80,7 +80,7 @@ action("page", E) ->
 		    ok
 	    end,
 	    if
-		Start*PerPage+1 < length(List) ->
+		Start*PerPage < length(List) ->
 		    eptic:fset("next_page", integer_to_list(Start+1));
 		true ->
 		    ok

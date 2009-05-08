@@ -178,7 +178,7 @@ build_tags(Type, FormType, Prefix) ->
 		   [list_to_atom(Type)]),
     [_ | Types] = tuple_to_list(apply(Module, get_record_info,
 				      [list_to_atom(Type ++ "_types")])),
-    FormOptions = (catch Module:get_record_info(list_to_atom(Type ++ "_form"))),
+    _FormOptions = (catch Module:get_record_info(list_to_atom(Type ++ "_form"))),
     %% @todo handle the form options, such as fieldsets partitions and so on
 
     HtmlBuild = fun({Name, {T, Params}}, Acc) ->

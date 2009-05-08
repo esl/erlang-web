@@ -25,7 +25,7 @@
 
 %%
 %% @spec start(Mode) -> ok | {error, Reason :: term()}
-%% Mode :: list(atom())
+%%            Mode = list(atom())
 %% @doc The framework interactive mode starting function.
 %% This function will start all required applications (including 
 %% three main framework ones: eptic, wpart and wparts).
