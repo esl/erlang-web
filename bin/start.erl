@@ -574,8 +574,13 @@ copy_escripts(RootDir) ->
 		     filename:join(["bin", "add.erl"]),
 		     filename:join(["bin", "e_component.erl"])],
 	    
-	    file:copy(filename:join(RootDir, "Emakefile"), "Emakefile"),
-	    confirm_created("Emakefile"),
+	    case filelib:is_file("Emakefile") of
+		true ->
+		    inform_exists("Emakefile");
+		false ->
+		    file:copy(filename:join(RootDir, "Emakefile"), "Emakefile"),
+		    confirm_created("Emakefile")
+	    end,
 	    
 	    lists:foreach(fun(File) ->
 				  case filelib:is_file(File) of

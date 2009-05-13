@@ -49,6 +49,7 @@ request(MFA, frontend) ->
 	    ok
     end;
 request({M, F, A}, single_node_with_cache) ->
+    eptic:fset("__backend_pid", self()),
     e_mod_gen:controller(M, F, A).
 
 -spec(start/0 :: () -> none()).
@@ -98,6 +99,10 @@ cleanup_backend(Mod) ->
 	undefined ->
 	    ok;
 	Pid ->
-	    {ok, Name} = application:get_env(eptic_fe, be_server_name),
-	    rpc:cast(Name, Mod, terminate, [Pid])
+	    case application:get_env(eptic_fe, be_server_name) of
+		{ok, Name} ->
+		    rpc:cast(Name, Mod, terminate, [Pid]);
+		undefined ->
+		    Mod:terminate()
+	    end
     end.
