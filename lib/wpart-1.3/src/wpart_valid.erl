@@ -45,9 +45,9 @@ validate(TypeName) ->
 validate(_, _, [[]], Acc, ErrorCount) ->
     {ErrorCount,Acc};
 %% clause to match call when POST is empty (form building)
-validate(undefined, Primitives, [{Predessor, TypeName} | MoreTypes], Acc, ErrorCount) ->
-    validate([], Primitives, [{Predessor, TypeName} | MoreTypes], Acc, ErrorCount);
-validate(POST, Primitives, [{Predessor, TypeName} | MoreTypes], Acc, ErrorCount) ->
+validate(undefined, Primitives, [{Predecessor, TypeName} | MoreTypes], Acc, ErrorCount) ->
+    validate([], Primitives, [{Predecessor, TypeName} | MoreTypes], Acc, ErrorCount);
+validate(POST, Primitives, [{Predecessor, TypeName} | MoreTypes], Acc, ErrorCount) ->
 
     %% {[atom()],tuple()}
     {RecInfo, TypeRecInstance} = get_record_info(TypeName),
@@ -55,11 +55,12 @@ validate(POST, Primitives, [{Predessor, TypeName} | MoreTypes], Acc, ErrorCount)
     [_ | Types] = tuple_to_list(TypeRecInstance),
 
     {groups, PostNames, BasicTypes, ComplexFields} = 
-	sort_out(RecInfo,Types, Primitives, Predessor),
+	sort_out(RecInfo,Types, Primitives, Predecessor),
     
     Input = zip_get(BasicTypes, PostNames, POST, []),
     
-    Result = validate_local(Input, BasicTypes),
+    Result0 = validate_local(Input, BasicTypes),
+    Result = validate_uniqueness(list_to_atom(Predecessor), Result0, BasicTypes),
     %% posible to optimize and combine with validate_local
     Errors = save_errors(PostNames, Result),
     ResultExt = lists:zip(Result,PostNames),
@@ -77,6 +78,42 @@ validate_local([],[],Acc) ->
 validate_local([In|InputTail], [{Name,Attr} | BasicTypesTail], Acc) ->
     Result = apply(list_to_atom("wtype_" ++ atom_to_list(Name)),validate,[{Attr,In}]),
     validate_local(InputTail,BasicTypesTail,[Result|Acc]).
+
+-spec(validate_uniqueness/3 :: (atom(), list(), list()) -> list()).	     
+validate_uniqueness(MasterType, Input, Types) ->
+    validate_uniqueness(MasterType, Input, Types, [], length(Input)).
+
+-spec(validate_uniqueness/5 :: (atom(), list(), list(), list(), integer()) -> 
+	     list({ok, term()} | {error, term()})).
+validate_uniqueness(Type, [{error, _} = Input | TInput], [_ | TType], Acc, Pos) ->
+    validate_uniqueness(Type, TInput, TType, [Input | Acc], Pos-1);
+validate_uniqueness(Type, [{ok, Input} | TInput], [{_, Attr} | TType], Acc, Pos) ->
+    case lists:member(unique, Attr) of
+	false ->
+	    validate_uniqueness(Type, TInput, TType, [{ok, Input} | Acc], Pos-1);
+	true ->
+	    validate_uniqueness(Type, TInput, TType, 
+				[check_uniqueness(Type, Input, Pos+1) | Acc], Pos-1)
+    end;
+validate_uniqueness(_, [], [], Acc, _) ->
+    lists:reverse(Acc).
+
+-spec(check_uniqueness/3 :: (atom(), term(), integer()) -> 
+	     {ok, term()} | {error, term()}).	     
+check_uniqueness(MasterType, Input, Pos) ->
+    Entries = e_db:read(MasterType),
+    Pred = fun(Element) when element(Pos, Element) == Input ->
+		   true;
+	      (_) ->
+		   false
+	   end,
+
+    case lists:any(Pred, Entries) of
+	true ->
+	    {error, {element_not_unique, Input}};
+	false ->
+	    {ok, Input}
+    end.
 
 %% @doc function retrieves form post single value or set of values.
 %% It should not be unified because only collection fields could have multipule vals under one key;
