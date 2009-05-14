@@ -120,6 +120,8 @@ create_dirs(Element, Acc) ->
 	    Next;
 	{error, eexist} -> 
 	    Next;
+	{error, eisdir} ->
+	    Next;
 	{error, _} ->
 	    ""
     end.

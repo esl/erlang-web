@@ -79,6 +79,10 @@ save_file(SFilename, Content) ->
 				    Next;
 				{error, eexist} -> 
 				    Next;
+				%% special case of Mac Os - it returns 
+				%% eisdir instead of eexist
+				{error, eisdir} ->
+				     Next;
 				{error, Reason} ->
 				    error_logger:error_msg("~p module, cannot create directory ~p, reason: ~p~n",
 							   [?MODULE, Next, Reason]),
