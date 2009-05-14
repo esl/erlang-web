@@ -85,6 +85,8 @@ init([]) ->
 		     ok;
 		 {error, eexist} ->
 		     ok;
+		 {error, eisdir} ->
+		     ok;
 		 Else ->
 		     error_logger:error_msg("~p module, error during log directory creation (~p), "
 					    "reason: ~p~n", [?MODULE, LogDir, Else]),

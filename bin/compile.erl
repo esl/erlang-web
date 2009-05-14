@@ -75,10 +75,7 @@ make_release(RelVsn, Server) ->
 			       [Name | _] = string:tokens(AppName, "-"),
 			       list_to_atom(Name)
 		       end, Dir),
-    [application:load(App) || App <- if 
-					 Server == inets -> [inets | ToLoad];
-					 true -> ToLoad
-				     end],
+    [application:load(App) || App <- ToLoad],
     
     Loaded = lists:map(fun({Name, _, Vsn}) ->
 			       {Name, Vsn}
@@ -136,9 +133,14 @@ create_boot_file(RelVsn) ->
     erl_tar:extract("releases/" ++ RelVsn ++ "/start.tar.gz", [compressed]).
 
 create_sys_config_file(RelVsn, yaws) ->
-    YawsConfig = "config/yaws.conf",
-    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
-    confirm_created(YawsConfig),
+    YawsConfig = "config/yaws.config",
+    case filelib:is_file(YawsConfig) of
+	true ->
+	    inform_exists(YawsConfig);
+	false ->
+	    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
+	    confirm_created(YawsConfig)
+    end,
     
     Filename = "releases/" ++ RelVsn ++ "/sys.config",
     case file:open(Filename, [write]) of
@@ -154,10 +156,15 @@ create_sys_config_file(RelVsn, inets) ->
     MimeTypes = "docroot/conf/mime.types",
     file:copy(code:priv_dir(eptic) ++ "/mime.types", MimeTypes),
     confirm_created(MimeTypes),
-    
+   
     InetsConfig = "config/inets.conf",
-    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
-    confirm_created(InetsConfig),
+    case filelib:is_file(InetsConfig) of
+	true ->
+	    inform_exists(InetsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
+	    confirm_created(InetsConfig)
+    end,
     
     Filename = "releases/" ++ RelVsn ++ "/sys.config",
     case file:open(Filename, [write]) of

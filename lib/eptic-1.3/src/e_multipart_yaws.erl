@@ -59,6 +59,8 @@ parse(A) when is_record(A, arg) ->
 	    {get_more, Cont, add_chunk(Res, A#arg.state)};
 	{result, Res} ->
 	    Handler = add_chunk(Res, A#arg.state),
+	    %% we cast {file, Filename} to Filename for
+	    %% compatibility with Inets' multipart
 	    {ok, lists:map(fun({Key, {file, Val}}) ->
 				   {Key, Val};
 			      (Else) ->
@@ -86,6 +88,10 @@ add_chunk([{head, {Name, Opt}}|Res], {_, SoFar}) ->
 					ok ->
 					    Next;
 					{error, eexist} -> 
+					    Next;
+					%% special case of Mac Os - it returns 
+					%% eisdir instead of eexist
+					{error, eisdir} ->
 					    Next;
 					{error, Reason} ->
 					    error_logger:error_msg("~p module, cannot create directory ~p, reason: ~p~n",
