@@ -62,7 +62,7 @@ unload_tpl(Namespace, Name) ->
 %% @spec build_html(Tpl :: list(), Values :: list()) -> Result :: string()
 %% @doc Builds a template that is filled with the passed values.
 %% There are two possible ways to fill a template. In case of usage
-%% the unnamed slots (all of them are <% slot %>) the value list
+%% the unnamed slots (all of them are &lt;% slot %&gt;) the value list
 %% should consists only of the bare strings. Moreover, the Values 
 %% list must have the same length as the number of slots.
 %% The values will be inserted in the same order as they appear on
@@ -112,8 +112,10 @@ build_html([String | Rest], Vals, Result) ->
 
 %%
 %% @spec tpl_get(Key) -> Tpl
-%%               Key = {Namespace :: term(), Name :: term()} | Name :: term()
+%%               Key = {Namespace, Name} | Name
 %%               Tpl = list()
+%%               Namespace = term()
+%%               Name = term()
 %% @doc Loads the template snippet from the memory.
 %% The loaded snippet should be used only for passing to the build_html/2 
 %% function.
