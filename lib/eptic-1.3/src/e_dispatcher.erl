@@ -18,39 +18,40 @@
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%%
 %%% @doc Module responsible for dispatching the incoming requests.
-%%% <p>The rules for the proper routing are described inside the <i>dispatch.conf</i>
-%%% file in the <i>config/</i> directory in the server root. 
-%%% The second mandatory file is <i>errors.conf</i> which 
-%%% describes, which pages should be displayed to the user in case
-%%% of particular error.</p>
+%%% <p>The rules for the proper routing are described inside the
+%%% <i>dispatch.conf</i> file in the <i>config/</i> directory in the
+%%% server root.  The second mandatory file is <i>errors.conf</i>
+%%% which describes, which pages should be displayed to the user in
+%%% case of particular error.</p>
 %%%
-%%% <p>The dispatcher configuration files must contain the Erlang tuples
-%%% (must be parsable by <i>file:consult</i>).<br/>
-%%% The following format of the tuples are available:
-%%% <ul>
-%%% <li><i>{dynamic, Regexp, {Mod, Fun}}</i> - if the incoming URL matches the <i>Regexp</i>, 
-%%% then the <i>Mod:Fun</i> is called to serve the request</li>
-%%% <li><i>{dynamic, delegate, Regexp, Path}</i> - the meta-entry. During the start
-%%% of the dispatcher, the file stored under the <i>Path</i> is read and all the entries
-%%% inside it are prefixed by <i>Regexp</i>. Then, they are merged with the 
-%%% previously loaded rules.</li>
-%%% <li><i>{static, Regexp, Path}</i> - if the incoming URL matches the <i>Regexp</i>,
-%%% then the static page (available under <i>Path</i>) will be expanded.</li>
-%%% <li><i>{static, Regexp, enoent}</i> - if the incoming URL matches the <i>Regexp</i>
-%%% the corresponding file from the docroot directory will be served directly
-%%% by the server.</li>
+%%% <p>The dispatcher configuration files must contain the Erlang
+%%% tuples (must be parsable by <i>file:consult</i>).<br/> The
+%%% following format of the tuples are available: <ul>
+%%% <li><i>{dynamic, Regexp, {Mod, Fun}}</i> - if the incoming URL
+%%% matches the <i>Regexp</i>, then the <i>Mod:Fun</i> is called to
+%%% serve the request</li> <li><i>{dynamic, delegate, Regexp,
+%%% Path}</i> - the meta-entry. During the start of the dispatcher,
+%%% the file stored under the <i>Path</i> is read and all the entries
+%%% inside it are prefixed by <i>Regexp</i>. Then, they are merged
+%%% with the previously loaded rules.</li> <li><i>{static, Regexp,
+%%% Path}</i> - if the incoming URL matches the <i>Regexp</i>, then
+%%% the static page (available under <i>Path</i>) will be
+%%% expanded.</li> <li><i>{static, Regexp, enoent}</i> - if the
+%%% incoming URL matches the <i>Regexp</i> the corresponding file from
+%%% the docroot directory will be served directly by the server.</li>
 %%% </ul></p>
 %%% 
-%%% <p>There is a possibility to retrive some values from the URLs and pass them to the 
-%%% called function (it is only possible when the rule type is set to <i>dynamic</i>).<br/>
-%%% In order to fetch the values, the regular expression must be in the specific format.
-%%% The format is described on [http://www.erlang.org/doc/man/re.html], in named 
-%%% subpatterns section.<br/>
-%%% The obtained list of pairs: <i>{Name, Value}</i> (both strings) will be passed 
-%%% as an argument to the first function on the dataflow list.
-%%% </p>
-%%% @end
-%%%-------------------------------------------------------------------
+%%% <p>There is a possibility to retrive some values from the URLs and
+%%% pass them to the called function (it is only possible when the
+%%% rule type is set to <i>dynamic</i>).<br/> In order to fetch the
+%%% values, the regular expression must be in the specific format.
+%%% The format is described on
+%%% [http://www.erlang.org/doc/man/re.html], in named subpatterns
+%%% section.<br/> The obtained list of pairs: <i>{Name, Value}</i>
+%%% (both strings) will be passed as an argument to the first function
+%%% on the dataflow list.  </p> 
+%%  @end
+%%% -------------------------------------------------------------------
 -module(e_dispatcher).
 
 -export([error_page/1]).
@@ -139,10 +140,12 @@ fe_dispatch(Url) ->
     Result.
 
 %%
-%% @spec error_page(ErrorCode :: integer()) -> TemplatePath :: string() | not_found
-%% @doc Returns path to the page that should be rendered in case of error with <i>ErrorCode</i>.
-%% If the proper page for the given <i>ErrorCode</i> is not defined, 
-%% <i>not_found</i> is returned.
+%% @spec error_page(ErrorCode :: integer()) -> 
+%%                  TemplatePath ::string() | not_found 
+%% @doc Returns path to the page that should be
+%% rendered in case of error with <i>ErrorCode</i>.  If the proper
+%% page for the given <i>ErrorCode</i> is not defined,
+%% <i>not_found</i> is returned.  
 %% @end
 %%
 -spec(error_page/1 :: (integer()) -> string() | not_found).	     
@@ -189,12 +192,26 @@ divide([{alias, RegexpSrc, RegexpTrgt, Opts} | Rest], Static, Dynamic) ->
 parser({include, Filename}, _) ->
     load(Filename);
 parser({dynamic, delegate, Prefix, Filename}, Compiled) ->
-    Adder = fun({dynamic, delegate, Prefix2, Filename2}) ->
-		    parser({dynamic, delegate, Prefix ++ Prefix2, Filename2}, Compiled);
-	       ({Type, Regexp, Arg, Opts}) when is_list(Regexp) ->
-		    {Type, Prefix ++ Regexp, Arg, Opts};
-	       ({Type, Regexp, Arg}) ->
-		    {Type, Prefix ++ Regexp, Arg, []}
+    Options = case get_all_names(Prefix, Compiled) of
+		  [] ->
+		      [];
+		  Names ->
+		      [{named_subpatterns, Names}]
+	      end,
+    parser({dynamic, delegate, Prefix, Filename, Options}, Compiled);
+parser({dynamic, delegate, Prefix, Filename, Options}, _Compiled) ->
+    Adder = fun({Type, Regexp, Arg, Opts}) ->
+		    O1 = proplists:get_value(named_subpatterns, Opts, []),
+		    O2 = proplists:get_value(named_subpatterns, Options, []),
+
+		    case lists:append([O1, O2]) of
+			[] ->
+			    {Type, Prefix ++ Regexp, Arg, Opts};
+			Subpatterns ->
+			    {Type, Prefix ++ Regexp, Arg, 
+			     [{named_subpatterns, Subpatterns} |
+			      proplists:delete(named_subpatterns, Opts)]}
+		    end
 	    end,
     lists:map(Adder, load(Filename));
 parser({dynamic, Regexp, ModFun, Options} = Org, Compiled) -> 
