@@ -220,7 +220,7 @@ wrap_log_file(State) ->
 
     Filename = filename:join([State#state.log_dir, 
 			      ?FILENAME++integer_to_list(NewState#state.current_file)]),
-    case file:open(Filename, [delayed_write]) of
+    case file:open(Filename, [write, delayed_write]) of
 	{ok, Fd} ->
 	    {ok, NewState#state{fd = Fd}};
 	Error ->
