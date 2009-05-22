@@ -138,7 +138,7 @@ create_sys_config_file(RelVsn, yaws) ->
 	true ->
 	    inform_exists(YawsConfig);
 	false ->
-	    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
+	    file:copy(code:priv_dir(eptic) ++ "/yaws.conf", YawsConfig),
 	    confirm_created(YawsConfig)
     end,
     

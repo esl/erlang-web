@@ -501,7 +501,7 @@ copy_conf_files() ->
 	true ->
 	    inform_exists(YawsConfig);
 	false ->
-	    file:copy(code:priv_dir(yaws) ++ "/yaws.conf", YawsConfig),
+	    file:copy(code:priv_dir(eptic) ++ "/yaws.conf", YawsConfig),
 	    confirm_created(YawsConfig)
     end,
 
