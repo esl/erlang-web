@@ -58,8 +58,10 @@
 -export([install/0, reinstall/0]).
 -export([is_static/1, dispatch/1]).
 -export([fe_dispatch/1, add_rule/1]).
+-export([url_for/2]).
 
--type(dispatcher_result() :: {atom(), atom(), nil()} | {view, string()} | invalid_url | {error, 404, string()}).
+-type(dispatcher_result() :: {atom(), atom(), nil()} | {view, string()} | 
+      invalid_url | {error, 404, string()}).
 -type(cache_type() :: no_cache | normal | persistent | {timeout, integer()}).
 
 %%
@@ -244,7 +246,8 @@ load(Filename) ->
     {ok, Terms} = file:consult(Filename),
     {ok, NamedRegexp} = re:compile("\\?<[A-Za-z_0-9]+>", [ungreedy]),
 
-    lists:map(fun(X) -> parser(X, NamedRegexp) end, Terms).
+    Terms1 = lists:map(fun preprocess/1, Terms),
+    lists:map(fun(X) -> parser(X, NamedRegexp) end, Terms1).
 
 %% Returns first element which satisfies Fun
 -spec(filter/2 :: (fun(), list(tuple())) -> {ok, tuple()} | nomatch).	    
@@ -302,7 +305,8 @@ process({static, _, Path, _}, _) ->
 process({dynamic, _, {Module, Function}, _Opts}, _URL) ->
     {Module, Function, []};
 process({alias, Regexp, Target, Opts}, URL) ->
-    dispatch(substitute_alias(URL, Regexp, Target, proplists:get_value(substitutions, Opts, [])));
+    dispatch(substitute_alias(URL, Regexp, Target, 
+			      proplists:get_value(substitutions, Opts, [])));
 process(nomatch, URL) ->
     {error, 404, URL}.
 
@@ -310,11 +314,14 @@ process(nomatch, URL) ->
 fe_process({static, _, enoent, _}, _) ->
     {no_cache, [], invalid_url};
 fe_process({static, _, Path, Opts}, _) ->
-    {proplists:get_value(cache, Opts, persistent), proplists:get_value(cache_groups, Opts, ["view"]), {view, Path}};
+    {proplists:get_value(cache, Opts, persistent), 
+     proplists:get_value(cache_groups, Opts, ["view"]), {view, Path}};
 fe_process({dynamic, _, {M, F}, Opts}, _) ->
-    {proplists:get_value(cache, Opts, normal), proplists:get_value(cache_groups, Opts, ["controller"]), {M, F, []}};
+    {proplists:get_value(cache, Opts, normal), 
+     proplists:get_value(cache_groups, Opts, ["controller"]), {M, F, []}};
 fe_process({alias, Regexp, Target, Opts}, URL) ->
-    fe_dispatch(substitute_alias(URL, Regexp, Target, proplists:get_value(substitutions, Opts, [])));
+    fe_dispatch(substitute_alias(URL, Regexp, Target, 
+				 proplists:get_value(substitutions, Opts, [])));
 fe_process(nomatch, URL) ->
     {persistent, ["errors"], {error, 404, URL}}.
 
@@ -334,7 +341,8 @@ substitute_alias(URL, Regexp, Target0, Substitutions) ->
 	    Target0;
 	{match, Matched} ->
 	    lists:foldl(fun({Name, Replacement}, Target) ->
-				re:replace(Target, "\\(\\?<" ++ Name ++ ">\\)", Replacement, [{return, list}])
+				re:replace(Target, "\\(\\?<" ++ Name ++ ">\\)", 
+					   Replacement, [{return, list}])
 			end, Target0, lists:zip(Substitutions, Matched))
     end.
 
@@ -363,4 +371,88 @@ add_rule(Type, Regexp, Target, Opts) ->
     [{_, TypeRules}] = ets:lookup(?MODULE, Type),
     {ok, Compiled} = re:compile(Regexp),
     
-    ets:insert(?MODULE, {Type, lists:append([{Type, Compiled, Target, Opts}], TypeRules)}).
+    ets:insert(?MODULE, {Type, lists:append([{Type, Compiled, Target, Opts}], 
+					    TypeRules)}).
+
+%% Patch by Zoltan Lajos Kis
+preprocess({dynamic, RouteString, ModFun, Options} = Org) ->
+    case lists:keysearch(patterns, 1, Options) of
+	{value, {_, Patterns}} ->
+	    Regexp = lists:foldl(
+		       fun({PatternName, Pattern}, String) ->
+			       Name = atom_to_list(PatternName),
+			       re:replace(String, [$:|Name], [$(,$?,$<|Name] ++ 
+							      [$>|Pattern] ++ [$)], 
+					  [{return, list}])
+		       end,
+		       RouteString, Patterns),
+	    % make regexp 'global'
+	    Regexp2 = [$^|Regexp] ++ "$",  
+	    % store route string in options 
+	    {dynamic, Regexp2, ModFun, [{route_string, RouteString}|Options]}; 
+	_ ->
+	    Org
+    end;
+preprocess(X) ->
+    X.
+
+url_for(RouteName, Params) ->
+    [{dynamic, Dynamic}] = ets:lookup(?MODULE, dynamic),
+    url_for(RouteName, Params, Dynamic).
+
+url_for(_RouteName, _Params, []) ->
+    {error, no_such_route};
+url_for(RouteName, Params, [{_, _, _, Opts}|Dynamic]) ->
+    case lists:keysearch(route_name, 1, Opts) of
+	{value, {_, RouteName}} ->
+	    case lists:keysearch(route_string, 1, Opts) of
+		{value, {_, RouteString}} ->
+		    case lists:keysearch(patterns, 1, Opts) of
+			{value, {_, Patterns}} ->
+			    url_for_route(RouteString, Patterns, Params);
+			_ ->
+			    {error, invalid_config}
+		    end;
+		_ ->
+		    {error, invalid_config}
+	    end;
+	_ ->
+	    url_for(RouteName, Params, Dynamic)
+    end.
+
+url_for_route(RouteString, [], []) ->
+    RouteString;
+
+url_for_route(_RouteString, _Patterns, []) ->
+    {error, missing_parameters};
+url_for_route(RouteString, Patterns, [{ParamName, ParamValue}|Params])->
+    case lists:keysearch(ParamName, 1, Patterns) of
+	{value, {_, Regexp}} ->
+	    ParamValueString = term_to_list(ParamValue),
+	    Len = length(ParamValueString),
+	    case re:run(ParamValueString, Regexp) of
+		{match, [{0, Len}]} ->    % ParamValue is valid
+		    NewRouteString = re:replace(RouteString, 
+						[$:|atom_to_list(ParamName)], 
+						ParamValueString, 
+						[{return, list}]),
+		    NewPatterns = lists:keydelete(ParamName, 1, Patterns),
+		    url_for_route(NewRouteString, NewPatterns, Params);
+		
+		_ ->
+		    {error, {invalid_parameter, ParamName}}
+	    end;
+	_ ->
+	    {error, {unknown_parameter, ParamName}}
+    end.
+
+term_to_list(Term) ->
+    case is_integer(Term) of
+	true -> integer_to_list(Term);
+	false -> if
+		     is_atom(Term) ->
+			 atom_to_list(Term);
+		     true -> 
+			 Term   % assumed to be a list then
+		 end
+    end.
