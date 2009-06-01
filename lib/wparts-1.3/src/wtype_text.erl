@@ -101,9 +101,8 @@ check_html(String, Types) ->
 	    case wtype_html:parse_html(String, Whitelist, ["html"]) of
 		ok ->
 		    {ok, String};
-		{error, Reason} ->
-		    {Internal, _}= Reason,
-		    {error, {Internal,String}}
+		{error, {Internal, _Additional}} ->
+		    {error, {Internal, String}}
 	    end;
 	_ ->
 	    {ok, String}

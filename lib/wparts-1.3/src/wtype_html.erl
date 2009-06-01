@@ -97,15 +97,15 @@ parse_html_tag(Body, [$  | Rest], Whitelist, Opened) ->
 	false ->
 	    {error, {tag_not_in_whitelist, Tag}}
     end;
-parse_html_tag(_, [$< | _], _, _) ->
-    {error, open_tag_inside_tag};
+parse_html_tag(_, [$< | _], _, [H | _]) ->
+    {error, {open_tag_inside_tag, H}};
 parse_html_tag(Body, [L | Rest], Whitelist, Opened) ->
     parse_html_tag([L | Body], Rest, Whitelist, Opened);
 parse_html_tag(Tag, [], _, _) ->
     {error, {no_closing_tag, Tag}}.
 
-parse_html_tag_attr(_, [$< | _], _, _) ->
-    {error, open_tag_inside_tag};
+parse_html_tag_attr(_, [$< | _], _, [H | _]) ->
+    {error, {open_tag_inside_tag, H}};
 parse_html_tag_attr(Tag, [$> | Rest], Whitelist, Opened) ->
     parse_html(Rest, Whitelist, [Tag | Opened]);
 parse_html_tag_attr(_, [$/, $> | Rest], Whitelist, Opened) ->
@@ -121,15 +121,15 @@ parse_html_tag_attr(Tag, [_ | Rest], Whitelist, Opened) ->
 parse_html_tag_attr(Tag, [], _, _) ->
     {error, {no_closing_tag, Tag}}.
 
-parse_html_close_tag(_, [$< | _], _, _) ->
-    {error, open_tag_inside_tag};
+parse_html_close_tag(_, [$< | _], _, [H | _Opened]) ->
+    {error, {open_tag_inside_tag, H}};
 parse_html_close_tag(Body, [$> | Rest], Whitelist, [H | Opened]) ->
     Tag = string:to_lower(lists:reverse(Body)),
     if
 	H == Tag ->
 	    parse_html(Rest, Whitelist, Opened);
 	true ->
-	    {error, {closing_bad_tag, H, Tag}}
+	    {error, {closing_bad_tag, {H, Tag}}}
     end;
 parse_html_close_tag(Body, [L | Rest], Whitelist, Opened) ->
     parse_html_close_tag([L | Body], Rest, Whitelist, Opened).
@@ -138,8 +138,8 @@ parse_html_tag_attr_inside(Tag, [92, 34 | Rest], Whitelist, Opened) ->
     parse_html_tag_attr_inside(Tag, Rest, Whitelist, Opened);
 parse_html_tag_attr_inside(Tag, [34 | Rest], Whitelist, Opened) ->
     parse_html_tag_attr(Tag, Rest, Whitelist, Opened);
-parse_html_tag_attr_inside(_, [$< | _], _, _) ->
-    {error, open_tag_inside_attr};
+parse_html_tag_attr_inside(_, [$< | _], _, [H | _]) ->
+    {error, {open_tag_inside_attr, H}};
 parse_html_tag_attr_inside(Tag, [_ | Rest], Whitelist, Opened) ->
     parse_html_tag_attr_inside(Tag, Rest, Whitelist, Opened);
 parse_html_tag_attr_inside(Tag, [], _, _) ->
