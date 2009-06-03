@@ -182,7 +182,11 @@ scan_list([H|T], Acc) ->
     {[Item], T0} = scan([H|T], []),
     scan_list(T0, [Item|Acc]).
 
--spec(scan_string/2 :: (string(), string()) -> {string(), string()}).	     
+-spec(scan_string/2 :: (string(), string()) -> {string(), string()}).
+scan_string([$\\, $u, A1, A2, A3, A4|T], Acc) ->
+    scan_string(T, [binary_to_list(unicode:characters_to_binary(
+				     [erlang:list_to_integer([A1, A2, A3, A4], 16)], 
+				     unicode)) | Acc]);
 scan_string([$\\,C|T], Acc) ->
     scan_string(T, [esc(C)|Acc]);
 scan_string([34|T], Acc) ->
@@ -190,7 +194,9 @@ scan_string([34|T], Acc) ->
 scan_string([H|T], Acc) ->
     scan_string(T,[H|Acc]).
 
--spec(scan_number/3 :: (string(), string(), bool()) -> {integer() | float(), string()}).	     
+-spec(scan_number/3 :: (string(), string(), bool()) -> {integer() | float(), string()}).
+scan_number([$-|T], Acc, Float) ->
+    scan_number(T, [$-|Acc], Float);
 scan_number([$.|T], Acc, _) ->
     scan_number(T, [$.|Acc], true);
 scan_number([$e|T], Acc, _) ->
