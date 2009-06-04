@@ -365,6 +365,10 @@ transactional_start(Name, Conf, State) ->
 		    Vsn = get_vsn(Name),
 		    
 		    {ok, State#state{running = [{Name, Vsn} | State#state.running]}};
+		{error, {already_started, Name}} ->
+		    Vsn = get_vsn(Name),
+
+		    {ok, State#state{running = [{Name, Vsn} | State#state.running]}};
 		AppElse ->
 		    case catch Name:uninstall(Conf) of
 			ok ->
