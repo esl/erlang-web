@@ -264,4 +264,5 @@ cleanup() ->
 %% @hidden
 -spec(get_url/1 :: (string()) -> string()).	     
 get_url([$/ | Url]) -> Url;
+get_url(undefined)  -> "";
 get_url(Url)        -> Url.
