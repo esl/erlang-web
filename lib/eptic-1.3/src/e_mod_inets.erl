@@ -230,7 +230,7 @@ cookie_up(Headers) ->
     eptic:fset("__cookies", Cookies),
 
     case proplists:get_value(?COOKIE, Cookies) of
-	false ->
+	undefined ->
 	    ClientCookie = e_session:new_session([]),
 	    e_mod_gen:restore_session(ClientCookie),
 	    ClientCookie;
