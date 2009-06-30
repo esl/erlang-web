@@ -59,6 +59,14 @@ template(#xmlElement{nsinfo = {"wpart", _Operator}} = E) ->
     end;
 template(#xmlElement{nsinfo = {"wtpl", "parent"}} = E) ->
     wtpl:build_template(E);
+template(#xmlElement{nsinfo = {"wtpl", "insert"}} = E) ->
+    Path = wpartlib:has_attribute("attribute::path", E),
+    case catch e_mod_gen:template(Path, [], ?MODULE) of
+	{'EXIT', _} ->
+	    "";
+	{html, HTML} ->
+	    HTML
+    end;
 template(#xmlElement{name = Name, attributes = Attr, content = Cont}) ->
     export_tag(Name, Attr, Cont);
 template(E) when is_list(E) ->
