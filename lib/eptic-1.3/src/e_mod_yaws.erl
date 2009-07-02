@@ -53,7 +53,7 @@ out(A) ->
 	    end,
 
             ClientCookie = cookie_up(Headers),
-	    URL = get_url(A#arg.appmoddata),
+	    URL = get_url(A#arg.pathinfo),
 
 	    e_logger:log({?MODULE, {url, URL}}),
             

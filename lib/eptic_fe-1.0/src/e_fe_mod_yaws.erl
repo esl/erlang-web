@@ -40,7 +40,7 @@ out(A) ->
 	    end,
 
             ClientCookie = e_mod_yaws:cookie_up(Headers),
-	    URL = e_mod_yaws:get_url(A#arg.appmoddata),
+	    URL = e_mod_yaws:get_url(A#arg.pathinfo),
 
 	    e_logger:log({?MODULE, {url, URL}}),
             
