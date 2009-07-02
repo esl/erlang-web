@@ -1,4 +1,4 @@
-<p id="<% id %>" class="form_entry">
+<p id="<% id %>_element" class="form_entry">
      <label for="<% id %>"><% description %>
      	    <% error %>
 	    <% comment %>

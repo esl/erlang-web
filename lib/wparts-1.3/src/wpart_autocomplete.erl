@@ -38,7 +38,7 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", Id}, {"id", Id}, 
-	     {"complete", string:tokens(proplists:get_value(complete, Attrs0, ""), [$|])} 
+	     {"complete", proplists:get_value(complete, Params, [])} 
 	     | proplists:delete("complete", proplists:delete("name", Attrs0))],
     
     get_html_tag(Attrs, Default).

@@ -121,11 +121,13 @@ init([]) ->
     Session = {e_session, {e_session, start_link, []},
 	       permanent, 2000, worker, dynamic},
     Components = {e_component, {e_component, start_link, []},
-		  permanent, 2000, worker, [e_component]},
+		  permanent, 2000, worker, dynamic},
     Logger = {e_logger, {e_logger, start_link, []},
-	      permanent, 2000, worker, [e_logger]},
+	      permanent, 2000, worker, dynamic},
+    Hook = {e_hook, {e_hook, start_link, []},
+	    permanent, 2000, worker, dynamic},
 
-    List0 = [Dict, Session, Components, Logger],
+    List0 = [Hook, Dict, Session, Components, Logger],
 
     NodeType = case application:get_env(eptic, node_type) of
 		   undefined ->

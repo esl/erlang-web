@@ -1,4 +1,4 @@
-<li id="<% id %>" class="form_entry">
+<li id="<% id %>_element" class="form_entry">
      <label for="<% id %>"><% description %>
      	    <% error %>
 	    <% comment %>
