@@ -15,10 +15,10 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : e_hook.erl
-%%% Author  : michalptaszek <michalptaszek@paulgray>
+%%% Author  : Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% Description : Hook engine implementation for Erlang Web framework.
 %%%
-%%% Created :  1 Jul 2009 by michalptaszek <michalptaszek@paulgray>
+%%% Created :  1 Jul 2009 by Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%%-------------------------------------------------------------------
 -module(e_hook).
 
