@@ -122,9 +122,18 @@ check_uniqueness(MasterType, Input, Pos) ->
 		    list(tuple()), list(tuple())) -> list(tuple())).
 zip_get([],[],_,Acc)->
     lists:reverse(Acc);
-zip_get([{collection,_}|T1],[H2|T2], POST, Acc) ->    
+zip_get([{collection, _}|T1],[H2|T2], POST, Acc) ->
     In = proplists:get_all_values(H2,POST),
     zip_get(T1,T2,POST,[In|Acc]);
+zip_get([{password, _}|T1], [H2|T2], POST, Acc) ->
+    case proplists:get_all_values(H2, POST) of
+	[_, _] = Val ->
+	    zip_get(T1, T2, POST, [Val|Acc]);
+	[Val] ->
+	    zip_get(T1, T2, POST, [Val|Acc]);
+	_ ->
+	    zip_get(T1, T2, POST, [undefined|Acc])
+    end;
 zip_get([_|T1],[H2|T2], POST, Acc) ->
     In = proplists:get_value(H2,POST),
     zip_get(T1,T2,POST,[In|Acc]).
