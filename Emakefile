@@ -28,3 +28,10 @@
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
+
+{'lib/ewgi/src/*',[
+	{outdir, "lib/ewgi/ebin"}, 
+	{i, "lib/ewgi/include"}, 
+	debug_info, 
+	strict_record_tests, 
+	netload]}.

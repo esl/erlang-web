@@ -59,22 +59,28 @@ start_node(single_node, Server) ->
     e_db:start();
 start_node(frontend, Server) ->
     start_web_server(Server),
-    
+
     application:start(eptic_fe);
 start_node(backend, _) ->
     ok;
 start_node(single_node_with_cache, Server) ->
     start_web_server(Server),
-    
+
     application:start(eptic_fe).
 
 start_web_server(inets) ->
     inets:stop(),
-    application:set_env(inets, services, [{httpd, filename:join([e_conf:server_root(), "config", "inets.conf"])},
-					  {httpd, filename:join([e_conf:server_root(), "config", "inets_https.conf"])}]),
-    
+    application:set_env(ewgi, app_module, e_mod_ewgi),
+    application:set_env(ewgi, app_function, do),
+    application:set_env(
+        inets, services,
+        [{httpd, filename:join([e_conf:server_root(), "config", "inets.conf"])},
+         {httpd, filename:join([e_conf:server_root(), "config", "inets_https.conf"])}]
+    ),
     inets:start();
 start_web_server(yaws) ->
-    application:set_env(yaws, conf, filename:join([e_conf:server_root(), "config", "yaws.conf"])),
-
+    application:set_env(
+        yaws, conf,
+        filename:join([e_conf:server_root(), "config", "yaws.conf"])
+    ),
     application:start(yaws).
