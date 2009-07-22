@@ -221,7 +221,7 @@ parse_url(Url) ->
 -spec(view/1 :: (string()) -> list(tuple()) | {html, string()}).	   
 view(View) ->
     template(template_file(View), [], 
-	     e_conf:template_expander()).
+        e_conf:template_expander()).
 
 -spec(controller/3 :: (atom(), atom(), string()) -> {ret_view, controller_response(), string()}).							
 controller(Mod, Fun, View) ->
@@ -238,6 +238,7 @@ controller(Mod, Fun, View) ->
 		    e_logger:log({?MODULE, {skipping_dataflow, entering_validate, {Mod, Fun}}}),
 		    {ok, ValidArgs} = apply(Mod, validate, [Fun]),
 		    Ret = apply(Mod, Fun, ValidArgs),
+
 		    e_logger:log({?MODULE, {controller_response, Ret}}),
 
 		    {ret_view, Ret, View};
