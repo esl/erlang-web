@@ -487,6 +487,11 @@ create_rel_file({Version, _}, Server) ->
 	    end
     end.
 
+get_apps_for_release(ewgi_inets) ->
+    ToLoad = get_apps_for_release(inets),
+    application:load(ewgi),
+    {value, {_, _, Ver}} = lists:keysearch(ewgi, 1, application:loaded_applications()),
+    [{ewgi, Ver} | ToLoad];
 get_apps_for_release(Server) ->
     {ok, Dir} = file:list_dir("lib/"),
     [code:add_path("lib/" ++ D ++ "/ebin") || D <- Dir],
