@@ -24,6 +24,8 @@
 
 -include_lib("kernel/include/file.hrl").
 
+main(["ewgi_inets"]) ->
+    start(ewgi_inets);
 main(["yaws"]) ->
     start(yaws);
 main(_) ->
@@ -596,6 +598,23 @@ create_sys_config_file(inets) ->
 	    case file:open(Filename, [write]) of
 		{ok, Fd} ->
 		    Content = [{inets, [{services, [{httpd, "config/inets.conf"}]}]}],
+		    io:format(Fd, "~p.~n", [Content]),
+		    confirm_created(Filename),
+		    file:close(Fd);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
+    end;
+create_sys_config_file(ewgi_inets) ->
+    Filename = "releases/0.1/sys.config",
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Content = [{inets, [{services, [{httpd, "config/ewgi_inets.conf"}]}]},
+                {ewgi, [{app_module, e_mod_ewgi}, {app_function, do}]}],
 		    io:format(Fd, "~p.~n", [Content]),
 		    confirm_created(Filename),
 		    file:close(Fd);
