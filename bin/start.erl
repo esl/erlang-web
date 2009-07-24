@@ -195,47 +195,59 @@ create_start_scripts({_, Path}) ->
 
     BinStartInteractive = "#!/bin/sh\n\n"
 
-"if [ $# -eq 0 ]
-then
-    SERVER=inets
-    NODE_TYPE=single_node
-elif [ $# -eq 1 ]
-then
-    case $1 in
-	yaws)
-	    SERVER=yaws
-	    ;;
-	*)
-	    SERVER=inets
-    esac
-    NODE_TYPE=single_node
-    shift
-else
-    case $1 in
-	yaws)
-	    SERVER=yaws
-	    ;;
-	*)
-	    SERVER=inets
-    esac
-    case $2 in
-	frontend)
-	    NODE_TYPE=frontend
-	    ;;
-	backend)
-	    NODE_TYPE=backend
-	    ;;
-	single_node_with_cache)
-	    NODE_TYPE=single_node_with_cache
-	    ;;
-	*)
-	    NODE_TYPE=single_node
-    esac
-    shift
-    shift
-fi
+    "if [ $# -eq 0 ]
+    then
+        SERVER=inets
+        NODE_TYPE=single_node
+    elif [ $# -eq 1 ]
+    then
+        case $1 in
+        yaws)
+            SERVER=yaws
+            ;;
+        ewgi_mochiweb)
+            SERVER=ewgi_mochiweb
+            ;;
+        ewgi_inets)
+            SERVER=ewgi_inets
+            ;;
+        *)
+            SERVER=inets
+        esac
+        NODE_TYPE=single_node
+        shift
+    else
+        case $1 in
+        yaws)
+            SERVER=yaws
+            ;;
+        ewgi_mochiweb)
+            SERVER=ewgi_mochiweb
+            ;;
+        ewgi_inets)
+            SERVER=ewgi_inets
+            ;;
+        *)
+            SERVER=inets
+        esac
+        case $2 in
+        frontend)
+            NODE_TYPE=frontend
+            ;;
+        backend)
+            NODE_TYPE=backend
+            ;;
+        single_node_with_cache)
+            NODE_TYPE=single_node_with_cache
+            ;;
+        *)
+            NODE_TYPE=single_node
+        esac
+        shift
+        shift
+    fi
 
-erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
+    erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
     
     BinStartInteractiveName = filename:join("bin", "start_interactive"),
     create_script(BinStartInteractiveName, BinStartInteractive),
@@ -521,6 +533,33 @@ copy_conf_files() ->
 	false ->
 	    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
 	    confirm_created(InetsConfig)
+    end,
+
+    InetsHttpsConfig = "config/inets_https.conf",
+    case filelib:is_file(InetsHttpsConfig) of
+	true ->
+	    inform_exists(InetsHttpsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/inets_https.conf", InetsHttpsConfig),
+	    confirm_created(InetsHttpsConfig)
+    end,
+
+    EwgiInetsConfig = "config/ewgi_inets.conf",
+    case filelib:is_file(EwgiInetsConfig) of
+	true ->
+	    inform_exists(EwgiInetsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/ewgi_inets.conf", EwgiInetsConfig),
+	    confirm_created(EwgiInetsConfig)
+    end,
+
+    EwgiInetsHttpsConfig = "config/ewgi_inets_https.conf",
+    case filelib:is_file(EwgiInetsHttpsConfig) of
+	true ->
+	    inform_exists(EwgiInetsHttpsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/ewgi_inets_https.conf", EwgiInetsHttpsConfig),
+	    confirm_created(EwgiInetsHttpsConfig)
     end,
     
     ErrorsConfig = "config/errors_description.conf",

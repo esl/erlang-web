@@ -3,3 +3,4 @@ syntax: glob
 *~
 *annotations.hrl
 *.git*
+*.svn*
