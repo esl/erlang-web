@@ -25,7 +25,7 @@
 -export([fe_request/2]).
 
 -export([cookie_up/1, cookie_bind/1, cleanup/0]).
--export([parse_get/1, fetch_boundary/1, format_response/1]).
+-export([parse_post/1, parse_get/1, fetch_boundary/1, format_response/1]).
 
 -include_lib("inets/src/httpd.hrl").
 -include_lib("eptic/include/eptic.hrl").
@@ -80,8 +80,8 @@ do(#mod{parsed_header = Headers} = A) ->
 		    e_logger:unregister_pid(self()),
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
-		    cookie_bind(ClientCookie),
-		    cleanup(),
+		    cookie_bind(ClientCookie), 
+            cleanup(),
 
 		    e_logger:unregister_pid(self()),
 		    {proceed, A#mod.data}
@@ -230,14 +230,14 @@ cookie_up(Headers) ->
     eptic:fset("__cookies", Cookies),
 
     case proplists:get_value(?COOKIE, Cookies) of
-	undefined ->
-	    ClientCookie = e_session:new_session([]),
-	    e_mod_gen:restore_session(ClientCookie),
-	    ClientCookie;
-	ClientCookie ->
-	    {ok, Session} = e_session:get_session(ClientCookie),
-            if 
-                Session == undefined -> 
+        undefined ->
+            ClientCookie = e_session:new_session([]),
+            e_mod_gen:restore_session(ClientCookie),
+            ClientCookie;
+        ClientCookie ->
+            {ok, Session} = e_session:get_session(ClientCookie),
+            if
+                Session == undefined ->
                     NewCookie = e_session:new_session([]),
                     e_mod_gen:restore_session(NewCookie),
                     NewCookie;

@@ -24,8 +24,6 @@
 -export([do/1]).
 
 -include_lib("eptic/include/e_mod_ewgi.hrl").
--include_lib("inets/src/httpd.hrl").
--include_lib("eptic/include/eptic.hrl").
 
 do(#ewgi_context{request = Request} = Context) ->
     e_logger:register_pid(self()),
@@ -63,12 +61,27 @@ do(#ewgi_context{request = Request} = Context) ->
             case with_formatted_error(ControllerFun) of
                 {NewHeaders, Body} ->
                     CookieHeader = e_mod_inets:cookie_bind(ClientCookie),
+
+                    e_logger:unregister_pid(self()),
+                    {C, H} = case lists:keytake(code, 1, NewHeaders) of
+                        {value, {code, Code}, Hdrs} ->
+                            {Code, [CookieHeader | Hdrs]};
+                        false ->
+                            {200, [CookieHeader | NewHeaders]}
+                    end,
+                    Response = #ewgi_response{
+                        status = {C, lists:keysearch(C, 1, ?STATUS_CODES)},
+                        message_body = Body,
+                        headers = H
+                    },
+                    e_mod_inets:cleanup(),
+                    Context#ewgi_context{response = Response};
+                enoent ->
+                    e_mod_inets:cookie_bind(ClientCookie),
                     e_mod_inets:cleanup(),
 
                     e_logger:unregister_pid(self()),
-                    H = [CookieHeader | lists:keydelete(code, 1, NewHeaders)],
-                    Response = #ewgi_response{message_body = Body, headers = H},
-                    Context#ewgi_context{response = Response}
+                    not_found
             end
     end.
 
@@ -84,12 +97,11 @@ parse_headers(Headers) ->
     lists:filter(fun({_, V}) -> V =/= undefined end, ParsedHeaders).
 
 read_input_cb(Acc) ->
-    F = fun({data, Bin}) ->
+    fun({data, Bin}) ->
             read_input_cb([Bin | Acc]);
         (eof) ->
             Acc
-    end,
-    F.
+    end.
 
 handle_args(#ewgi_request{request_method = Method, ewgi = Spec} = Request) ->
     ReadInput = Spec#ewgi_spec.read_input,
@@ -102,7 +114,7 @@ handle_args(#ewgi_request{request_method = Method, ewgi = Spec} = Request) ->
             binary_to_list(list_to_binary(Bin))
     end,
     Result = case Method of
-        "POST" ->
+        'POST' ->
             {ok, [{"get", e_mod_inets:parse_get(Request#ewgi_request.path_info)},
                     {"post", e_mod_inets:parse_post(Post)}]};
         _ ->
@@ -158,9 +170,9 @@ format_response(Else) ->
 
 with_formatted_error(F) ->
     case catch F() of
-	{'EXIT', Reason} ->
-	    format_response(e_mod_gen:error_page(501, e_dict:fget("__path"), Reason));
-	Response ->
-	    format_response(Response)
+        {'EXIT', Reason} ->
+            format_response(e_mod_gen:error_page(501, e_dict:fget("__path"), Reason));
+        Response ->
+            format_response(Response)
     end.
 
