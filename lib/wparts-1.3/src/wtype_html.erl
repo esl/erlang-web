@@ -34,9 +34,9 @@ handle_call(_, Text) ->
 %% The whole license could be found in root directory of attached yaws
 %% application.
 %%
-htmlize(Bin) when binary(Bin) ->
+htmlize(Bin) when is_binary(Bin) ->
     list_to_binary(htmlize_l(binary_to_list(Bin)));
-htmlize(List) when list(List) ->
+htmlize(List) when is_list(List) ->
     htmlize_l(List).
 
 htmlize_l(List) ->
@@ -52,12 +52,12 @@ htmlize_l([$&|Tail], Acc) ->
     htmlize_l(Tail, [$;,$p,$m,$a,$&|Acc]);
 htmlize_l([34|Tail], Acc) -> %% $"
     htmlize_l(Tail, [$; , $t, $o,  $u,  $q  ,$&|Acc]);
-htmlize_l([X|Tail], Acc) when integer(X) ->
+htmlize_l([X|Tail], Acc) when is_integer(X) ->
     htmlize_l(Tail, [X|Acc]);
-htmlize_l([X|Tail], Acc) when binary(X) ->
+htmlize_l([X|Tail], Acc) when is_binary(X) ->
     X2 = htmlize_l(binary_to_list(X)),
     htmlize_l(Tail, [X2|Acc]);
-htmlize_l([X|Tail], Ack) when list(X) ->
+htmlize_l([X|Tail], Ack) when is_list(X) ->
     X2 = htmlize_l(X),
     htmlize_l(Tail, [X2|Ack]).
 

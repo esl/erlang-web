@@ -75,12 +75,12 @@ url_decode([37, Hi, Lo | Tail]) ->
 url_decode([$?|T]) ->
     %% Don't decode the query string here, that is parsed separately.
     [$?|T];
-url_decode([H|T]) when integer(H) ->
+url_decode([H|T]) when is_integer(H) ->
     [H |url_decode(T)];
 url_decode([]) ->
     [];
 %% deep lists
-url_decode([H|T]) when list(H) ->
+url_decode([H|T]) when is_list(H) ->
     [url_decode(H) | url_decode(T)].
 
 %%
