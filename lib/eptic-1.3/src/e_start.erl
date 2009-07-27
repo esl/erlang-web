@@ -59,22 +59,54 @@ start_node(single_node, Server) ->
     e_db:start();
 start_node(frontend, Server) ->
     start_web_server(Server),
-    
+
     application:start(eptic_fe);
 start_node(backend, _) ->
     ok;
 start_node(single_node_with_cache, Server) ->
     start_web_server(Server),
-    
+
     application:start(eptic_fe).
 
+start_web_server(ewgi_mochiweb) ->
+    LoopFun = fun(Request) ->
+            Mod = ewgi_mochiweb:new(fun e_mod_ewgi:do/1),
+            Mod:run(Request)
+    end,
+    mochiweb:start(),
+    Spec = {
+        mochiweb_http,
+        {mochiweb_http, start, [[
+                    {name, erlangweb},
+                    {loop, LoopFun},
+                    {ip, "127.0.0.1"},
+                    {port, 8080}
+                ]]},
+        permanent, 5000, worker, dynamic
+    },
+    supervisor:start_child(mochiweb_sup, Spec);
+start_web_server(ewgi_inets) ->
+    inets:stop(),
+    application:set_env(ewgi, app_module, e_mod_ewgi),
+    application:set_env(ewgi, app_function, do),
+    application:set_env(
+        inets, services,
+        [{httpd, filename:join([e_conf:server_root(), "config", "ewgi_inets.conf"])},
+         {httpd, filename:join([e_conf:server_root(), "config", "ewgi_inets_https.conf"])}]
+    ),
+    inets:start();
 start_web_server(inets) ->
     inets:stop(),
-    application:set_env(inets, services, [{httpd, filename:join([e_conf:server_root(), "config", "inets.conf"])},
-					  {httpd, filename:join([e_conf:server_root(), "config", "inets_https.conf"])}]),
-    
+    application:set_env(
+        inets, services,
+        [{httpd, filename:join([e_conf:server_root(), "config", "inets.conf"])},
+         {httpd, filename:join([e_conf:server_root(), "config", "inets_https.conf"])}]
+    ),
     inets:start();
 start_web_server(yaws) ->
-    application:set_env(yaws, conf, filename:join([e_conf:server_root(), "config", "yaws.conf"])),
-
+    application:set_env(
+        yaws, conf,
+        filename:join([e_conf:server_root(), "config", "yaws.conf"])
+    ),
     application:start(yaws).
+

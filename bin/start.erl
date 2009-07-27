@@ -24,6 +24,8 @@
 
 -include_lib("kernel/include/file.hrl").
 
+main(["ewgi_inets"]) ->
+    start(ewgi_inets);
 main(["yaws"]) ->
     start(yaws);
 main(_) ->
@@ -195,47 +197,59 @@ create_start_scripts({_, Path}) ->
 
     BinStartInteractive = "#!/bin/sh\n\n"
 
-"if [ $# -eq 0 ]
-then
-    SERVER=inets
-    NODE_TYPE=single_node
-elif [ $# -eq 1 ]
-then
-    case $1 in
-	yaws)
-	    SERVER=yaws
-	    ;;
-	*)
-	    SERVER=inets
-    esac
-    NODE_TYPE=single_node
-    shift
-else
-    case $1 in
-	yaws)
-	    SERVER=yaws
-	    ;;
-	*)
-	    SERVER=inets
-    esac
-    case $2 in
-	frontend)
-	    NODE_TYPE=frontend
-	    ;;
-	backend)
-	    NODE_TYPE=backend
-	    ;;
-	single_node_with_cache)
-	    NODE_TYPE=single_node_with_cache
-	    ;;
-	*)
-	    NODE_TYPE=single_node
-    esac
-    shift
-    shift
-fi
+    "if [ $# -eq 0 ]
+    then
+        SERVER=inets
+        NODE_TYPE=single_node
+    elif [ $# -eq 1 ]
+    then
+        case $1 in
+        yaws)
+            SERVER=yaws
+            ;;
+        ewgi_mochiweb)
+            SERVER=ewgi_mochiweb
+            ;;
+        ewgi_inets)
+            SERVER=ewgi_inets
+            ;;
+        *)
+            SERVER=inets
+        esac
+        NODE_TYPE=single_node
+        shift
+    else
+        case $1 in
+        yaws)
+            SERVER=yaws
+            ;;
+        ewgi_mochiweb)
+            SERVER=ewgi_mochiweb
+            ;;
+        ewgi_inets)
+            SERVER=ewgi_inets
+            ;;
+        *)
+            SERVER=inets
+        esac
+        case $2 in
+        frontend)
+            NODE_TYPE=frontend
+            ;;
+        backend)
+            NODE_TYPE=backend
+            ;;
+        single_node_with_cache)
+            NODE_TYPE=single_node_with_cache
+            ;;
+        *)
+            NODE_TYPE=single_node
+        esac
+        shift
+        shift
+    fi
 
-erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
+    erl -pa lib/*/ebin -s e_start start $NODE_TYPE $SERVER $@",
     
     BinStartInteractiveName = filename:join("bin", "start_interactive"),
     create_script(BinStartInteractiveName, BinStartInteractive),
@@ -473,6 +487,11 @@ create_rel_file({Version, _}, Server) ->
 	    end
     end.
 
+get_apps_for_release(ewgi_inets) ->
+    ToLoad = get_apps_for_release(inets),
+    application:load(ewgi),
+    {value, {_, _, Ver}} = lists:keysearch(ewgi, 1, application:loaded_applications()),
+    [{ewgi, Ver} | ToLoad];
 get_apps_for_release(Server) ->
     {ok, Dir} = file:list_dir("lib/"),
     [code:add_path("lib/" ++ D ++ "/ebin") || D <- Dir],
@@ -522,6 +541,33 @@ copy_conf_files() ->
 	    file:copy(code:priv_dir(eptic) ++ "/inets.conf", InetsConfig),
 	    confirm_created(InetsConfig)
     end,
+
+    InetsHttpsConfig = "config/inets_https.conf",
+    case filelib:is_file(InetsHttpsConfig) of
+	true ->
+	    inform_exists(InetsHttpsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/inets_https.conf", InetsHttpsConfig),
+	    confirm_created(InetsHttpsConfig)
+    end,
+
+    EwgiInetsConfig = "config/ewgi_inets.conf",
+    case filelib:is_file(EwgiInetsConfig) of
+	true ->
+	    inform_exists(EwgiInetsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/ewgi_inets.conf", EwgiInetsConfig),
+	    confirm_created(EwgiInetsConfig)
+    end,
+
+    EwgiInetsHttpsConfig = "config/ewgi_inets_https.conf",
+    case filelib:is_file(EwgiInetsHttpsConfig) of
+	true ->
+	    inform_exists(EwgiInetsHttpsConfig);
+	false ->
+	    file:copy(code:priv_dir(eptic) ++ "/ewgi_inets_https.conf", EwgiInetsHttpsConfig),
+	    confirm_created(EwgiInetsHttpsConfig)
+    end,
     
     ErrorsConfig = "config/errors_description.conf",
     case filelib:is_file(ErrorsConfig) of
@@ -557,6 +603,23 @@ create_sys_config_file(inets) ->
 	    case file:open(Filename, [write]) of
 		{ok, Fd} ->
 		    Content = [{inets, [{services, [{httpd, "config/inets.conf"}]}]}],
+		    io:format(Fd, "~p.~n", [Content]),
+		    confirm_created(Filename),
+		    file:close(Fd);
+		{error, Reason} ->
+		    handle_error(Reason)
+	    end
+    end;
+create_sys_config_file(ewgi_inets) ->
+    Filename = "releases/0.1/sys.config",
+    case filelib:is_file(Filename) of
+	true ->
+	    inform_exists(Filename);
+	false ->
+	    case file:open(Filename, [write]) of
+		{ok, Fd} ->
+		    Content = [{inets, [{services, [{httpd, "config/ewgi_inets.conf"}]}]},
+                {ewgi, [{app_module, e_mod_ewgi}, {app_function, do}]}],
 		    io:format(Fd, "~p.~n", [Content]),
 		    confirm_created(Filename),
 		    file:close(Fd);

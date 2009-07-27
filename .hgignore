@@ -2,3 +2,5 @@ syntax: glob
 *beam
 *~
 *annotations.hrl
+*.git*
+*.svn*

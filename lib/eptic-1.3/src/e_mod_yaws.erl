@@ -52,7 +52,7 @@ out(A) ->
 		    e_dict:fset("__https", false)
 	    end,
 
-            ClientCookie = cookie_up(Headers),
+        ClientCookie = cookie_up(Headers),
 	    URL = get_url(A#arg.pathinfo),
 
 	    e_logger:log({?MODULE, {url, URL}}),
