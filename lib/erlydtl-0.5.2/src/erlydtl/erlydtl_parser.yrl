@@ -60,10 +60,6 @@ Nonterminals
     ForExpression
     ForGroup
 
-    WPartBlock
-    WPartBraced
-    EndWPartBraced
-
     IfBlock
     IfBraced
     IfExpression
@@ -98,8 +94,6 @@ Nonterminals
     CallWithTag.
 
 Terminals
-    wpart_keyword
-    endwpart_keyword
     autoescape_keyword
     block_keyword
     call_keyword
@@ -159,7 +153,6 @@ Elements -> Elements CommentBlock : '$1' ++ ['$2'].
 Elements -> Elements CustomTag : '$1' ++ ['$2'].
 Elements -> Elements CallTag : '$1' ++ ['$2'].
 Elements -> Elements CallWithTag : '$1' ++ ['$2'].
-Elements -> Elements WPartBlock: '$1' ++ ['$2'].
 
 ValueBraced -> open_var Value close_var : '$2'.
 
@@ -202,10 +195,6 @@ EndForBraced -> open_tag endfor_keyword close_tag.
 ForExpression -> ForGroup in_keyword Variable : {'in', '$1', '$3'}.
 ForGroup -> identifier : ['$1'].
 ForGroup -> ForGroup comma identifier : '$1' ++ ['$3'].
-
-WPartBlock -> WPartBraced Elements EndWPartBraced : {wpart, '$2'}.
-WPartBraced -> open_tag wpart_keyword close_tag.
-EndWPartBraced -> open_tag endwpart_keyword close_tag.
 
 IfBlock -> IfBraced Elements ElseBraced Elements EndIfBraced : {ifelse, '$1', '$2', '$4'}.
 IfBlock -> IfBraced Elements EndIfBraced : {'if', '$1', '$2'}.

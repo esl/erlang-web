@@ -370,8 +370,6 @@ body_ast(DjangoParseTree, Context, TreeWalker) ->
                 filter_ast(Variable, Filter, Context, TreeWalkerAcc);
             ({'for', {'in', IteratorList, Variable}, Contents}, TreeWalkerAcc) ->
                 for_loop_ast(IteratorList, Variable, Contents, Context, TreeWalkerAcc);
-            ({'wpart', Contents}, TreeWalkerAcc) ->
-                wpart_ast(Contents, Context, TreeWalkerAcc);
             ({'load', Names}, TreeWalkerAcc) ->
                 load_ast(Names, Context, TreeWalkerAcc);
             ({'tag', {identifier, _, Name}, Args}, TreeWalkerAcc) ->
@@ -640,34 +638,6 @@ for_loop_ast(IteratorList, Variable, Contents, Context, TreeWalker) ->
 load_ast(Names, _Context, TreeWalker) ->
     CustomTags = lists:merge([X || {identifier, _ , X} <- Names], TreeWalker#treewalker.custom_tags),
     {{erl_syntax:list([]), #ast_info{}}, TreeWalker#treewalker{custom_tags = CustomTags}}.  
-
-wpart_ast([{text, _, Html}], _Context, TreeWalker) ->
-    WPartAppAst = erl_syntax:application(
-        erl_syntax:atom(wpart_xs), erl_syntax:atom(process_xml),
-        [
-            erl_syntax:case_expr(
-                erl_syntax:application(
-                    erl_syntax:atom(xmerl_scan),
-                    erl_syntax:atom(string),
-                    [erl_syntax:string(Html)]
-                ),
-                [
-                    erl_syntax:clause(
-                        [
-                            erl_syntax:tuple(
-                                [
-                                    erl_syntax:variable("Xml"),
-                                    erl_syntax:underscore()
-                                ]
-                            )
-                        ], none,
-                        [erl_syntax:variable("Xml")]
-                    )
-                ]
-            )
-        ]
-    ),
-    {{WPartAppAst, #ast_info{}}, TreeWalker}.
 
 cycle_ast(Names, Context, TreeWalker) ->
     NamesTuple = lists:map(fun({string_literal, _, Str}) ->

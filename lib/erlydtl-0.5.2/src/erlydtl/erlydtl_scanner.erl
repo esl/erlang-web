@@ -57,17 +57,12 @@ scan([], Scanned, _, in_text) ->
                 fun
                     ({identifier, Pos, String}) ->
                         RevString = lists:reverse(String),
-                        Keywords = [
-                            "wpart", "endwpart", "for", "endfor", "in",
-                            "include", "block", "endblock", "extends",
-                            "autoescape", "endautoescape", "if", "else",
-                            "endif", "not", "or", "and", "comment",
-                            "endcomment", "cycle", "firstof", "ifchanged",
-                            "ifequal", "endifequal", "ifnotequal",
-                            "endifnotequal", "now", "regroup", "spaceless",
-                            "endspaceless", "ssi", "templatetag", "load",
-                            "call", "with"
-                        ],
+                        Keywords = ["for", "endfor", "in", "include", "block", "endblock",
+                            "extends", "autoescape", "endautoescape", "if", "else", "endif",
+                            "not", "or", "and", "comment", "endcomment", "cycle", "firstof",
+                            "ifchanged", "ifequal", "endifequal", "ifnotequal", "endifnotequal",
+                            "now", "regroup", "spaceless", "endspaceless", "ssi", "templatetag",
+                            "load", "call", "with"], 
                         Type = case lists:member(RevString, Keywords) of
                             true ->
                                 list_to_atom(RevString ++ "_keyword");
