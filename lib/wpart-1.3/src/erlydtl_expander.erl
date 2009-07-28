@@ -14,7 +14,7 @@
 %% Erlang Training & Consulting Ltd. All Rights Reserved.
 
 %%%-------------------------------------------------------------------
-%%% File	: e_mod_inets.erl
+%%% File	: erlydtl_expander.erl
 %%% @author <info@erlang-consulting.com>
 %%% @doc ErlyDTL expander file
 %%% @end
