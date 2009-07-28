@@ -37,20 +37,22 @@ install() ->
 %% the <b>erlang:error({Reason, File})</b> is called.
 %% @end
 %%
--spec(read_file/2 :: (string(), atom()) -> term()). 
+-spec(read_file/2 :: (string(), atom()) -> term()).
 read_file(File, Expander) ->
     Filename = case filelib:is_file(File) of
-		   true ->
-		       File;
-		   false ->
-		       filename:join([e_conf:template_root(), File])
-	       end,
+        true ->
+            File;
+        false ->
+            filename:join([e_conf:template_root(), File])
+    end,
 
     case valid_cache(Filename) of
-	false ->
-	    cache(Filename, Expander);
-	CXML ->
-	    binary_to_term(CXML)
+        false ->
+            cache(Filename, Expander);
+        Mod when is_atom(Mod) ->
+            Mod;
+        CXML ->
+            binary_to_term(CXML)
     end.
 
 %%
@@ -66,12 +68,12 @@ flush() ->
 -spec(valid_cache/1 :: (string()) -> false | binary()).	     
 valid_cache(File) ->
     case ets:lookup(?MODULE, File) of
-	[{_, Stamp, CXML}] ->
+	[{_, Stamp, Body}] ->
 	    case filelib:last_modified(File) > Stamp of
 		true ->
 		    false;
 		false ->
-		    CXML
+		    Body
 	    end;
 	[] ->
 	    false
