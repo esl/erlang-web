@@ -90,6 +90,7 @@ load_conf(Filename) ->
 		{https_port, 443},
 		{project_name, "erlangweb"},
 		{couchdb_address, "http://localhost:5984/"},
+        {template_expander, wpart_xs},
 		{ecomponents, []}],
 
     case ets:info(?MODULE) of
@@ -351,7 +352,7 @@ template_cache_mod() ->
 %%
 -spec(template_expander/0 :: () -> atom()).	     
 template_expander() ->
-    element(2, application:get_env(eptic, template_expander)).
+    get_conf(template_expander, wpart_xs).
 
 %%
 %% @spec template_root() -> TemplateRootDir :: string()

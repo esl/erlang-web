@@ -12,7 +12,6 @@
 	{registered, []},
 	{env, [
 		{upload_dir, "/tmp"},
-		{template_expander, erlydtl_expander},
 		{template_root, "templates"},	
 		{node_type, single_node}
 	]},

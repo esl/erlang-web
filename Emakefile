@@ -36,16 +36,9 @@
 	strict_record_tests, 
 	netload]}.
 
-{'lib/erlydtl-0.5.2/src/*/*',[
+{'lib/erlydtl-0.5.2/src/erlydtl/*',[
 	{outdir, "lib/erlydtl-0.5.2/ebin"}, 
 	{i, "lib/erlydtl-0.5.2/include"}, 
-	debug_info, 
-	strict_record_tests, 
-	netload]}.
-
-{'lib/myapp/src/*',[
-	{outdir, "lib/myapp/ebin"}, 
-	{i, "lib/myapp/include"}, 
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
