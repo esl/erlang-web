@@ -15,11 +15,11 @@ find_value(Key, Tuple) when is_tuple(Tuple) ->
     Module = element(1, Tuple),
     case Module of
         dict ->
-            case dict:find(Key, Tuple) of
+            case dict:find(atom_to_list(Key), Tuple) of
                 {ok, Val} ->
                     Val;
                 _ ->
-                    case dict:find(atom_to_list(Key), Tuple) of
+                    case dict:find(Key, Tuple) of
                         {ok, Val} ->
                             Val;
                         _ ->
