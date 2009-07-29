@@ -37,20 +37,22 @@ install() ->
 %% the <b>erlang:error({Reason, File})</b> is called.
 %% @end
 %%
--spec(read_file/2 :: (string(), atom()) -> term()). 
+-spec(read_file/2 :: (string(), atom()) -> term()).
 read_file(File, Expander) ->
     Filename = case filelib:is_file(File) of
-		   true ->
-		       File;
-		   false ->
-		       filename:join([e_conf:template_root(), File])
-	       end,
+        true ->
+            File;
+        false ->
+            filename:join([e_conf:template_root(), File])
+    end,
 
     case valid_cache(Filename) of
-	false ->
-	    cache(Filename, Expander);
-	CXML ->
-	    binary_to_term(CXML)
+        false ->
+            cache(Filename, Expander);
+        Mod when is_atom(Mod) ->
+            Mod;
+        CXML ->
+            binary_to_term(CXML)
     end.
 
 %%
@@ -60,24 +62,24 @@ read_file(File, Expander) ->
 %% @end
 %%
 -spec(flush/0 :: () -> true).
-flush() ->	     
+flush() ->
     ets:delete_all_objects(?MODULE).
 
--spec(valid_cache/1 :: (string()) -> false | binary()).	     
+-spec(valid_cache/1 :: (string()) -> false | binary()).
 valid_cache(File) ->
     case ets:lookup(?MODULE, File) of
-	[{_, Stamp, CXML}] ->
-	    case filelib:last_modified(File) > Stamp of
-		true ->
-		    false;
-		false ->
-		    CXML
-	    end;
-	[] ->
-	    false
+        [{_, Stamp, Body}] ->
+            case filelib:last_modified(File) > Stamp of
+                true ->
+                    false;
+                false ->
+                    Body
+            end;
+        [] ->
+            false
     end.
 
--spec(cache/2 :: (string(), atom()) -> term()).	     
+-spec(cache/2 :: (string(), atom()) -> term()).
 cache(File, wpart_xs) ->
     XML = case xmerl_scan:file(File, []) of
         {error, Reason} ->
@@ -88,4 +90,15 @@ cache(File, wpart_xs) ->
 
     ets:insert(?MODULE, {File, {date(), time()}, term_to_binary(XML)}),
 
-    XML.
+    XML;
+cache(File, erlydtl_expander) ->
+    Mod = list_to_atom(string:join(string:tokens(File, "/.-"), "")),
+    case erlydtl:compile(File, Mod) of
+        ok ->
+            ets:insert(?MODULE, {File, {date(), time()}, Mod}),
+            Mod;
+        {error, Reason} ->
+            erlang:error(Reason)
+    end;
+cache(_File, Expander) ->
+    erlang:error({unknown_expander, Expander}).

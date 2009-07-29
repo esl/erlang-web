@@ -23,7 +23,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -import(xmerl_xs, [xslapply/2, value_of/1, select/2]).
 
--export([process_xml/1, template/1]).
+-export([process_xml/1, template/1, doctype/0]).
 
 %%
 %% @spec process_xml(XMLStructure :: tuple()) -> HTML :: list(string())

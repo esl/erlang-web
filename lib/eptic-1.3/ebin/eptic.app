@@ -12,7 +12,6 @@
 	{registered, []},
 	{env, [
 		{upload_dir, "/tmp"},
-		{template_expander, wpart_xs},
 		{template_root, "templates"},	
 		{node_type, single_node}
 	]},
