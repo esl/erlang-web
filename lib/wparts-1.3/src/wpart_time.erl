@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Zajda  <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_time).
@@ -29,14 +29,14 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -59,5 +59,5 @@ get_html_tag(Attrs, Default) ->
 			  {"value", Default}]).
 
 load_tpl() ->
-    wpart_gen:load_tpl(time, 
+    wpart_gen:load_tpl(time,
 		       filename:join([code:priv_dir(wparts),"html","time.tpl"])).

@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_date).
@@ -29,16 +29,16 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Format = proplists:get_value(format, Params, "YYYY-MM-DD"),
-    Attrs = [{"name", Id}, {"id", Id}, {"format", Format} | 
+    Attrs = [{"name", Id}, {"id", Id}, {"format", Format} |
 	     proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -54,9 +54,9 @@ build_html_tag(Name, Prefix, Params, Default) ->
 
 get_html_tag(Attrs, Default) ->
     Date = if
-	       Default == "" -> 
+	       Default == "" ->
 		   "";
-	       true -> 
+	       true ->
 		   Format = proplists:get_value(format, Attrs, "YYYY-MM-DD"),
 		   wtype_date:get_date(Format, Default)
 	   end,
@@ -66,5 +66,5 @@ get_html_tag(Attrs, Default) ->
 			  {"value", Date}]).
 
 load_tpl() ->
-    wpart_gen:load_tpl(date, 
+    wpart_gen:load_tpl(date,
 		       filename:join([code:priv_dir(wparts),"html","date.tpl"])).

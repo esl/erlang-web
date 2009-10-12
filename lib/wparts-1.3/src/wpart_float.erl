@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_float).
@@ -29,15 +29,13 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, "", undefined),
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs), undefined),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
     Precision = proplists:get_value(precision, Params),
-    
     get_html_tag(Attrs, Default, Precision).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -45,10 +43,8 @@ build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
     D = wpart_derived:find(N, Default),
     Precision = proplists:get_value(precision, Params),
-    
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", N} | proplists:delete("name", Attrs0)],
-    
     wpart_derived:surround_with_table(N, get_html_tag(Attrs, D, Precision), Description).
 
 get_html_tag(Attrs, Default, Precision) when is_float(Default) ->

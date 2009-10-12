@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_text).
@@ -29,8 +29,8 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
@@ -46,7 +46,7 @@ build_html_tag(Id, Params, Default) ->
 
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, wtype_html:htmlize(D)).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -61,19 +61,19 @@ build_html_tag(Name, Prefix, Params, Default) ->
 		DefaultText;
 	    {value, {_, Val}} ->
 		Val;
-	    false -> 
+	    false ->
 		DefaultText
 	end,
-    
+
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", N} | proplists:delete("name", Attrs0)],
 
-    wpart_derived:surround_with_table(N, get_html_tag(Attrs, wtype_html:htmlize(D)), 
+    wpart_derived:surround_with_table(N, get_html_tag(Attrs, wtype_html:htmlize(D)),
 				      Description).
 
 get_html_tag(Attrs, Default) ->
-    wpart_gen:build_html(wpart_gen:tpl_get(text), 
-			 [{"html", wpart:proplist2html(Attrs)}, 
+    wpart_gen:build_html(wpart_gen:tpl_get(text),
+			 [{"html", wpart:proplist2html(Attrs)},
 			  {"value", Default}]).
 
 load_tpl() ->
