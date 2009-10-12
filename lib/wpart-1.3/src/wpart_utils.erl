@@ -19,9 +19,9 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_utils).
--export([xml2proplist/1, proplist2html/1, normalize_html_attrs/1]).
--export([find_pk/1, pk2string/1, 
-	 term2string/3, term2string/2, 
+-export([xml2proplist/1, proplist2html/1, getValue/1, normalize_html_attrs/1]).
+-export([find_pk/1, pk2string/1,
+	 term2string/3, term2string/2,
 	 string2term/3, string2term/2]).
 
 %% taken from Yaws server
@@ -31,11 +31,11 @@
 
 %%
 %% @spec url_encode(URL :: string()) -> EncodedURL :: string()
-%% @doc Url-encodes a string. 
+%% @doc Url-encodes a string.
 %% All URLs in HTML documents must be URL encoded. <br/>
 %% This function has been taken from <i>Yaws</i> web server.
-%% 
--spec(url_encode/1 :: (string()) -> string()).	     
+%%
+-spec(url_encode/1 :: (string()) -> string()).
 url_encode([H|T]) ->
     if
         H >= $a, $z >= H ->
@@ -64,11 +64,11 @@ url_encode([]) ->
 %% A URL  encoded  string  is  a  string
 %% where  all  alfa  numeric characters and the the character _ are
 %% preserved and all other characters are encode as "%XY"  where  X
-%% and  Y  are the hex values of the least respective most 
+%% and  Y  are the hex values of the least respective most
 %% significant 4 bits in the 8 bit character.<br/>
 %% This function has been taken from <i>Yaws</i> web server.
 %%
--spec(url_decode/1 :: (string()) -> string()).	     
+-spec(url_decode/1 :: (string()) -> string()).
 url_decode([37, Hi, Lo | Tail]) ->
     Hex = hex_to_integer([Hi, Lo]),
     [Hex | url_decode(Tail)];
@@ -87,7 +87,7 @@ url_decode([H|T]) when is_list(H) ->
 %% @spec integer_to_hex(Integer :: integer()) -> Hex :: string()
 %% @doc Converts the integer to the hex format.
 %%
--spec(integer_to_hex/1 :: (integer()) -> string()).	     
+-spec(integer_to_hex/1 :: (integer()) -> string()).
 integer_to_hex(I) ->
     case catch erlang:integer_to_list(I, 16) of
         {'EXIT', _} ->
@@ -109,18 +109,18 @@ old_integer_to_hex(I) when I>=16 ->
 %% @spec hex_to_integer(Hex :: string()) -> Integer :: integer()
 %% @doc Converts the hex to the integer format.
 %%
--spec(hex_to_integer/1 :: (string()) -> integer()).	     
+-spec(hex_to_integer/1 :: (string()) -> integer()).
 hex_to_integer(Hex) ->
     erlang:list_to_integer(Hex, 16).
-%% 
+%%
 %% @spec xml2proplist(XMLAttributes :: list(tuple())) -> AttributesProplist :: list(tuple())
 %% @see wpart:xml2proplist/1
 %%
--spec(xml2proplist/1 :: (list(tuple())) -> list(tuple())).	     
+-spec(xml2proplist/1 :: (list(tuple())) -> list(tuple())).
 xml2proplist(XML) ->
     lists:foldl(fun xml2proplist/2, [], XML).
 
--spec(xml2proplist/2 :: (tuple(), list(tuple())) -> list(tuple())).	     
+-spec(xml2proplist/2 :: (tuple(), list(tuple())) -> list(tuple())).
 xml2proplist(#xmlAttribute{name = Name, value = Value}, Proplist) ->
     [{atom_to_list(Name), Value} | Proplist].
 
@@ -128,23 +128,36 @@ xml2proplist(#xmlAttribute{name = Name, value = Value}, Proplist) ->
 %% @spec proplist2html(AttributesProplist :: list(tuple())) -> HTML :: string()
 %% @see wpart:proplist2html/1
 %%
--spec(proplist2html/1 :: (list(tuple())) -> string()).	      
+-spec(proplist2html/1 :: (list(tuple())) -> string()).
 proplist2html(Proplist) ->
     string:join(lists:map(fun proplist2html1/1, Proplist), " ").
 
--spec(proplist2html1/1 :: ({string(), string()}) -> string()).	     
+-spec(proplist2html1/1 :: ({string(), string()}) -> string()).
 proplist2html1({Name, Value}) ->
     Name ++ "=\"" ++ Value ++ "\"".
 
 %%
+%% @spec getValue(AttributesProplist :: list(tuple())) -> HTML :: string()
+%% @see wpart:getValue/1
+%%
+-spec(getValue/1 :: (list(tuple())) -> any()).
+getValue(Proplist) ->
+    case proplists:get_value("valueVar", Proplist) of
+        undefined -> proplists:get_value("value", Proplist, "");
+        Var -> case wpart:fget(Var) of
+                   undefined -> "";
+                   Some -> Some
+               end
+    end.
+%%
 %% @spec normalize_html_attrs(AttributesProplist :: list(tuple())) -> NormalizedAttributesProplist :: list(tuple())
 %% @see wpart:normalize_html_attrs/1
 %%
--spec(normalize_html_attrs/1 :: (list(tuple())) -> list(tuple())).	     
+-spec(normalize_html_attrs/1 :: (list(tuple())) -> list(tuple())).
 normalize_html_attrs(Proplist) ->
     lists:map(fun normalize_html_attrs1/1, Proplist).
 
--spec(normalize_html_attrs1/1 :: (tuple()) -> tuple()).	     
+-spec(normalize_html_attrs1/1 :: (tuple()) -> tuple()).
 normalize_html_attrs1({Key, Value}) when is_atom(Key), is_atom(Value) ->
     {atom_to_list(Key), atom_to_list(Value)};
 normalize_html_attrs1({Key, Value}) when is_atom(Key), is_integer(Value) ->
@@ -164,7 +177,7 @@ normalize_html_attrs1(Else) ->
 %%
 %% @doc The same as <i>string2term(Type, String, [])</i>.
 %%
--spec(string2term/2 :: (atom(), string()) -> {ok, any()} | {error, any()}).	     
+-spec(string2term/2 :: (atom(), string()) -> {ok, any()} | {error, any()}).
 string2term(Type, String) ->
     string2term(Type, String, []).
 
@@ -191,7 +204,7 @@ string2term(Type, String, Params0) ->
 %%
 %% @doc The same as <i>term2string(Type, Term, "")</i>.
 %%
--spec(term2string/2 :: (atom(), term()) -> string()).	     
+-spec(term2string/2 :: (atom(), term()) -> string()).
 term2string(Type, Term) ->
     term2string(Type, Term, "").
 
@@ -212,11 +225,11 @@ term2string(Type, Term, Format) ->
 %%                 PKString = string()
 %%
 %% @doc Converts the primary key field of the record to its string representation
-%% The returning value is a tuple consisting of the primary key 
-%% position in the record (note that first element of the tuple is 
-%% the record name) and the converted primary key. 
+%% The returning value is a tuple consisting of the primary key
+%% position in the record (note that first element of the tuple is
+%% the record name) and the converted primary key.
 %%
--spec(pk2string/1 :: (tuple()) -> {integer(), string()}).	     
+-spec(pk2string/1 :: (tuple()) -> {integer(), string()}).
 pk2string(Record) ->
     TypeS = atom_to_list(element(1, Record)),
     TypesDesc = tl(tuple_to_list((list_to_atom("wtype_" ++ TypeS)):
@@ -227,8 +240,8 @@ pk2string(Record) ->
 				    Else ->
 					Else
 				end,
-    
-    {PKPos, term2string(PKType, element(PKPos+1, Record), 
+
+    {PKPos, term2string(PKType, element(PKPos+1, Record),
 			proplists:get_value(format, PKDesc, ""))}.
 
 %%
@@ -237,7 +250,7 @@ pk2string(Record) ->
 %%
 %% @doc Search the primary key in the list of the type's options.
 %% TypeOptions == tl(get_record_info(Type_types)).
-%% 
+%%
 -spec(find_pk/1 :: (list({atom(), list()})) -> {integer(), {atom(), list()}} | no_pk).
 find_pk(TypeDecl) ->
     find_pk(TypeDecl, 1).
@@ -253,7 +266,7 @@ find_pk([{_, Options} = TypeDecl | Rest], Pos) ->
 find_pk([], _) ->
     no_pk.
 
--spec(check_for_pk/1 :: (list()) -> bool()).	     
+-spec(check_for_pk/1 :: (list()) -> bool()).
 check_for_pk([primary_key | _]) ->
     true;
 check_for_pk([{primary_key} | _]) ->
