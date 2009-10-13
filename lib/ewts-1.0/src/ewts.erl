@@ -7,8 +7,8 @@ start_tests(Outdir) ->
     error_logger:tty(false),
     Modules = lists:concat(lists:map(
                              fun(Application) ->
-                                     Result = cover:compile_directory(filename:join(["../../apps/", Application, "src"]),
-								      [{i, filename:join(["/../../apps/", Application, "include"])}]),
+                                     Result = cover:compile_directory(filename:join(["../../", Application, "src"]),
+								      [{i, filename:join(["../../", Application, "include"])}]),
 				     if
 					 is_list(Result) ->
 					     lists:foldl(fun({ok, M}, Acc) -> [M | Acc];
@@ -18,13 +18,13 @@ start_tests(Outdir) ->
 				     end
                              end, get_apps())),
     TestModules = [list_to_atom(filename:basename(F, ".erl")) ||
-		      F <- filelib:wildcard(filename:join("../../apps/*/test/", "*.erl"))],
+		      F <- filelib:wildcard("../../*/test/*.erl")],
     EUnitResult = eunit:test(TestModules),
 
     if
 	EUnitResult == ok ->
 	    TotalPercentage = html_report(Outdir, Modules),
-            io:format("All tests passed.  ~B% line coverage.~n", [TotalPercentage]),
+            io:format("EWTS: All tests passed.  ~B% line coverage.~n", [TotalPercentage]),
 	    
             %% Taken from http://idlingspace.com/game/perfect_lemmings/lemmingology_mathe/
             Needed = 70,
@@ -49,9 +49,9 @@ start_tests(Outdir) ->
                    Rescued == 100 ->
                         "Superb! You rescued every lemming on that level. Can you do it again....?"
                 end,
-            io:format("~s~n", [Msg]);
+            io:format("EWTS: ~s~n", [Msg]);
 	true ->
-	    io:format("Wow! Hold your horses mighty cowboy - eunit has failed, hasn't it?~n")
+	    io:format("EWTS: Wow! Hold your horses mighty cowboy - eunit has failed, hasn't it?~n")
     end,
     init:stop().
 
@@ -88,8 +88,8 @@ fget0(List, Key, Dict) ->
 
 -spec(get_apps/0 :: () -> (list(string()))).
 get_apps() ->
-    element(2, file:list_dir("../../apps/")) -- ["yaws", "eptic", "eptic_fe", "wpart", 
-						 "wparts", "ewts"].
+    element(2, file:list_dir("../../")) -- ["yaws", "eptic", "eptic_fe", "wpart", 
+					    "wparts", "ewts"].
 
 html_report(Path, Modules) ->
     Results = lists:map(fun(Module) ->
