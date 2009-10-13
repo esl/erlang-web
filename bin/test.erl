@@ -24,29 +24,31 @@
 %%%-------------------------------------------------------------------
 
 main([]) ->
-    run_tests("ewts_reports");
+    run_tests("doc/ewts_report");
 main(_) ->
     print_usage().
 
-run_tests() ->
-    start_interactive_mode_node().
+run_tests(Dir) ->
+    start_interactive_mode_node(Dir).
    
 start_interactive_mode_node(ReportDir) ->
-    Port = open_port({spawn, "bin/start_interactive -run ewts start_tests" ++ ReportDir},
+    Port = open_port({spawn, "bin/start_interactive inets single_node  -run ewts start_tests " ++ ReportDir},
 		     [use_stdio, stderr_to_stdout, stream, {line, 1024}]),
     print_output(Port).
 
 print_output(Port) ->
     receive
-	{Port, {data, {eol, "EWTS: " ++ Line}}} ->
-	    io:format(Line);
+	{Port, {data, {eol, "1> EWTS: " ++ Line}}} ->
+	    io:format("~s~n", [Line]),
+	    print_output(Port);
 	{Port, {data, _Data}} ->
 	    print_output(Port)
     after 1000 ->
+	    port_close(Port),
 	    ok
     end.
 
 print_usage() ->
     io:format("Usage:~n"
-	      "bin/test.erl [run] - run the tests~n"
+	      "bin/test.erl [run [ReportDir]] - run the tests~n"
 	      "bin/test.erl compile - compile the tests - do not run them~n").
