@@ -42,3 +42,10 @@
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
+
+{'lib/ewts-1.0/src/*', [
+	{outdir, "lib/ewts-1.0/ebin"}, 
+	{i, "lib/ewts-1.0/include"}, 
+	debug_info, 
+	strict_record_tests, 
+	netload]}.

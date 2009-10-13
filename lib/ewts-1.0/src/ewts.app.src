@@ -1,0 +1,12 @@
+%% -*- mode: erlang; -*-
+{application, ewts,
+ [
+  {description, "Erlang Web Testing Suite"},
+  {vsn, "@VSN@"}, 
+  {modules, [@MODULES@]},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {build_dependencies, []},
+  {mod, {ewts_app, []}},
+  {env, []}
+ ]}.
