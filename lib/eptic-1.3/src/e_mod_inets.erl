@@ -81,7 +81,7 @@ do(#mod{parsed_header = Headers} = A) ->
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
 		    cookie_bind(ClientCookie), 
-            cleanup(),
+		    cleanup(),
 
 		    e_logger:unregister_pid(self()),
 		    {proceed, A#mod.data}
