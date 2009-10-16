@@ -1,0 +1,18 @@
+<html>
+  <head>
+    <link rel="stylesheet" 
+	  href="/autocomplete.css" 
+	  type="text/css" />
+    <script src="/jquery.js" 
+	    type="text/javascript"> </script>
+    <script src="/jquery.autocomplete.js" 
+	    type="text/javascript"> </script>
+  </head>
+  <body>
+    <wpart:lookup key="error_message" />
+    <wpart:form type="widget_test" 
+		wpart:action="/widgets/save?form_type={[string]get:form_type}" 
+		wpart:form_type="{[string]get:form_type}" 
+		submit_text="test widget"/>
+  </body>
+</html>

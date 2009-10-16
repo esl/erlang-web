@@ -1,14 +1,24 @@
 -module(ewts).
 
+-export([start/0]).
 -export([start_tests/1, fget/2]).
+
+-spec(start/0 :: () -> any()).
+start() ->
+    application:start(ewts).
 
 -spec(start_tests/1 :: (string()) -> any()).
 start_tests(Outdir) ->
     error_logger:tty(false),
     Modules = lists:concat(lists:map(
                              fun(Application) ->
-                                     Result = cover:compile_directory(filename:join(["../../", Application, "src"]),
-								      [{i, filename:join(["../../", Application, "include"])}]),
+                                     Result = cover:compile_directory(filename:join(["lib", Application, "src"]),
+								      [{i, filename:join(["lib", Application, "include"])}]),
+				     
+				     FilesTest = filelib:wildcard(filename:join(["lib", Application, "test", "*erl"])),
+				     make:files(FilesTest, [{outdir, filename:join(["lib", Application, "test"])}, 
+							    {i, filename:join(["lib", Application, "include"])}]),
+
 				     if
 					 is_list(Result) ->
 					     lists:foldl(fun({ok, M}, Acc) -> [M | Acc];
@@ -18,7 +28,7 @@ start_tests(Outdir) ->
 				     end
                              end, get_apps())),
     TestModules = [list_to_atom(filename:basename(F, ".erl")) ||
-		      F <- filelib:wildcard("../../*/test/*.erl")],
+		      F <- filelib:wildcard("lib/*/test/*.erl")],
     EUnitResult = eunit:test(TestModules),
 
     if
@@ -88,8 +98,44 @@ fget0(List, Key, Dict) ->
 
 -spec(get_apps/0 :: () -> (list(string()))).
 get_apps() ->
-    element(2, file:list_dir("../../")) -- ["yaws", "eptic", "eptic_fe", "wpart", 
-					    "wparts", "ewts"].
+    filter(
+      element(2, file:list_dir("lib")), []).
+
+-spec(filter/2 :: (list(string()), list(string())) -> list(string())).
+filter(["yaws" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["eptic" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["wpart-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["wparts-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ewts-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ewgi-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["kernel-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["stdlib-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["mnesia-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["inets-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["mochiweb-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["erlydtl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["crypto-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ssl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["sasl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter([App | Rest], Acc) ->
+    filter(Rest, [App | Acc]);
+filter([], Acc) ->
+    Acc.
 
 html_report(Path, Modules) ->
     Results = lists:map(fun(Module) ->

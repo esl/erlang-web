@@ -32,18 +32,25 @@ run_tests(Dir) ->
     start_interactive_mode_node(Dir).
    
 start_interactive_mode_node(ReportDir) ->
-    Port = open_port({spawn, "bin/start_interactive inets single_node  -run ewts start_tests " ++ ReportDir},
+    Port = open_port({spawn, "bin/start_interactive inets single_node "
+		      "-sasl sasl_error_logger false -pa lib/*/test "
+		      "-s ewts "
+		      "-run ewts start_tests " 
+		      ++ ReportDir},
 		     [use_stdio, stderr_to_stdout, stream, {line, 1024}]),
     print_output(Port).
 
 print_output(Port) ->
     receive
-	{Port, {data, {eol, "1> EWTS: " ++ Line}}} ->
+	{Port, {data, {eol, "1> " ++ Line}}} ->
+	    io:format("~s~n", [Line]),
+	    print_output(Port);
+	{Port, {data, {eol, Line}}} ->
 	    io:format("~s~n", [Line]),
 	    print_output(Port);
 	{Port, {data, _Data}} ->
 	    print_output(Port)
-    after 1000 ->
+    after 100000 ->
 	    port_close(Port),
 	    ok
     end.
