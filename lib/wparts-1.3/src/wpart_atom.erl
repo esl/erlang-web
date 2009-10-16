@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_atom).
@@ -29,14 +29,14 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -52,8 +52,8 @@ build_html_tag(Name, Prefix, Params, Default) ->
 get_html_tag(Attrs, Default) when is_atom(Default) ->
     get_html_tag(Attrs, atom_to_list(Default));
 get_html_tag(Attrs, Default) ->
-    wpart_gen:build_html(wpart_gen:tpl_get(atom), 
-			 [{"html", wpart:proplist2html(Attrs)}, 
+    wpart_gen:build_html(wpart_gen:tpl_get(atom),
+			 [{"html", wpart:proplist2html(Attrs)},
 			  {"value", Default}]).
 
 load_tpl() ->

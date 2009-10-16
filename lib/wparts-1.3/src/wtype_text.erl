@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Ptaszek <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wtype_text).
@@ -36,14 +36,14 @@ validate({Types, undefined}) ->
 	    {ok, undefined};
         false ->
             case lists:keysearch(optional, 1, Types) of
-		{value, {optional, Default}} -> 
+		{value, {optional, Default}} ->
                     {ok, Default};
-		_ ->  
+		_ ->
                     {error, {empty_input, undefined}}
             end
     end;
 
-validate({Types,Text}) when is_list(Text) -> 
+validate({Types,Text}) when is_list(Text) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, Text};
@@ -51,15 +51,15 @@ validate({Types,Text}) when is_list(Text) ->
 	    case check_min_length(Text, Types) of
 		{ok, Text} ->
 		    case check_max_length(Text, Types) of
-			{ok, Text} -> 
+			{ok, Text} ->
 			    check_html(Text, Types);
-			ErrorMax -> 
+			ErrorMax ->
 			    ErrorMax
 		    end;
 		ErrorMin -> ErrorMin
 	    end
     end;
-validate({Types, Text}) -> 
+validate({Types, Text}) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, Text};
@@ -74,10 +74,10 @@ check_min_length(String, Types) ->
 	    if
 		 X < Min ->
 		    {error, {too_short, String}};
-		true -> 
+		true ->
 		    {ok, String}
 	    end;
-	_ -> 
+	_ ->
 	    {ok, String}
     end.
 
@@ -88,10 +88,10 @@ check_max_length(String, Types) ->
             if
 		X > Max ->
 		    {error, {too_long, String}};
-		true -> 
+		true ->
 		    {ok, String}
 	    end;
-	_ -> 
+	_ ->
 	    {ok, String}
     end.
 
@@ -107,3 +107,4 @@ check_html(String, Types) ->
 	_ ->
 	    {ok, String}
     end.
+

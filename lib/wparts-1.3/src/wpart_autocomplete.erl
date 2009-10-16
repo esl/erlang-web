@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Michal Zajda <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_autocomplete).
@@ -32,15 +32,15 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = [{"complete", string:tokens(proplists:get_value(complete, Attrs1, ""), [$|])} |
 	     proplists:delete("complete", Attrs1)],
 
-    #xmlText{value = get_html_tag(Attrs, ""),
+    #xmlText{value = get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type = cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
-    Attrs = [{"name", Id}, {"id", Id}, 
-	     {"complete", proplists:get_value(complete, Params, [])} 
+    Attrs = [{"name", Id}, {"id", Id},
+	     {"complete", proplists:get_value(complete, Params, [])}
 	     | proplists:delete("complete", proplists:delete("name", Attrs0))],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -48,11 +48,11 @@ build_html_tag(Name, Prefix, Params, Default) ->
     Description = wpart_derived:get_description(Name, Params),
     D = wpart_derived:find(N, Default),
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
-    Attrs = [{"name", N}, {"complete", proplists:get_value(complete, Params, [])} | 
+    Attrs = [{"name", N}, {"complete", proplists:get_value(complete, Params, [])} |
 	     proplists:delete("name", Attrs0)],
-    
+
     wpart_derived:surround_with_table(N, get_html_tag(Attrs, D), Description).
-		    
+
 get_html_tag(Attrs, Default) ->
     Complete = case proplists:get_value("complete", Attrs) of
 		   [] ->
@@ -62,14 +62,13 @@ get_html_tag(Attrs, Default) ->
 					      Acc ++ ",'" ++ X ++ "'"
 				      end, "", Strings))
 	       end,
-    		       
-    wpart_gen:build_html(wpart_gen:tpl_get(autocomplete), 
+    wpart_gen:build_html(wpart_gen:tpl_get(autocomplete),
 			 [{"complete", Complete},
 			  {"name", proplists:get_value("name", Attrs, "")}]) ++
 	wpart_gen:build_html(wpart_gen:tpl_get(autocomplete_input_id),
 			     [{"html", wpart:proplist2html(proplists:delete("complete", Attrs))},
 			      {"value", Default}]).
-    
+
 load_tpl() ->
     wpart_gen:load_tpl(autocomplete,
 		       filename:join([code:priv_dir(wparts),"html","autocomplete.tpl"])),

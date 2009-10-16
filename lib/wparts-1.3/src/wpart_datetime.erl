@@ -16,7 +16,7 @@
 %%%-------------------------------------------------------------------
 %%% @version $Rev$
 %%% @author Michal Zajda <info@erlang-consulting.com>
-%%% @doc 
+%%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
 -module(wpart_datetime).
@@ -30,16 +30,16 @@
 
 handle_call(#xmlElement{attributes = Attrs0}) ->
     Attrs = wpart:xml2proplist(Attrs0),
-    
-    #xmlText{value=get_html_tag(Attrs, ""),
+
+    #xmlText{value=get_html_tag(Attrs, wpart:getValue(Attrs)),
 	     type=cdata}.
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
     Format = proplists:get_value("format", Params, "YYYY-MM-DD HH:NN:SS"),
-    Attrs = [{"name", Id}, {"id", Id}, {"format", Format} | 
+    Attrs = [{"name", Id}, {"id", Id}, {"format", Format} |
 	     proplists:delete("name", Attrs0)],
-    
+
     get_html_tag(Attrs, Default).
 
 build_html_tag(Name, Prefix, Params, Default) ->
@@ -54,14 +54,14 @@ build_html_tag(Name, Prefix, Params, Default) ->
 
 get_html_tag(Attrs, Default) ->
     DateTime = if
-	           Default == "" -> 
+	           Default == "" ->
 		       "";
 	           true ->
 		       Format = proplists:get_value("format", Attrs, "YYYY-MM-DD HH:NN:SS"),
 		       wtype_datetime:format(Format, Default)
 	       end,
-    
-    wpart_gen:build_html(wpart_gen:tpl_get(datetime), 
+
+    wpart_gen:build_html(wpart_gen:tpl_get(datetime),
 			 [{"html", wpart:proplist2html(
 				     proplists:delete("format", Attrs))},
 			  {"value", DateTime}]).
