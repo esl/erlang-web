@@ -3,16 +3,16 @@
 -record(request, {
 	  url :: string(),
 	  cookies = [] :: string_proplist(),
-	  post_args = [] :: list({string(), string()}),
-	  get_args = [] :: list({string(), string()}),
+	  post_args = [] :: string_proplist(),
+	  get_args = [] :: string_proplist(),
 	  protocol = http :: http | https
 %% TODO - add multipart?
 	 }).
 
 -record(response, {
-	  headers :: list({string(), string()}),
+	  headers :: string_proplist(),
 	  code = 200 :: integer(),
-	  cookies :: list({string(), string()}),
+	  cookies :: string_proplist(),
 	  body = "" :: string(),
 	  req_dict :: list()
 	 }).

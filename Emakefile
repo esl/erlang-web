@@ -49,10 +49,3 @@
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
-
-{'lib/myapp-0.1/src/*', [
-	{outdir, "lib/myapp-0.1/ebin"}, 
-	{i, "lib/myapp-0.1/include"}, 
-	debug_info, 
-	strict_record_tests, 
-	netload]}.

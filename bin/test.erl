@@ -25,6 +25,8 @@
 
 main([]) ->
     run_tests("doc/ewts_report");
+main(["compile"]) ->
+    compile();
 main(_) ->
     print_usage().
 
@@ -40,8 +42,17 @@ start_interactive_mode_node(ReportDir) ->
 		     [use_stdio, stderr_to_stdout, stream, {line, 1024}]),
     print_output(Port).
 
+compile() ->
+    lists:foreach(fun(App) ->
+			  FilesTest = filelib:wildcard(filename:join(["lib", App, "test", "*erl"])),
+			  make:files(FilesTest, [{outdir, filename:join(["lib", App, "test"])}, 
+						 {i, filename:join(["lib", App, "include"])}])
+		  end, get_apps()).
+
 print_output(Port) ->
     receive
+	{Port, {data, {eol, "1> EWTSEND"}}} ->
+	    port_close(Port);
 	{Port, {data, {eol, "1> " ++ Line}}} ->
 	    io:format("~s~n", [Line]),
 	    print_output(Port);
@@ -50,10 +61,49 @@ print_output(Port) ->
 	    print_output(Port);
 	{Port, {data, _Data}} ->
 	    print_output(Port)
-    after 100000 ->
+    after 10000 ->
 	    port_close(Port),
 	    ok
     end.
+
+get_apps() ->
+    filter(
+      element(2, file:list_dir("lib")), []).
+
+filter(["yaws" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["eptic" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["wpart-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["wparts-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ewts-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ewgi-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["kernel-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["stdlib-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["mnesia-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["inets-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["mochiweb-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["erlydtl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["crypto-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["ssl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["sasl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter([App | Rest], Acc) ->
+    filter(Rest, [App | Acc]);
+filter([], Acc) ->
+    Acc.
 
 print_usage() ->
     io:format("Usage:~n"

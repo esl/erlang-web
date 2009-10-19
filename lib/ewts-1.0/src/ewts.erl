@@ -77,6 +77,7 @@ start_tests(Outdir) ->
 	true ->
 	    io:format("EWTS: Wow! Hold your horses mighty cowboy - eunit has failed, hasn't it?~n")
     end,
+    io:format("EWTSEND~n"),
     init:stop().
 
 -spec(fget/2 :: (string(), term()) -> undefined | term()).
