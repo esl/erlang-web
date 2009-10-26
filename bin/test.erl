@@ -43,6 +43,8 @@ start_interactive_mode_node(ReportDir) ->
     print_output(Port).
 
 compile() ->
+    [code:add_path(Dir) || Dir <- filelib:wildcard(filename:join(["lib", "*", "test"]))],
+    [code:add_path(Dir) || Dir <- filelib:wildcard(filename:join(["lib", "*", "ebin"]))],
     lists:foreach(fun(App) ->
 			  FilesTest = filelib:wildcard(filename:join(["lib", App, "test", "*erl"])),
 			  make:files(FilesTest, [{outdir, filename:join(["lib", App, "test"])}, 

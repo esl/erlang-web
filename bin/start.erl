@@ -636,6 +636,8 @@ copy_escripts(RootDir) ->
 	{ok, _} ->
 	    Files = [filename:join(["bin", "compile.erl"]),
 		     filename:join(["bin", "add.erl"]),
+		     filename:join(["bin", "generate.erl"]),
+		     filename:join(["bin", "test.erl"]),
 		     filename:join(["bin", "e_component.erl"])],
 	    
 	    case filelib:is_file("Emakefile") of

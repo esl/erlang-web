@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : e_dict.erl
-%%% @author Martin Carlson <martin@erlang-consulting.com>
+%%% @author Michal Ptaszek <michal.ptaszek@erlang-consulting.com>
 %%% @doc Module responsible for managing the request dictionary.
 %%% @end
 %%%-------------------------------------------------------------------
@@ -23,15 +23,13 @@
 
 %% API
 -export([init_state/1, terminate_state/0, get_state/0]).
--export([fset/2, fset/3, fget/1, fget/2, fget/3, finsert/3]).
+-export([fset/2, fset/3, fget/1, fget/2, fget0/2, fget/3, finsert/3]).
 -export([fdelete/1, fdelete/2]).
 
 -export([start_link/0]).
 -export([init/1, terminate/2]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 -export([code_change/3]).
-
--record(state, {}).
 
 %%====================================================================
 %% Exported functions
@@ -41,13 +39,13 @@ start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
 %% @hidden
-init_state(Dict) when is_list(Dict) ->
-    ets:insert(?MODULE, {self(), dict:from_list(Dict)});
-init_state(Dict) ->
-    ets:insert(?MODULE, {self(), Dict}).
+init_state(List) when is_list(List) ->
+    ets:insert(?MODULE, {self(), List});
+init_state(Dict) when is_tuple(Dict) ->
+    ets:insert(?MODULE, {self(), dict:to_list(Dict)}).
 
 %% @hidden
--spec(get_state/0 :: () -> {ok, term()} | undefined).	     
+-spec(get_state/0 :: () -> {ok, list()} | undefined).	     
 get_state() ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->
@@ -61,18 +59,15 @@ terminate_state() ->
     ets:delete(?MODULE, self()).
 
 %% 
-%% @spec fset(Key :: term(), Value :: term()) -> true
+%% @spec fset(Key :: string(), Value :: term()) -> true
 %% @doc Inserts the <i>Value</i> under the specified <i>Key</i> in the request dictionary.
 %%
--spec(fset/2 :: (term(), term()) -> true).
+-spec(fset/2 :: (string(), term()) -> true).
 fset(Key, Value) ->
-    case ets:lookup(?MODULE, self()) of
-	[{_, Dict}] -> ets:insert(?MODULE, {self(), dict:store(Key, Value, Dict)});
-	[]          -> exit(no_dict_attached)
-    end.
+    fset0(string:tokens(Key, [$:]), Value).
 
 %%
-%% @spec fset(List :: term(), Key :: term(), Value :: term()) -> true
+%% @spec fset(List :: string(), Key :: string(), Value :: term()) -> true
 %% @doc Appends the <i>Value</i> into the <i>List</i> under the <i>Key</i> in the request dictionary.
 %% <i>List</i> is the top-level key to the proplist in the dictionary. 
 %% If there is no list, the new one is created - the call is equivalent to:
@@ -82,25 +77,30 @@ fset(Key, Value) ->
 %% Otherwise, the <i>{Key, Value}</i> is appended to the list and the list is then
 %% stored in the request dictionary.
 %%
--spec(fset/3 :: (term(), term(), term()) -> true).
+-spec(fset/3 :: (string(), string(), term()) -> true).
 fset(List, Key, Value) ->
+    fset0([List, Key], Value).
+
+-spec(fset0/2 :: (list(string()), term()) -> true).
+fset0(Keys, Value) ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->
-	    Current = dict_fetch(List, Dict),
-	    check_store({Key, Value},Current,List,Dict);
-	[]          -> 
+	    ets:insert(?MODULE, {self(), fset0(Keys, Value, Dict)});
+	[] ->
 	    exit(no_dict_attached)
     end.
 
-check_store(T, undefined, List, Dict) ->
-    ets:insert(?MODULE, {self(), dict:store(List,[T], Dict)});
-
-check_store(T, Current, List, Dict) ->
-    New = case lists:member(T,Current) of
-	      true -> Current;
-	      false -> [T|Current]
-	  end,
-    ets:insert(?MODULE, {self(), dict:store(List, New, Dict)}).
+-spec(fset0/3 :: (list(string()), term(), tuple()) -> tuple()).
+fset0([Key], Value, Dict) ->
+    lists:keystore(Key, 1, Dict, {Key, Value});
+fset0([Key | Rest], Value, Dict) ->
+    SubDict = case proplists:get_value(Key, Dict) of
+		  undefined ->
+		      [];
+		  S ->
+		      S
+	      end,
+    lists:keystore(Key, 1, Dict, {Key, fset0(Rest, Value, SubDict)}).
 
 %%
 %% @spec finsert(List :: term(), Key :: term(), Value :: term()) -> true
@@ -113,49 +113,50 @@ check_store(T, Current, List, Dict) ->
 %%
 -spec(finsert/3 :: (term(), term(), term()) -> true).
 finsert(List, Key, Value) ->
-    case ets:lookup(?MODULE, self()) of
-	[{_, Dict}] ->
-	    Current = dict_fetch(List, Dict),
-	    New = case lists:keysearch(Key,1,Current) of
-		      {value, _} -> lists:keyreplace(Key,1,Current,{Key,Value});
-		      false -> [{Key,Value}|Current]
-		  end,
-	    ets:insert(?MODULE, {self(), dict:store(List, New, Dict)});
-	[]          -> exit(no_dict_attached)
-    end.
-
+    fset0([List, Key], Value).
+    
 %%
-%% @spec fget(Key :: term()) -> Value :: term() | undefined
+%% @spec fget(Key :: string()) -> Value :: term() | undefined
 %% @doc Fetches the element kept in the request dictionary under the <i>Key</i>.
 %% If there is no element under <i>Key</i> inside the request dictionary,
 %% <i>undefined</i> is returned.
 %%
--spec(fget/1 :: (term()) -> term()).	      
-fget(Key) ->
+-spec(fget/1 :: (string()) -> term()).
+fget(Key0) ->
+    Key = string:tokens(Key0, [$:]),
     case ets:lookup(?MODULE, self()) of
-	[{_, Dict}] -> dict_fetch(Key, Dict);
-	[]          -> exit(no_dict_attached)
+	[{_, Dict}] -> 
+	    fget0(Key, Dict);
+	[] -> 
+	    exit(no_dict_attached)
     end.
 
 %%
-%% @spec fget(List :: term(), Key :: term()) -> term() | undefined
+%% @spec fget(List :: string(), Key :: string()) -> term() | undefined
 %% @doc Fetches the element kept in the <i>List</i> in the dictionary under the <i>Key</i>.
 %% <i>List</i> is top-level key to the container stored in the request dictionary.
 %% The values kept in the container under the <i>Key</i> are returned.
 %% If there is no values under <i>Key</i> or there is no <i>List</i>
 %% in the request dictionary, the <i>undefined</i> is returned.
 %%
--spec(fget/2 :: (term(), term()) -> term()).	      
+-spec(fget/2 :: (string(), string()) -> term()).	      
 fget(List, Key) ->
-    case fget(List) of
-	PropList when is_list(PropList) ->
-	    case proplists:get_all_values(Key, PropList) of
-		[] -> undefined;
-		[Value] -> Value;
-		Values -> Values  
-	    end;
-	Result ->
-	    Result
+    case ets:lookup(?MODULE, self()) of
+	[{_, Dict}] -> 
+	    fget0([List, Key], Dict);
+	[] -> 
+	    exit(no_dict_attached)
+    end.
+
+-spec(fget0/2 :: (list(string()), tuple()) -> term()).
+fget0([Key], Dict) ->
+    proplists:get_value(Key, Dict);
+fget0([Key | Rest], Dict) ->
+    case proplists:get_value(Key, Dict) of
+	undefined ->
+	    undefined;
+	SubDict ->
+	    fget0(Rest, SubDict)
     end.
 
 %% @hidden
@@ -175,10 +176,11 @@ fget(List, Key, Validator) ->
 %% pernamently. 
 %%
 -spec(fdelete/1 :: (term()) -> true).	     
-fdelete(Key) ->
+fdelete(Key0) ->
+    Key = string:tokens(Key0, [$:]),
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->
-	    ets:insert(?MODULE, {self(), dict:erase(Key, Dict)});
+	    fdelete0(Key, Dict);
 	[] ->
 	    exit(no_dict_attached)
     end.
@@ -194,19 +196,24 @@ fdelete(Key) ->
 fdelete(List, Key) ->
     case ets:lookup(?MODULE, self()) of
 	[{_, Dict}] ->
-	    case dict:find(List, Dict) of
-		{ok, Proplist} ->
-		    case lists:keydelete(Key, 1, Proplist) of
-			[] ->
-			    ets:insert(?MODULE, {self(), dict:erase(List, Dict)});
-			NewProplist ->
-			    ets:insert(?MODULE, {self(), dict:store(List, NewProplist, Dict)})
-		    end;
-		error ->
-		    true
-	    end;
-	[] -> 
+	    fdelete0([List, Key], Dict);
+	[] ->
 	    exit(no_dict_attached)
+    end.
+
+-spec(fdelete0/2 :: (list(string()), tuple()) -> true).
+fdelete0(Keys, Dict) ->
+    ets:insert(?MODULE, {self(), fdelete1(Keys, Dict)}).
+
+-spec(fdelete1/2 :: (list(string()), tuple()) -> tuple()).
+fdelete1([Key], Dict) ->
+    lists:keydelete(Key, 1, Dict);
+fdelete1([Key | Rest], Dict) ->
+    case proplists:get_value(Key, Dict) of
+	undefined ->
+	    Dict;
+	SubDict ->
+	    lists:keystore(Key, 1, Dict, {Key, fdelete1(Rest, SubDict)})
     end.
 
 %%====================================================================
@@ -215,7 +222,7 @@ fdelete(List, Key) ->
 %% @hidden
 init([]) ->
     ets:new(?MODULE, [named_table, public]),
-    {ok, #state{}}.
+    {ok, not_used}.
 
 %% @hidden
 handle_call(_Req, _From, State) ->
@@ -237,12 +244,3 @@ terminate(_Reason, _State) ->
 %% @hidden
 code_change(_VSN, State, _Extra) ->
     {ok, State}.
-
-%%====================================================================
-%% Internal functions
-%%====================================================================
-dict_fetch(Key, Dict) ->
-	case dict:find(Key, Dict) of
-		{ok, Value} -> Value;
-		error       -> undefined
-	end.	

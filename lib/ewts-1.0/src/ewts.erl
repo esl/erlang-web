@@ -82,34 +82,8 @@ start_tests(Outdir) ->
 
 -spec(fget/2 :: (string(), term()) -> undefined | term()).
 fget(Key0, Dict) ->
-    case string:tokens(Key0, ":") of
-	[List, Key] ->
-	    fget0(List, Key, Dict);
-	[Key] ->
-	    fget0(Key, Dict)
-    end.
-
--spec(fget0/2 :: (string(), term()) -> undefined | term()).
-fget0(Key, Dict) ->
-    case dict:find(Key, Dict) of
-	{ok, Val} ->
-	    Val;
-	error ->
-	    undefined
-    end.
-
--spec(fget0/3 :: (string(), string(), term()) -> undefined | term()).
-fget0(List, Key, Dict) ->
-    case fget0(List, Dict) of
-	PropList when is_list(PropList) ->
-	    case proplists:get_all_values(Key, PropList) of
-		[] -> undefined;
-		[Value] -> Value;
-		Values -> Values  
-	    end;
-	Result ->
-	    Result
-    end.
+    Key = string:tokens(Key0, ":"),
+    e_dict:fget0(Key, Dict).
 
 -spec(get_apps/0 :: () -> (list(string()))).
 get_apps() ->
