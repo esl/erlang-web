@@ -4,7 +4,7 @@
                       "<body>\n"
                       "<h1>An Error Occured:</h1>\n"
                       "<pre>~s</pre>\n"
-                      "<hr/>\n<em>Erlang Web 1.3</em>\n"
+                      "<hr/>\n<em>Erlang Web 1.4</em>\n"
                       "</body></html>\n", [Msg])).
 
 -define(VALIDATION(Msg), 
@@ -13,7 +13,7 @@
          "<body>\n"
          "<h1>Validation violation:</h1>\n"
          "<pre>",Msg,"</pre>\n"
-         "<hr/>\n<em>Erlang Web 1.3</em>\n"
+         "<hr/>\n<em>Erlang Web 1.4</em>\n"
          "</body></html>\n"]).
 
 -define(XHTML_HEADER, 
