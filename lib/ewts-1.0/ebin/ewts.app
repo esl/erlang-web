@@ -9,7 +9,7 @@
 	     ewts_app,
 	     ewts]},
   {registered, []},
-  {applications, [kernel, stdlib, eptic]},
+  {applications, [kernel, stdlib, eptic, wpart, wparts]},
   {build_dependencies, []},
   {mod, {ewts_app, []}},
   {env, []}

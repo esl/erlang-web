@@ -6,15 +6,15 @@
              erlydtl,
              erlydtl_compiler,
              erlydtl_dateformat,
-             erlydtl_dateformat_tests,
+%             erlydtl_dateformat_tests,
              erlydtl_deps,
-             erlydtl_example_variable_storage,
+%             erlydtl_example_variable_storage,
              erlydtl_filters,
-             erlydtl_functional_tests,
+%             erlydtl_functional_tests,
              erlydtl_parser,
              erlydtl_runtime,
-             erlydtl_scanner,
-             erlydtl_unittests
+             erlydtl_scanner
+%             erlydtl_unittests
             ]},
   {applications, [kernel, stdlib, crypto, syntax_tools, compiler]},
   {registered, []}

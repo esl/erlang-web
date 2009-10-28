@@ -1,4 +1,4 @@
-ErlangWeb 1.3 Installation Guide
+ErlangWeb 1.4 Installation Guide
 ================================
 
 1. Requirements
@@ -6,7 +6,7 @@ ErlangWeb 1.3 Installation Guide
 -Yaws 1.80 or later (included in the package)
 
 2. Start
-To start working with ErlangWeb you should compile the three main applications:
+To start working with Erlang Web you should compile the three main applications:
 eptic, wpart and wparts. It could be easily done by typing 
        bin/compile.erl
 in the root directory of the framework.

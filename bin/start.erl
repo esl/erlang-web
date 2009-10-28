@@ -497,7 +497,7 @@ get_apps_for_release(Server) ->
     [code:add_path("lib/" ++ D ++ "/ebin") || D <- Dir],
 
     ToLoad = [xmerl, sasl, crypto, eptic, wpart, wparts, mnesia, ssl,
-        syntax_tools, compiler, Server],
+	      syntax_tools, compiler, runtime_tools, Server],
     [application:load(App) || App <- ToLoad],
 
     lists:map(fun({Name, _, Vsn}) ->

@@ -41,9 +41,10 @@ start_tests(Outdir) ->
 					     []
 				     end
                              end, get_apps())),
+    
     TestModules = [list_to_atom(filename:basename(F, ".erl")) ||
-		      F <- filelib:wildcard("lib/*/test/*.erl")],
-    EUnitResult = eunit:test(TestModules),
+		      F <- lists:append([filelib:wildcard(filename:join(["lib", App, "test/*erl"])) || App <- get_apps()])],
+    EUnitResult = eunit:test(lists:filter(fun('') -> false; (_) -> true end, TestModules)),
 
     if
 	EUnitResult == ok ->
@@ -120,6 +121,8 @@ filter(["crypto-" ++ _ | Rest], Acc) ->
 filter(["ssl-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
 filter(["sasl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["runtime_tools-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
 filter([App | Rest], Acc) ->
     filter(Rest, [App | Acc]);
