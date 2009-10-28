@@ -23,7 +23,7 @@
 
 %% API
 -export([init_state/1, terminate_state/0, get_state/0]).
--export([fset/2, fset/3, fget/1, fget/2, fget0/2, fget/3, finsert/3]).
+-export([fset/2, fset/3, fget/1, fget/2, fget0/2, fget/3, finsert/2, finsert/3]).
 -export([fdelete/1, fdelete/2]).
 
 -export([start_link/0]).
@@ -114,6 +114,10 @@ fset0([Key | Rest], Value, Dict) ->
 -spec(finsert/3 :: (term(), term(), term()) -> true).
 finsert(List, Key, Value) ->
     fset0([List, Key], Value).
+
+-spec(finsert/2 :: (string(), term()) -> true).
+finsert(Key, Value) ->
+    fset(Key, Value).
     
 %%
 %% @spec fget(Key :: string()) -> Value :: term() | undefined

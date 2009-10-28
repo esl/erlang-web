@@ -28,7 +28,7 @@
 -export([init/1]).
 
 %% e_dict
--export([fget/1, fget/2, fget/3, fset/2, fset/3, finsert/3]).
+-export([fget/1, fget/2, fget/3, fset/2, fset/3, finsert/2, finsert/3]).
 -export([fdelete/1, fdelete/2]).
 %% e_cache
 -export([read_file/1]).
@@ -81,6 +81,10 @@ fset(Key, Value) ->
 -spec(fset/3 :: (term(), term(), term()) -> true).	     
 fset(List, Key, Value) ->
     e_dict:fset(List, Key, Value).
+
+-spec(finsert/2 :: (string(), term()) -> true).
+finsert(Key, Value) ->
+    e_dict:finsert(Key, Value).
 
 %% @see e_dict:finsert/3
 -spec(finsert/3 :: (term(), term(), term()) -> true).	     

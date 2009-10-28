@@ -88,13 +88,8 @@ behaviour_info(_Other) ->
 %% @end
 %%
 -spec(fget/1 :: (string()) -> term()).
-fget(Key0) ->
-    case string:tokens(Key0, ":") of
-	[List, Key] ->
-	    eptic:fget(List, Key);
-	[Key] ->
-	    eptic:fget(Key)
-    end.
+fget(Key) ->
+    eptic:fget(Key).
 
 %%
 %% @spec fset(Key :: string(), Value :: term()) -> none()
@@ -105,13 +100,8 @@ fget(Key0) ->
 %% @see fget/1
 %%
 -spec(fset/2 :: (string(), any()) -> any()).
-fset(Key0, Value) ->
-    case string:tokens(Key0, ":") of
-	[List, Key] ->
-	    eptic:fset(List, Key, Value);
-	[Key] ->
-	    eptic:fset(Key, Value)
-    end.
+fset(Key, Value) ->
+    eptic:fset(Key, Value).
 
 %%
 %% @spec select(XPath :: string(), XmlStructure :: tuple()) -> Result :: tuple()
@@ -204,13 +194,12 @@ search(Value) ->
 %%
 %% @spec finsert(Key :: string(), Value :: term()) -> any()
 %% @doc Inserts the value to the request dictionary.
-%% The passed key must contain a colon (:) taht separates
+%% The passed key must contain a colon (:) that separates
 %% the two level ditionaries.
 %%
 -spec(finsert/2 :: (string(), term()) -> any()).
-finsert(Key0, Val) ->
-    [List, Key] = string:tokens(Key0, ":"),
-    eptic:finsert(List, Key, Val).
+finsert(Key, Val) ->
+    eptic:finsert(Key, Val).
 
 %%
 %% @spec xml2proplist(XML :: list(tuple())) -> Proplist :: list(tuple())
