@@ -505,12 +505,14 @@ get_apps_for_release(Server) ->
 	      end, application:loaded_applications()).
 
 generate_boot_file() ->
-    systools:make_script("start", [{path, ["releases/0.1", "lib/*/ebin"]}, {outdir, "releases/0.1/"}, silent]),
+    systools:make_script("start", [{path, ["releases/0.1", "lib/*/ebin"]}, 
+				   {outdir, "releases/0.1/"}, silent]),
     confirm_created("releases/0.1/start.script"),
     confirm_created("releases/0.1/start.boot"),
     
     file:copy("releases/0.1/start.rel", "start.rel"),
-    systools:make_tar("start",[{path, ["releases/0.1"]}, {outdir, "releases/0.1/"}, {dirs, [include]}, silent]),
+    systools:make_tar("start",[{path, ["releases/0.1"]}, {outdir, "releases/0.1/"}, 
+			       {dirs, [include, src]}, silent]),
     file:delete("start.rel"),
     
     erl_tar:extract("releases/0.1/start.tar.gz", [keep_old_files, compressed]).

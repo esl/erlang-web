@@ -120,14 +120,14 @@ create_rel_file(RelVsn, Apps, Server) ->
     end.
 
 create_boot_file(RelVsn) ->
-    systools:make_script("start", [{path, ["releases/" ++ RelVsn, "lib/*/ebin"]}, 
-				   {outdir, "releases/" ++ RelVsn}, silent]),
+    {ok, _, _} = systools:make_script("start", [{path, ["releases/" ++ RelVsn, "lib/*/ebin"]}, 
+						{outdir, "releases/" ++ RelVsn}, silent]),
     confirm_created("releases/" ++ RelVsn ++ "/start.script"),
     confirm_created("releases/" ++ RelVsn ++ "/start.boot"),
     
     file:copy("releases/" ++ RelVsn ++ "/start.rel", "start.rel"),
-    systools:make_tar("start",[{path, ["releases/" ++ RelVsn]}, 
-			       {outdir, "releases/" ++ RelVsn}, silent]),
+    {ok, _, _} = systools:make_tar("start",[{path, ["releases/" ++ RelVsn]}, 
+					    {outdir, "releases/" ++ RelVsn}, silent]),
     file:delete("start.rel"),
 
     erl_tar:extract("releases/" ++ RelVsn ++ "/start.tar.gz", [compressed]).
