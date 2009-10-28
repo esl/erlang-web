@@ -124,6 +124,12 @@ filter(["sasl-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
 filter(["runtime_tools-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
+filter(["compiler-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["xmerl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["syntax_tools-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
 filter([App | Rest], Acc) ->
     filter(Rest, [App | Acc]);
 filter([], Acc) ->

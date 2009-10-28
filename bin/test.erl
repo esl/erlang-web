@@ -34,7 +34,7 @@ run_tests(Dir) ->
     start_interactive_mode_node(Dir).
    
 start_interactive_mode_node(ReportDir) ->
-    Port = open_port({spawn, "bin/start_interactive yaws single_node "
+    Port = open_port({spawn, "bin/start_interactive inets single_node "
 		      "-sasl sasl_error_logger false -pa lib/*/test "
 		      "-s ewts "
 		      "-run ewts start_tests " 
@@ -98,7 +98,13 @@ filter(["erlydtl-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
 filter(["crypto-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
+filter(["compiler-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["syntax_tools-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
 filter(["ssl-" ++ _ | Rest], Acc) ->
+    filter(Rest, Acc);
+filter(["xmerl-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
 filter(["sasl-" ++ _ | Rest], Acc) ->
     filter(Rest, Acc);
