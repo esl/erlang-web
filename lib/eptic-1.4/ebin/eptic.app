@@ -13,7 +13,23 @@
 	{env, [
 		{upload_dir, "/tmp"},
 		{template_root, "templates"},	
-		{node_type, single_node}
+		{node_type, single_node},
+                {mime_types,[{"xml","text/xml"},
+                       {"txt","text/plain"},
+                       {"html","text/html"},
+                       {"htm","text/html"},
+                       {"css","text/css"},
+                       {"png","image/png"},
+                       {"jpeg","image/jpeg"},
+                       {"jpg","image/jpeg"},
+                       {"jpe","image/jpeg"},
+                       {"gif","image/gif"},
+                       {"bmp","image/bmp"},
+                       {"zip","application/zip"},
+                       {"tar","application/x-tar"},
+                       {"js","application/x-javascript"},
+                       {"pdf","application/pdf"},
+                       {"ico","image/x-icon"}]}
 	]},
 	{mod, {eptic, []}}
 ]}.

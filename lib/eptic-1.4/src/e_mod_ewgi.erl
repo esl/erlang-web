@@ -26,6 +26,7 @@
 -include_lib("eptic/include/e_mod_ewgi.hrl").
 
 do(#ewgi_context{request = Request} = Context) ->
+    erlang:display({do_request, Request}),
     e_logger:register_pid(self()),
     case handle_args(Request) of
         {ok, Args} ->
@@ -81,8 +82,34 @@ do(#ewgi_context{request = Request} = Context) ->
                     e_mod_inets:cleanup(),
 
                     e_logger:unregister_pid(self()),
-                    not_found
+                    Response = serve_file(Request),
+                    Context#ewgi_context{response = Response}
             end
+    end.
+
+-spec serve_file(#ewgi_request{}) ->
+    #ewgi_response{}.
+serve_file(#ewgi_request{path_info = Path,
+                         request_method = Method}) ->
+    case Method of
+        Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+            Suffix = httpd_util:suffix(Path),
+            MimeType = lookup_mime_default(Suffix, "application/octet-stream"),
+            % XXX: do you know how much memory this could potentially use?
+            {ok, Data} = file:read_file("docroot"++Path),
+            #ewgi_response{
+              status = {200, "Ok"},
+              headers = [{"Content-type", MimeType}],
+              message_body = Data
+             };
+        'POST' ->
+            not_found;
+        _Else ->
+            #ewgi_response{
+              status = {501, "Not Implemented"},
+              headers = [{"Content-type", "text/plain"}],
+              message_body = [<<"Bad method">>]
+             }
     end.
 
 parse_headers(Headers) ->
@@ -176,3 +203,12 @@ with_formatted_error(F) ->
             format_response(Response)
     end.
 
+lookup_mime_default(Suffix, Undefined) ->
+    {ok, MimeTypesDB} = application:get_env(eptic, mime_types),
+    MimeType = proplists:lookup(Suffix, MimeTypesDB),
+    case MimeType of
+	none ->
+            Undefined;
+	{Suffix, MT} ->
+	    MT
+    end.
