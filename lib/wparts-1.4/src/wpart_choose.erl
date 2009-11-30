@@ -35,8 +35,6 @@
 %% @end
 %%--------------------------------------------------------------------
 handle_call(E) ->
-    Paths = wpart:select("wpart:when", E),
-    Otherwise = wpart:select("wpart:otherwise", E),
     When = first(fun(When) ->
 			 case wpart:has_attribute("attribute::test", When) of
 			     false ->
@@ -58,16 +56,9 @@ handle_call(E) ->
 					 []),
 				 F()
 			 end
-		 end, Paths),
-    if
-	When == [], Otherwise == [] ->
-	    [];
-	When == [] ->
-	    Otherwise0 = hd(Otherwise),
-	    wpart:eval(Otherwise0#xmlElement.content);
-	When /= [] ->
-	    wpart:eval(When#xmlElement.content)
-    end.
+		 end, E#xmlElement.content, []),
+
+    wpart:eval(When).
 
 %%====================================================================
 %% Internal functions
@@ -95,12 +86,25 @@ erl(Code1, Bindings) ->
 %% @doc Returns the first element satisfying `Pred' or the empty list
 %% @end
 %%------------------------------------------------------------------- 
-first(_, []) ->
-    [];
-first(Fun, [H|T]) ->
+first(_, [], Acc) ->
+    lists:reverse(Acc);
+first(Fun, [#xmlElement{name = 'wpart:when'} = H | T], Acc) ->
     case Fun(H) of
         true ->
-            H;
+	    filter(T, [H#xmlElement.content | Acc]);
         false ->
-            first(Fun, T)
-    end.    
+            first(Fun, T, Acc)
+    end;
+first(_, [#xmlElement{name = 'wpart:otherwise'} = H | T], Acc) ->
+    filter(T, [H#xmlElement.content | Acc]);
+first(Fun, [H | T], Acc) ->
+    first(Fun, T, [H | Acc]).
+
+filter([#xmlElement{name = 'wpart:when'} | T], Acc) ->
+    filter(T, Acc);
+filter([#xmlElement{name = 'wpart:otherwise'} | T], Acc) ->
+    filter(T, Acc);
+filter([H | T], Acc) ->
+    filter(T, [H | Acc]);
+filter([], Acc) ->
+    lists:reverse(Acc).
