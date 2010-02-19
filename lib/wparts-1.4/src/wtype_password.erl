@@ -45,8 +45,15 @@ validate({Types, undefined}) ->
             end
     end;
 
+validate({Types, [RawString1, RawString2]}) 
+  when is_list(RawString1) and is_list(RawString2) ->
+    validate2({Types, [utf8_api:ustring(RawString1), 
+                       utf8_api:ustring(RawString2)]});
+
 validate({Types, RawString}) when is_list(RawString) ->
-    String = utf8_api:ustring(RawString),
+    validate2({Types, utf8_api:ustring(RawString)}).
+
+validate2({Types, String}) when is_list(String) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, String};
