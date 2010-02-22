@@ -43,7 +43,7 @@ do(#mod{parsed_header = Headers} = A) ->
 
 	    e_logger:log({?MODULE, {url, URL}}),
 
-	    case A#mod.socket_type of
+	    case A#mod.socket_type of 
 		{ssl, _} ->
 		    e_dict:fset("__https", true),
 		    e_dict:fset("__ip", get_ip(ssl:peername(A#mod.socket)));
@@ -80,8 +80,8 @@ do(#mod{parsed_header = Headers} = A) ->
 		    e_logger:unregister_pid(self()),
 		    {proceed, [{response, {response, [CookieHeader | NewHeaders], Result}}]};
 		enoent ->
-		    cookie_bind(ClientCookie),
-	    cleanup(),
+		    cookie_bind(ClientCookie), 
+		    cleanup(),
 
 		    e_logger:unregister_pid(self()),
 		    {proceed, A#mod.data}
@@ -93,16 +93,16 @@ do(#mod{parsed_header = Headers} = A) ->
 fe_request(#mod{parsed_header = Headers} = A, Session) ->
     Cookie = proplists:get_value(?COOKIE, get_cookies(Headers), []),
     e_session:update_session(Cookie, Session),
-
+    
     Ret = do(A),
-
+    
     {ok, NewSession} = e_session:get_session(Cookie),
     {Ret, NewSession}.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
--spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())}).
+-spec(handle_args/1 :: (tuple()) -> {ok, list(tuple())}).	     
 handle_args(#mod{method = Method, entity_body = Post} = Mod) ->
     Result = case Method of
 		 "POST" ->
@@ -114,7 +114,7 @@ handle_args(#mod{method = Method, entity_body = Post} = Mod) ->
     e_logger:log({?MODULE, {handle_args, Result}}),
     Result.
 
--spec(controller_exec/2 :: (e_mod_gen:controller_response(), string()) -> {list(tuple()), string()}).
+-spec(controller_exec/2 :: (e_mod_gen:controller_response(), string()) -> {list(tuple()), string()}).	     
 controller_exec(Ret, View) ->
     case Ret of
 	template ->
@@ -154,7 +154,7 @@ controller_exec(Ret, View) ->
 	    format_response(e_mod_gen:error_page(Code, e_dict:fget("__path")))
     end.
 
--spec(format_response/1 :: (term()) -> term()).
+-spec(format_response/1 :: (term()) -> term()).	     
 format_response({html, HTML}) ->
     Length = {content_length, integer_to_list(erlang:iolist_size(HTML))},
     {[{content_type, "text/html"}, {code, 200}, Length], HTML};
@@ -164,7 +164,7 @@ format_response([{status, Code}, {html, HTML}]) ->
 format_response(Else) ->
     Else.
 
--spec(with_formatted_error/1 :: (fun()) -> term()).
+-spec(with_formatted_error/1 :: (fun()) -> term()).	      
 with_formatted_error(F) ->
     case catch F() of
 	{'EXIT', Reason} ->
@@ -173,7 +173,7 @@ with_formatted_error(F) ->
 	    format_response(Response)
     end.
 
--spec(create_headers/2 :: (list(tuple()), list(tuple())) -> list(tuple())).
+-spec(create_headers/2 :: (list(tuple()), list(tuple())) -> list(tuple())).	     
 create_headers([], Acc) ->
     Acc;
 create_headers([{cookie, CookieName, CookieVal} | Rest], Acc) ->
@@ -190,7 +190,7 @@ create_headers([_ | Rest], Acc) ->
     create_headers(Rest, Acc).
 
 %% @hidden
--spec(parse_get/1 :: (string()) -> list(tuple())).
+-spec(parse_get/1 :: (string()) -> list(tuple())).	     
 parse_get(URL) ->
     case string:chr(URL, $?) of
 	0 ->
@@ -207,7 +207,7 @@ parse_get(URL) ->
 		      end, Get)
     end.
 
--spec(parse_post/1 :: (string()) -> list(tuple())).
+-spec(parse_post/1 :: (string()) -> list(tuple())).	     
 parse_post(String) ->
     case fetch_boundary(String) of
 	{simple, Data} ->
@@ -217,41 +217,41 @@ parse_post(String) ->
     end.
 
 %% @hidden
--spec(fetch_boundary/1 :: (string()) -> {simple, string()} | {multipart, string()}).
+-spec(fetch_boundary/1 :: (string()) -> {simple, string()} | {multipart, string()}).	     
 fetch_boundary(Data) ->
     case string:str(Data, "\r\n") of
-	0 ->
+	0 -> 
 	    {simple, Data};
-	Pos ->
+	Pos -> 
 	    {multipart, string:substr(Data, 1, Pos-1)}
     end.
 
 %% @hidden
--spec(cookie_up/1 :: (list(tuple())) -> term()).
+-spec(cookie_up/1 :: (list(tuple())) -> term()).	     
 cookie_up(Headers) ->
     Cookies = get_cookies(Headers),
     eptic:fset("__cookies", Cookies),
 
     case proplists:get_value(?COOKIE, Cookies) of
-	undefined ->
-	    ClientCookie = e_session:new_session([]),
-	    e_mod_gen:restore_session(ClientCookie),
-	    ClientCookie;
-	ClientCookie ->
-	    {ok, Session} = e_session:get_session(ClientCookie),
-	    if
-		Session == undefined ->
-		    NewCookie = e_session:new_session([]),
-		    e_mod_gen:restore_session(NewCookie),
-		    NewCookie;
-		true ->
-		    e_mod_gen:restore_session(ClientCookie),
-		    ClientCookie
-	    end
+        undefined ->
+            ClientCookie = e_session:new_session([]),
+            e_mod_gen:restore_session(ClientCookie),
+            ClientCookie;
+        ClientCookie ->
+            {ok, Session} = e_session:get_session(ClientCookie),
+            if
+                Session == undefined ->
+                    NewCookie = e_session:new_session([]),
+                    e_mod_gen:restore_session(NewCookie),
+                    NewCookie;
+                true ->
+                    e_mod_gen:restore_session(ClientCookie),
+                    ClientCookie
+            end
     end.
 
 %% @hidden
--spec(cookie_bind/1 :: (string()) -> {string(), string()}).
+-spec(cookie_bind/1 :: (string()) -> {string(), string()}).	     
 cookie_bind(ClientCookie) ->
     e_mod_gen:bind_session(ClientCookie),
     {"Set-cookie", ?COOKIE ++ [$= | ClientCookie ++ "; path=/"]}.
@@ -261,7 +261,7 @@ cleanup() ->
     e_multipart_inets:terminate(),
     e_dict:terminate_state().
 
--spec(get_cookies/1 :: (list(tuple())) -> list(tuple())).
+-spec(get_cookies/1 :: (list(tuple())) -> list(tuple())).			      
 get_cookies(Headers) ->
     case lists:keysearch("cookie", 1, Headers) of
 	false ->

@@ -45,7 +45,15 @@ validate({Types, undefined}) ->
             end
     end;
 
-validate({Types, String}) when is_list(String) ->
+validate({Types, [RawString1, RawString2]}) 
+  when is_list(RawString1) and is_list(RawString2) ->
+    validate2({Types, [utf8_api:ustring(RawString1), 
+                       utf8_api:ustring(RawString2)]});
+
+validate({Types, RawString}) when is_list(RawString) ->
+    validate2({Types, utf8_api:ustring(RawString)}).
+
+validate2({Types, String}) when is_list(String) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, String};
@@ -80,7 +88,7 @@ check_confirm0(String, _) ->
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
-            N = utf8_api:ulength(String),
+            N = length(String),
     	    if
 		N < Min ->
 		    {error, {too_short, String}};
@@ -94,7 +102,7 @@ check_min_length(String, Types) ->
 check_max_length(String, Types) ->
     case lists:keysearch(max_length, 1, Types) of
 	{value, {max_length, Max}} ->
-            N = utf8_api:ulength(String),
+            N = length(String),
 	    if
 		N > Max ->
 		    {error, {too_long, String}};

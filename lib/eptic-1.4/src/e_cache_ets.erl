@@ -93,7 +93,7 @@ cache(File, wpart_xs) ->
     XML;
 cache(File, erlydtl_expander) ->
     Mod = list_to_atom(string:join(string:tokens(File, "/.-"), "")),
-    case erlydtl:compile(File, Mod) of
+    case erlydtl:compile(File, Mod, [{doc_root, e_conf:template_root()}]) of
         ok ->
             ets:insert(?MODULE, {File, {date(), time()}, Mod}),
             Mod;

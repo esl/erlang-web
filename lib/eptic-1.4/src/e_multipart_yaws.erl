@@ -31,13 +31,13 @@
 %%====================================================================
 terminate() ->
     Dirname = dirname(),
-    lists:foreach(fun file:delete/1, 
+    lists:foreach(fun file:delete/1,
 		  filelib:wildcard(filename:join(Dirname, "*"))),
     file:del_dir(Dirname).
 
 terminate(Pid) ->
     Dirname = filename:join([e_conf:upload_dir(), pid_to_list(Pid)]),
-    lists:foreach(fun file:delete/1, 
+    lists:foreach(fun file:delete/1,
 		  filelib:wildcard(filename:join(Dirname, "*"))),
     file:del_dir(Dirname).
 
@@ -48,7 +48,7 @@ is_multipart(#arg{req = R, headers = H}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% Function: 
+%% Function:
 %% Description:
 %%--------------------------------------------------------------------
 parse(#arg{} = A) when A#arg.state == undefined ->
@@ -58,15 +58,35 @@ parse(A) when is_record(A, arg) ->
 	{cont, Cont, Res} ->
 	    {get_more, Cont, add_chunk(Res, A#arg.state)};
 	{result, Res} ->
-	    Handler = add_chunk(Res, A#arg.state),
+            case e_conf:get_conf(upload_to_disk, true) of
+                false -> Handler = add_body(Res,[]),
+                         {ok, Handler};
+                _ -> Handler = add_chunk(Res, A#arg.state),
 	    %% we cast {file, Filename} to Filename for
 	    %% compatibility with Inets' multipart
-	    {ok, lists:map(fun({Key, {file, Val}}) ->
-				   {Key, Val};
-			      (Else) ->
-				   Else
-			   end, element(2, Handler))}
+                  {ok, lists:map(fun({Key, {file, Val}}) ->
+                                            {Key, Val};
+                                       (Else) ->
+                                            Else
+                                    end, element(2, Handler))}
+            end
     end.
+%%====================================================================
+%% Internal functions
+%%====================================================================
+% head {"this_is_file",[{filename,"review.log"},{name,"this_is_file"}]}
+add_body([{head, {Name, Opt}}|Res], SoFar) ->
+    add_body(Res, {Name, SoFar});
+add_body([{body, Data}|Res], {Name, SoFar}) ->
+    if
+	length(Data) == 0 ->
+	    add_body(Res, lists:append(SoFar, [{Name, []}]));
+	true ->
+	    add_body(Res, lists:append(SoFar, [{Name, Data}]))
+    end;
+add_body([], State) ->
+    State.
+
 
 %%====================================================================
 %% Internal functions
@@ -78,7 +98,7 @@ add_chunk([{head, {Name, Opt}}|Res], {_, SoFar}) ->
 	    BaseDir = dirname(),
 
 	    FolderCreator = fun(Element, Acc) ->
-				    Next = 
+				    Next =
 					if Acc =/= "" ->
 						filename:join(Acc, Element);
 					   true ->
@@ -87,9 +107,9 @@ add_chunk([{head, {Name, Opt}}|Res], {_, SoFar}) ->
 				    case file:make_dir(Next) of
 					ok ->
 					    Next;
-					{error, eexist} -> 
+					{error, eexist} ->
 					    Next;
-					%% special case of Mac Os - it returns 
+					%% special case of Mac Os - it returns
 					%% eisdir instead of eexist
 					{error, eisdir} ->
 					    Next;

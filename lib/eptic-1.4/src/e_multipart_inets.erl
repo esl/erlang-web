@@ -48,21 +48,26 @@ retrive_data(["Content-Disposition: form-data; " ++ Element | Rest]) ->
     Name = string:strip(SName, both, 34),
     Content = string:substr(Element, HeaderLength, 
 			    length(Element)-1-HeaderLength),
-    
-    case lists:keysearch(filename, 1, Header) of
-	{value, {filename, "\"\""}} ->
-	    [{Name, []} | retrive_data(Rest)];
-	{value, {filename, SFilename}} ->
-	    Filename0 = string:strip(SFilename, both, 34),
-	    Filename = case regexp:first_match(Content, "\r\n\r\n") of
-			   {match, ContentS, _} ->
-			       save_file(Filename0, string:substr(Content, ContentS+4));
-			   nomatch ->
-			       save_file(Filename0, Content)
-		       end,
-	    [{Name, Filename} | retrive_data(Rest)];
+
+    case e_conf:get_conf(upload_to_disk, true) of
 	false ->
-	    [{Name, Content} | retrive_data(Rest)]
+	    [{Name, Content} | retrive_data(Rest)];
+	true  ->
+	    case lists:keysearch(filename, 1, Header) of
+		{value, {filename, "\"\""}} ->
+		    [{Name, []} | retrive_data(Rest)];
+		{value, {filename, SFilename}} ->
+		    Filename0 = string:strip(SFilename, both, 34),
+		    Filename = case regexp:first_match(Content, "\r\n\r\n") of
+				   {match, ContentS, _} ->
+				       save_file(Filename0, string:substr(Content, ContentS+4));
+				   nomatch ->
+				       save_file(Filename0, Content)
+			       end,
+		    [{Name, Filename} | retrive_data(Rest)];
+		false ->
+		    [{Name, Content} | retrive_data(Rest)]
+	    end
     end.
 
 save_file(SFilename, Content) ->

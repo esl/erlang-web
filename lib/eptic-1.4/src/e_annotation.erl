@@ -83,3 +83,4 @@ save_annotations(Hrl, []) ->
 -spec(generate_define_name/1 :: (atom()) -> (string())).	     
 generate_define_name(FunName) ->
     string:to_upper(atom_to_list(FunName)).
+

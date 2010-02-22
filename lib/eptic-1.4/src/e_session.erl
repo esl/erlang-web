@@ -17,8 +17,8 @@
 %%% File    : e_session.erl
 %%% @author Lukas Larsson <lukas@erlang-consulting.com>
 %%% @doc Handling of sessions for the eptic webplatform.<br/>
-%%% A lot of ideas and some code is stolen from yaws_session_server which are 
-%%% copyrighted (c) 2006, Claes Wikstrom, klacke@hyber.org. 
+%%% A lot of ideas and some code is stolen from yaws_session_server which are
+%%% copyrighted (c) 2006, Claes Wikstrom, klacke@hyber.org.
 %%% All rights reserved.
 %%% @end
 %%% Created : 25 Jun 2008 by Lukas Larsson <lukas@erlang-consulting.com>
@@ -67,10 +67,10 @@ stop() ->
 %% @doc Initializes the new session with the <i>SessionData</i> and generates the cookie.
 %% The randomly generated cookie is returned.
 %%
--spec(new_session/1 :: (term()) -> string()).	     
+-spec(new_session/1 :: (term()) -> string()).
 new_session(Data) ->
-    new_session(Data,?ExtendTime_default).
--spec(new_session/2 :: (term(), integer()) -> string()).	     
+    new_session(Data, e_conf:get_conf(extend_time, ?ExtendTime_default)).
+-spec(new_session/2 :: (term(), integer()) -> string()).
 new_session(Data,ExpireTime) ->
     gen_server:call(?SESSION_SERVER,{new_session,Data,ExpireTime}).
 
@@ -80,7 +80,7 @@ new_session(Data,ExpireTime) ->
 %% If no session with the <i>Cookie</i> has been found,
 %% <i>{error, no_prev_session}</i> is returned.
 %%
--spec(update_session/2 :: (term(), term()) -> true | {error, no_prev_session}).	     
+-spec(update_session/2 :: (term(), term()) -> true | {error, no_prev_session}).
 update_session(Cookie,NewData) ->
     case ets:lookup(?SESSION_TABLE,Cookie) of
 	[Val] ->
@@ -99,7 +99,7 @@ update_session(Cookie,NewData) ->
 %% Returns the previous session state or the tuple <i>{ok, undefined}</i>
 %% if no previous session has been found.
 %%
--spec(get_session/1 :: (term()) -> {ok, undefined} | {ok, term()}).	     
+-spec(get_session/1 :: (term()) -> {ok, undefined} | {ok, term()}).
 get_session(Cookie) ->
     case ets:lookup(?SESSION_TABLE,Cookie) of
 	[#e_session{ data = Data } = E] ->
@@ -115,7 +115,7 @@ get_session(Cookie) ->
 %% @doc Removes the session from the session table.
 %% Returns new, empty cookie.
 %%
--spec(delete_session/1 :: (term()) -> nil()).	     
+-spec(delete_session/1 :: (term()) -> nil()).
 delete_session(Cookie) ->
     ets:delete(?SESSION_TABLE,Cookie),
     "". %% Return a new empty cookie.
@@ -123,12 +123,12 @@ delete_session(Cookie) ->
 %%
 %% @spec print_sessions() -> ok
 %% @doc Prints all kept sessions on the Erlang system shell.
-%% 
--spec(print_sessions/0 :: () -> ok).	     
+%%
+-spec(print_sessions/0 :: () -> ok).
 print_sessions() ->
     lists:foreach(
-      fun(#e_session{ cookie = C, 
-		      created = Created, 
+      fun(#e_session{ cookie = C,
+		      created = Created,
 		      expires = Expires,
 		      extend_time = Extend,
 		      data = Data }) ->
@@ -242,7 +242,7 @@ trav_ets(N, Key) ->
 		    Next = ets:next(?SESSION_TABLE, Key),
 		    ets:delete(?SESSION_TABLE, Key),
 		    trav_ets(N, Next)
-		    
+
 	    end;
 	[] ->
 	   trav_ets(N, ets:next(?SESSION_TABLE, Key))

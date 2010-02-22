@@ -163,6 +163,8 @@ controller_exec(Ret, View) ->
 	    {content, "text/plain", Data};
 	{content, pdf, Data} ->
 	    {content, "application/pdf", Data};
+	{content, force_download, Data} ->
+	    {content, "application/force-download", Data};
 	{json, Data} ->
 	    {content, "text/plain", e_json:encode(Data)};
 	{template, Template} ->
