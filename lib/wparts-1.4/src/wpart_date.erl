@@ -54,16 +54,16 @@ build_html_tag(Name, Prefix, Params, Default) ->
 
 get_html_tag(Attrs, Default) ->
     Date = if
-	       Default == "" ->
-		   "";
-	       true ->
-		   Format = proplists:get_value(format, Attrs, "YYYY-MM-DD"),
-		   wtype_date:get_date(Format, Default)
+               Default == "" ->
+                   "";
+               true ->
+                   Format = proplists:get_value("format", Attrs, "YYYY-MM-DD"),
+                   wtype_date:get_date(Format, Default)
 	   end,
 
     wpart_gen:build_html(wpart_gen:tpl_get(date),
-			 [{"html", wpart:proplist2html(proplists:delete("format", Attrs))},
-			  {"value", Date}]).
+                         [{"html", wpart:proplist2html(proplists:delete("format", Attrs))},
+                          {"value", Date}]).
 
 load_tpl() ->
     wpart_gen:load_tpl(date,
