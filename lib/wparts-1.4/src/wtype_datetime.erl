@@ -52,7 +52,7 @@ format(_, _) ->
     "".
 
 format({Date, Time}) ->
-    format("YYYY-MM-DD HH:MM:SS", {Date, Time}, []).
+    format("YYYY-MM-DD HH:NN:SS", {Date, Time}, []).
 
 validate({Types, undefined}) ->
     case wpart_valid:is_private(Types) of
