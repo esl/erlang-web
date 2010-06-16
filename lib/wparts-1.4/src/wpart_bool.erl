@@ -92,7 +92,7 @@ get_html_tag(Attrs0, DefaultList) ->
 	    lists:foldl(Builder, "", Options)
     end.
 
--spec(checked/3 :: (string(), list(string()), list(string())) -> bool()).	     
+-spec(checked/3 :: (string(), list(string()), list(string())) -> boolean()).
 checked(Value, DefaultList, Preselected) ->
     lists:member(Value, DefaultList) orelse
 	lists:member(Value, Preselected).

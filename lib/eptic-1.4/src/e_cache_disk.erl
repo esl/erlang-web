@@ -93,7 +93,7 @@ cache(File, xmerl_xs) ->
     end,
     XML.
 
--spec(valid_cache/1 :: (string()) -> bool()).
+-spec(valid_cache/1 :: (string()) -> boolean()).
 valid_cache(File) ->
     Filename = [e_conf:cache_dir(), "/",
 		filename:rootname(File) ++ ".cxml"],

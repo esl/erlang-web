@@ -592,24 +592,24 @@ until(P, String, Parsed) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @spec is_equal(string()) -> bool()
+%% @spec is_equal(string()) -> boolean()
 %%
 %% @doc Match = character at the head of string.
 %% @end
 %%--------------------------------------------------------------------
--spec is_equal(string()) -> bool().
+-spec is_equal(string()) -> boolean().
 is_equal([$=|Rest]) ->
     {true, Rest};
 is_equal(_) ->
     false.
 
 %%--------------------------------------------------------------------
-%% @spec is_amp(string()) -> bool()
+%% @spec is_amp(string()) -> boolean()
 %%
 %% @doc Match &amp; character or &amp;amp; entity at the beginning of string.
 %% @end
 %%--------------------------------------------------------------------
--spec is_amp(string()) -> bool().
+-spec is_amp(string()) -> boolean().
 is_amp("&amp;"++Rest) ->
     {true, Rest};
 is_amp([$&|Rest]) ->

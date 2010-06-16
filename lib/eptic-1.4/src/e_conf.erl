@@ -215,7 +215,7 @@ fe_servers() ->
     get_conf(fe_servers, []).
 
 %%
-%% @spec debug_mode() -> IsDebugMode :: bool()
+%% @spec debug_mode() -> IsDebugMode :: boolean()
 %% @doc Checks if the server is running in the debug mode.
 %% If so, all the errors will be displayed in the browser 
 %% instead of the nice error 404/501 pages. 
@@ -225,7 +225,7 @@ fe_servers() ->
 %% The default value is <i>false</i>.
 %% @end
 %%
--spec(debug_mode/0 :: () -> bool()).	     
+-spec(debug_mode/0 :: () -> boolean()).
 debug_mode() ->
     get_conf(debug_mode, false).
 

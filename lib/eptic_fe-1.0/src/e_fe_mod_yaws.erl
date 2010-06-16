@@ -100,7 +100,7 @@ check_static(Arg = #arg{req = R}, URL) ->
 	    Arg#arg{req = R#http_request{path = {abs_path, "/app" ++ URL}}}
     end.
 
--spec(is_cacheable/0 :: () -> bool()).	     
+-spec(is_cacheable/0 :: () -> boolean()).
 is_cacheable() ->
     case e_conf:get_conf(is_cacheable_mod) of
 	undefined ->

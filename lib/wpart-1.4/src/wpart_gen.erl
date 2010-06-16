@@ -82,7 +82,7 @@ build_html(Tpl, Vals) ->
 	    build_html(Tpl, Vals, [])
     end.
 
--spec(filter_slots/1 :: (term()) -> bool()).	     
+-spec(filter_slots/1 :: (term()) -> boolean()).
 filter_slots({slot, _}) ->
     false;
 filter_slots(_) ->

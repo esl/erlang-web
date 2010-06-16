@@ -194,7 +194,7 @@ scan_string([34|T], Acc) ->
 scan_string([H|T], Acc) ->
     scan_string(T,[H|Acc]).
 
--spec(scan_number/3 :: (string(), string(), bool()) -> {integer() | float(), string()}).
+-spec(scan_number/3 :: (string(), string(), boolean()) -> {integer() | float(), string()}).
 scan_number([$-|T], Acc, Float) ->
     scan_number(T, [$-|Acc], Float);
 scan_number([$.|T], Acc, _) ->

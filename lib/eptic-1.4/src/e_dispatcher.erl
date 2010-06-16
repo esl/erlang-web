@@ -92,10 +92,10 @@ reinstall() ->
     ets:insert(?MODULE, [{dynamic, Dynamic}, {static, Static}]),
     load_errors().
 %%
-%% @spec is_static(URL :: string()) -> bool()
+%% @spec is_static(URL :: string()) -> boolean()
 %% @doc Checks if the URL should be served directly from the docroot.
 %%
--spec(is_static/1 :: (string()) -> bool()).	     
+-spec(is_static/1 :: (string()) -> boolean()).
 is_static(Path) ->
     [{static, Static}] = ets:lookup(?MODULE, static),
     case dispatch(Path, Static) of 
@@ -261,13 +261,13 @@ filter(Fun, [First|Rest]) ->
 	    filter(Fun, Rest)
     end.
 
--spec(selector/2 :: (string(), tuple()) -> bool()).	     
+-spec(selector/2 :: (string(), tuple()) -> boolean()).
 selector(Element, {_, Regexp, _, []}) -> 
     selector_exec(Element, Regexp);
 selector(Element, {_, Regexp, _, Opts}) ->
     selector_exec(Element, Regexp, Opts).
 
--spec(selector_exec/2 :: (string(), tuple()) -> bool()).	     
+-spec(selector_exec/2 :: (string(), tuple()) -> boolean()).
 selector_exec(Element, Regexp) ->
      case re:run(Element, Regexp, [{capture,first}]) of
 	{match, _} ->
@@ -278,7 +278,7 @@ selector_exec(Element, Regexp) ->
 	    exit({?MODULE, Reason})
     end.
 
--spec(selector_exec/3 :: (string(), tuple(), list(tuple())) -> bool()).	     
+-spec(selector_exec/3 :: (string(), tuple(), list(tuple())) -> boolean()).
 selector_exec(Element, Regexp, Opts) ->
     case lists:keysearch(named_subpatterns, 1, Opts) of
 	false ->

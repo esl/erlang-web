@@ -75,7 +75,7 @@ do(#mod{parsed_header = Headers} = A) ->
 	    end
     end.
 
--spec(is_cacheable/0 :: () -> bool()).	     
+-spec(is_cacheable/0 :: () -> boolean()).
 is_cacheable() ->
     case e_conf:get_conf(is_cacheable_mod) of
 	undefined ->

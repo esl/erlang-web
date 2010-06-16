@@ -385,7 +385,7 @@ get_id(Id) when is_integer(Id) ->
 get_id(Id) when is_list(Id) ->
     Id.
 
--spec(is_prefix/2 :: (string(), string()) -> bool()).	     
+-spec(is_prefix/2 :: (string(), string()) -> boolean()).
 is_prefix([], _) ->
     true;
 is_prefix([P | PRest], [P | ERest]) ->

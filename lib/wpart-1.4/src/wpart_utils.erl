@@ -266,7 +266,7 @@ find_pk([{_, Options} = TypeDecl | Rest], Pos) ->
 find_pk([], _) ->
     no_pk.
 
--spec(check_for_pk/1 :: (list()) -> bool()).
+-spec(check_for_pk/1 :: (list()) -> boolean()).
 check_for_pk([primary_key | _]) ->
     true;
 check_for_pk([{primary_key} | _]) ->

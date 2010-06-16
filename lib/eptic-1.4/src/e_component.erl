@@ -234,7 +234,7 @@ run_ecomponent(Name, Vsn, Conf, CallStack, State) ->
 	    end
     end.
 	    
--spec(check_dependency_loop/2 :: (atom(), list(atom())) -> bool()).	     
+-spec(check_dependency_loop/2 :: (atom(), list(atom())) -> boolean()).
 check_dependency_loop(Name, CallStack) ->
     case lists:member(Name, CallStack) of
 	true ->
@@ -248,7 +248,7 @@ check_dependency_loop(Name, CallStack) ->
     end.
 
 -type(version() :: number() | undefined).
--spec(check_running_version/2 :: (integer(), {version(), version()}) -> bool()).	     
+-spec(check_running_version/2 :: (integer(), {version(), version()}) -> boolean()).
 check_running_version(_, {undefined, undefined}) ->
     true;
 check_running_version(Vsn, {LVsn, undefined}) ->
@@ -341,7 +341,7 @@ no_errors([ok | Rest], Errors) ->
 no_errors([Error | Rest], Errors) ->
     no_errors(Rest, [Error | Errors]).
 
--spec(required_apps_started/1 :: (list()) -> bool()).
+-spec(required_apps_started/1 :: (list()) -> boolean()).
 required_apps_started(Apps) ->
     lists:all(fun(App) ->
 		      lists:keymember(App, 1, Apps)
