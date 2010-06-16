@@ -72,24 +72,32 @@ validate({Options, Input0}) ->
         true ->
 	       {ok, Input0};
         _ ->
-	   Format = proplists:get_value(format, Options, "YYYY-MM-DD HH:NN:SS"),
-	   case convert_input(Format, Input0, []) of
-	       {error, bad_format} ->
-		   {error, {bad_format, Input0}};
-	       {Date, _} = Input ->
-		   case calendar:valid_date(Date) of
-		       true ->
-			   case check_min(Options, Input) of
-			       {ok, Input} ->
-				   check_max(Options, Input);
-			       ErrorMin ->
-				   ErrorMin
-			   end;
-		       false ->
-			   {error, {not_valid_date, Input}}
-		   end
-	   end
-   end.
+            Format = proplists:get_value(format, Options, "YYYY-MM-DD HH:NN:SS"),
+
+            Input1 = case convert_input(Format, Input0, []) of
+                {error, bad_format} ->
+                    AltFormat = proplists:get_value(alt_format, Options, "YYYY-MM-DD"),
+                    convert_input(AltFormat, Input0, []);
+                Inp -> Inp
+            end,
+
+            case Input1 of
+                {error, bad_format} ->
+                    {error, {bad_format, Input0}};
+                {Date, _} = Input ->
+                    case calendar:valid_date(Date) of
+                        true ->
+                            case check_min(Options, Input) of
+                                {ok, Input} ->
+                                    check_max(Options, Input);
+                                ErrorMin ->
+                                    ErrorMin
+                            end;
+                        false ->
+                            {error, {not_valid_date, Input}}
+                    end
+            end
+    end.
 
 -spec(check_min/2 :: (list(), {tuple(), tuple()}) -> 
 	     {ok, {tuple(), tuple()}} | {error, {term(), tuple()}}).
