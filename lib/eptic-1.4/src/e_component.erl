@@ -111,7 +111,8 @@ install() ->
 %%
 -spec(install/1 :: ({atom(), list()}) -> ok | {error, term()}).	     
 install({Name, Conf}) ->
-    gen_server:call(?MODULE, {install, Name, Conf}).
+    Timeout = proplists:get_value(installation_timeout, Conf, 5000),
+    gen_server:call(?MODULE, {install, Name, Conf}, Timeout).
 
 %%
 %% @spec list() -> InstalledComponents :: list({atom(), string(), string()})
