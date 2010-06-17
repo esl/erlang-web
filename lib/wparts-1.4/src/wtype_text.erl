@@ -43,8 +43,7 @@ validate({Types, undefined}) ->
             end
     end;
 
-validate({Types,RawText}) when is_list(RawText) ->
-    Text = utf8_api:ustring(RawText),
+validate({Types,Text}) when is_list(Text) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, Text};
@@ -53,7 +52,12 @@ validate({Types,RawText}) when is_list(RawText) ->
 		{ok, Text} ->
 		    case check_max_length(Text, Types) of
 			{ok, Text} ->
-			    check_html(Text, Types);
+                case check_html(Text, Types) of
+                    {ok, S} ->
+                        {ok, unicode:characters_to_list(list_to_binary(S))};
+                    Err ->
+                        Err
+                end;
 			ErrorMax ->
 			    ErrorMax
 		    end;
@@ -71,7 +75,7 @@ validate({Types, Text}) ->
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
-            X = length(String),
+            X = utf8_api:ulength(String),
 	    if
 		 X < Min ->
 		    {error, {too_short, String}};
@@ -85,7 +89,7 @@ check_min_length(String, Types) ->
 check_max_length(String, Types) ->
     case lists:keysearch(max_length, 1, Types) of
 	{value, {max_length, Max}} ->
-	    X = length(String),
+	    X = utf8_api:ulength(String),
             if
 		X > Max ->
 		    {error, {too_long, String}};

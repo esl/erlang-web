@@ -45,8 +45,7 @@ validate({Types,undefined}) ->
             end
     end;
 
-validate({Types,RawString}) when is_list(RawString) -> 
-    String = utf8_api:ustring(RawString),
+validate({Types,String}) when is_list(String) ->
     case wpart_valid:is_private(Types) of
 	true ->
 	    {ok, String};
@@ -57,7 +56,12 @@ validate({Types,RawString}) when is_list(RawString) ->
 			{ok, String} -> 
 			    case check_regexp(String, Types) of
 					{ok, String} ->
-					    check_html(String, Types);
+                        case check_html(String, Types) of
+                            {ok, S} ->
+                                {ok, unicode:characters_to_list(list_to_binary(S))};
+                            Err ->
+                                Err
+                        end;
 					ErrorRegexp ->
 				  	  ErrorRegexp
 			    end;
@@ -72,7 +76,7 @@ validate({Types,RawString}) when is_list(RawString) ->
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
-            N = length(String),
+            N = utf8_api:ulength(String),
     	    if
 		N < Min ->
 		    {error, {too_short, String}};
@@ -86,7 +90,7 @@ check_min_length(String, Types) ->
 check_max_length(String, Types) ->
     case lists:keysearch(max_length, 1, Types) of
 	{value, {max_length, Max}} ->
-            N = length(String),
+            N = utf8_api:ulength(String),
 	    if
 		N > Max ->
 		    {error, {too_long, String}};

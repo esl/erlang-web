@@ -33,30 +33,34 @@
 %% @spec url_encode(URL :: string()) -> EncodedURL :: string()
 %% @doc Url-encodes a string.
 %% All URLs in HTML documents must be URL encoded. <br/>
-%% This function has been taken from <i>Yaws</i> web server.
+%%
+%% This function escapes everything except url-safe characters
+%% [-._0-9a-zA-Z] AND SLASHES, which sould be very DWIM-y
+%% It should be consistent with Python3's urllib.parse.quote
 %%
 -spec(url_encode/1 :: (string()) -> string()).
-url_encode([H|T]) ->
-    if
-        H >= $a, $z >= H ->
-            [H|url_encode(T)];
-        H >= $A, $Z >= H ->
-            [H|url_encode(T)];
-        H >= $0, $9 >= H ->
-            [H|url_encode(T)];
-        H == $_; H == $.; H == $-; H == $/; H == $: -> % FIXME: more..
-            [H|url_encode(T)];
-        true ->
-            case integer_to_hex(H) of
-                [X, Y] ->
-                    [37, X, Y | url_encode(T)];
-                [X] ->
-                    [37, $0, X | url_encode(T)]
-            end
-     end;
+url_encode(Str) when is_list(Str) ->
+    S = xmerl_ucs:to_utf8(Str),
+    url_encode_char(lists:reverse(S), []).
 
-url_encode([]) ->
-    [].
+url_encode_char([X | T], Acc) when X >= $0, X =< $9 ->
+    url_encode_char(T, [X | Acc]);
+url_encode_char([X | T], Acc) when X >= $a, X =< $z ->
+    url_encode_char(T, [X | Acc]);
+url_encode_char([X | T], Acc) when X >= $A, X =< $Z ->
+    url_encode_char(T, [X | Acc]);
+url_encode_char([X | T], Acc) when X == $-; X == $_; X == $. ->
+url_encode_char(T, [X | Acc]);
+url_encode_char([X | T], Acc) when X == $/ -> % this is DWIM bit
+    url_encode_char(T, [X | Acc]);
+url_encode_char([X | T], Acc) ->
+    url_encode_char(T, [$%, d2h(X bsr 4), d2h(X band 16#0f)
+            | Acc]);
+url_encode_char([], Acc) ->
+    Acc.
+
+d2h(N) when N<10 -> N+$0;
+d2h(N) -> N+$a-10.
 
 %%
 %% @spec url_decode(URL :: string()) -> DecodedURL :: string()

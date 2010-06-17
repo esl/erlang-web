@@ -62,9 +62,10 @@ read_file(File, Expander) ->
 %%====================================================================
 -spec(cache/2 :: (string(), atom()) -> xmlElement() | no_return()).   
 cache(File, xmerl_xs) ->
-    XML = case xmerl_scan:file(File, []) of
+    XML = case xmerl_scan:file(File, [{encoding, "utf-8"}]) of
 	      {error, enoent} ->
-		  case xmerl_scan:file(e_conf:template_root() ++ "/" ++ File, []) of
+            File1 = e_conf:template_root() ++ "/" ++ File,
+            case xmerl_scan:file(File1, [{encoding, "utf-8"}]) of
 		      {error, Reason} ->
 			  erlang:error({Reason, File});
 		      {XML2, _} ->

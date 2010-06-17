@@ -81,7 +81,7 @@ valid_cache(File) ->
 
 -spec(cache/2 :: (string(), atom()) -> term()).
 cache(File, wpart_xs) ->
-    XML = case xmerl_scan:file(File, []) of
+    XML = case xmerl_scan:file(File, [{encoding, "utf-8"}]) of
         {error, Reason} ->
             erlang:error(Reason);
         {XML3, _} ->

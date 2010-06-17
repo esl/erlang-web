@@ -49,8 +49,9 @@ handle_call(E) ->
 	    Inputs = build_tags(Type, FormType, Prefix),
 	    
 	    Templater = fun(Tag) ->
-                                Flatten = "<?xml version=\"1.0\" encoding=\"utf-8\"?><div>" ++ Tag ++ "</div>",
-				{XML, _} = xmerl_scan:string(Flatten),
+                                Flatten = "<div>" ++ Tag ++ "</div>",
+                                OH_NOEZ_UGLY_HACK = [{encoding, 'latin1'}],
+				{XML, _} = xmerl_scan:string(Flatten, OH_NOEZ_UGLY_HACK),
 				"<div>" ++ R = lists:flatten(wpart_xs:template(XML)),
 				">vid/<" ++ R2 = lists:reverse(R),
 				lists:reverse(R2)
