@@ -125,21 +125,27 @@ built_in_rules(_Fun, E = #xmlAttribute{}) ->
 built_in_rules(_Fun, _E) ->
     [].
 
-%% @doc Translate ampersands, single quotes and double quotes to XML
-%% entities.
+%% @doc Translate ampersands, single/double quotes, and less/greater than
+%% to XML entities.
 -spec entitify(binary()) -> iolist().
 entitify(B) ->
     entitify(B, []).
 entitify(<<>>, Acc) ->
     lists:reverse(Acc);
-entitify(<<$&:8, Rest/binary>>, Acc) ->
-    NewAcc = ["&amp;"|Acc],
+entitify(<<34:8, Rest/binary>>, Acc) -> % double quote (&quot);
+    NewAcc = ["&#34;"|Acc],
     entitify(Rest, NewAcc);
-entitify(<<34:8, Rest/binary>>, Acc) ->
-    NewAcc = ["&quot;"|Acc],
+entitify(<<38:8, Rest/binary>>, Acc) -> % ampersand (&amp;)
+    NewAcc = ["&#38;"|Acc],
     entitify(Rest, NewAcc);
-entitify(<<39:8, Rest/binary>>, Acc) ->
-    NewAcc = ["&apos;"|Acc],
+entitify(<<39:8, Rest/binary>>, Acc) -> % single quote (&apos;)
+    NewAcc = ["&#39;"|Acc],
+    entitify(Rest, NewAcc);
+entitify(<<60:8, Rest/binary>>, Acc) -> % less than (&lt;)
+    NewAcc = ["&#60;"|Acc],
+    entitify(Rest, NewAcc);
+entitify(<<62:8, Rest/binary>>, Acc) -> % greater than (&gt;)
+    NewAcc = ["&#62;"|Acc],
     entitify(Rest, NewAcc);
 entitify(<<C:8, Rest/binary>>, Acc) ->
     entitify(Rest, [C|Acc]).
