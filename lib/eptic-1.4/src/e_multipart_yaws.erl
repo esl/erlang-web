@@ -29,17 +29,12 @@
 %%====================================================================
 %% API
 %%====================================================================
+
 terminate() ->
-    Dirname = dirname(),
-    lists:foreach(fun file:delete/1,
-		  filelib:wildcard(filename:join(Dirname, "*"))),
-    file:del_dir(Dirname).
+    e_multipart_common:delete_tmp_files(self()).
 
 terminate(Pid) ->
-    Dirname = filename:join([e_conf:upload_dir(), pid_to_list(Pid)]),
-    lists:foreach(fun file:delete/1,
-		  filelib:wildcard(filename:join(Dirname, "*"))),
-    file:del_dir(Dirname).
+    e_multipart_common:delete_tmp_files(Pid).
 
 is_multipart(#arg{req = R, headers = H}) ->
     case {R#http_request.method, H#headers.content_type} of
@@ -95,7 +90,7 @@ add_body([], State) ->
 add_chunk([{head, {Name, Opt}}|Res], {_, SoFar}) ->
     case lists:keysearch(filename, 1, Opt) of
 	{value, {filename, Filename0}} ->
-	    BaseDir = dirname(),
+	    BaseDir = e_multipart_common:base_dir(self()),
 
 	    FolderCreator = fun(Element, Acc) ->
 				    Next =
@@ -169,9 +164,6 @@ basename(FilePath) ->
 	    %% probably a DOS name, remove everything after last \
 	    basename(string:substr(FilePath, N+1))
     end.
-
-dirname() ->
-    filename:join([e_conf:upload_dir(), pid_to_list(self())]).
 
 append_file(Filename, Data) ->
     {ok, Ref} = file:open(Filename, [append]),

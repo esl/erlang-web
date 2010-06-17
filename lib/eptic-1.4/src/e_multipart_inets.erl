@@ -24,10 +24,24 @@
 
 -export([get_multipart/2, terminate/0, terminate/1]).
 
+%%====================================================================
+%% API
+%%====================================================================
+
 get_multipart(Body, Boundary) ->
     Regexp = Boundary ++ "((\r\n)|(\-\-\r\n))",
     {ok, Split} = regexp:split(Body, Regexp),
     retrive_data(Split).
+
+terminate() ->
+    e_multipart_common:delete_tmp_files(self()).
+
+terminate(Pid) ->
+    e_multipart_common:delete_tmp_files(Pid).
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
 
 retrive_data([]) ->
     [];
@@ -71,7 +85,7 @@ retrive_data(["Content-Disposition: form-data; " ++ Element | Rest]) ->
     end.
 
 save_file(SFilename, Content) ->
-    BaseDir = dirname(),
+    BaseDir = e_multipart_common:base_dir(self()),
     FolderCreator = fun(Element, Acc) ->
 			    Next = 
 				if Acc =/= "" ->
@@ -108,18 +122,3 @@ save_file(SFilename, Content) ->
     end,
     
     Filename.
-
-dirname() ->
-    filename:join([e_conf:upload_dir(), pid_to_list(self())]).
-
-terminate() ->
-    Dirname = dirname(),
-    lists:foreach(fun file:delete/1, 
-		  filelib:wildcard(filename:join(Dirname, "*"))),
-    file:del_dir(Dirname).
-
-terminate(Pid) ->
-    Dirname = filename:join([e_conf:upload_dir(), pid_to_list(Pid)]),
-    lists:foreach(fun file:delete/1, 
-		  filelib:wildcard(filename:join(Dirname, "*"))),
-    file:del_dir(Dirname).
