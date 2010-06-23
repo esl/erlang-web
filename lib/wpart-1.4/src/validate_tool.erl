@@ -62,7 +62,7 @@ do_validate_ok(List,Type,Mod,ParentType) ->
     {ok, list_to_tuple([ParentType | Final])}.
 
 -spec(do_validate_error/4 :: (atom(), term(), atom(), atom()) -> 
-	     {error, not_valid | {atom(), integer()}}).	     
+	     {error, not_valid | {term(), term()}}).
 do_validate_error(Mod,Reason,Fun,Type) ->
     do_validate_error(Mod,Reason, Fun, Type, Type).
 
