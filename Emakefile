@@ -1,6 +1,6 @@
-{'lib/eptic-1.4/src/*', [
-	{outdir, "lib/eptic-1.4/ebin"}, 
-	{i, "lib/eptic-1.4/include"}, 
+{'lib/eptic-1.4.1/src/*', [
+	{outdir, "lib/eptic-1.4.1/ebin"}, 
+	{i, "lib/eptic-1.4.1/include"}, 
 	{i, "lib/yaws-1.85/include"},
 	debug_info, 
 	strict_record_tests, 
@@ -8,23 +8,23 @@
 
 {'lib/eptic_fe-1.0/src/*',
 	[{outdir, "lib/eptic_fe-1.0/ebin"}, 
-	{i, "lib/eptic-1.4/include"}, 
+	{i, "lib/eptic-1.4.1/include"}, 
 	{i, "lib/eptic_fe-1.0/include"}, 
 	{i, "lib/yaws-1.85/include"}, 
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
 
-{'lib/wpart-1.4/src/*',[
-	{outdir, "lib/wpart-1.4/ebin"}, 
-	{i, "lib/wpart-1.4/include"}, 
+{'lib/wpart-1.4.1/src/*',[
+	{outdir, "lib/wpart-1.4.1/ebin"}, 
+	{i, "lib/wpart-1.4.1/include"}, 
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
 
-{'lib/wparts-1.4/src/*',[
-	{outdir, "lib/wparts-1.4/ebin"}, 
-	{i, "lib/wparts-1.4/include"}, 
+{'lib/wparts-1.4.1/src/*',[
+	{outdir, "lib/wparts-1.4.1/ebin"}, 
+	{i, "lib/wparts-1.4.1/include"}, 
 	debug_info, 
 	strict_record_tests, 
 	netload]}.
