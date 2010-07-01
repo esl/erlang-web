@@ -52,17 +52,17 @@ init([]) ->
 %% Internal functions
 %%====================================================================
 
--spec(ets_tables_install/0 :: () -> ok).	     
+-spec(ets_tables_install/0 :: () -> ok).
 ets_tables_install() ->
     {ok, [TypesT]} = file:consult(filename:join([code:priv_dir(wparts),"basic_types.conf"])),
-    Types = tuple_to_list(TypesT),
-    ets:insert(e_conf, {primitive_types, Types ++ e_conf:primitive_types()}),
-    
+    Types = tuple_to_list(TypesT) ++ e_conf:primitive_types(),
+    ets:insert(e_conf, {primitive_types, Types}),
+
     catch ets:delete(templates),
     ets:new(templates, [named_table, public]),
-    
+
     Additional = [form, derived, input],
-    lists:foreach(fun(Type) -> 
+    lists:foreach(fun(Type) ->
 			  Mod = list_to_atom("wpart_" ++ atom_to_list(Type)),
-			  Mod:load_tpl() end, 
-		  Types ++ Additional).    
+			  Mod:load_tpl() end,
+		  Types ++ Additional).

@@ -1,0 +1,8 @@
+1.4.2
+=====
+
+ * wpart_my_primitive_type:load_tpl() is called automatically for
+   all user-defined primitive types on application startup.
+   - you don't have to do it yourself anymore
+   - make sure that you implement load_tpl
+     (it's required by wpart behaviour, anyway)
