@@ -44,23 +44,28 @@ validate({Types, undefined}) ->
             end
     end;
 
-validate({Types,Input}) ->
+validate({Types, Input}) when is_integer(Input) ->
+    case check_min(Input, Types) of
+        {ok, Input} ->
+            case check_max(Input, Types) of
+                {ok, Input} ->
+                    {ok, Input};
+                ErrorMax ->
+                    ErrorMax
+            end;
+        ErrorMin -> ErrorMin
+    end;
+validate({Types, Input}) ->
     case wpart_valid:is_private(Types) of
-	true ->
-	    {ok, Input};
-	false ->
-		case catch list_to_integer(Input) of 
-		    Int when is_integer(Int) -> 
-			case check_min(Int, Types) of
-			    {ok, Int} ->
-				case check_max(Int, Types) of
-				    {ok, Int} -> {ok, Int};
-				    ErrorMax -> ErrorMax
-				end;
-			    ErrorMin -> ErrorMin
-			end;
-		    _ -> {error, {not_integer, Input}}
-		end
+        true ->
+            {ok, Input};
+        false ->
+            case catch list_to_integer(Input) of
+                Int when is_integer(Int) ->
+                    validate({Types, Int});
+                _ ->
+                    {error, {not_integer, Input}}
+            end
     end.
 
 check_min(Input, Types) ->
