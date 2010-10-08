@@ -45,13 +45,12 @@ validate({Types, undefined}) ->
             end
     end;
 
-validate({Types, [RawString1, RawString2]}) 
-  when is_list(RawString1) and is_list(RawString2) ->
-    validate2({Types, [utf8_api:ustring(RawString1), 
-                       utf8_api:ustring(RawString2)]});
+validate({Types, [String1, String2]}) 
+  when is_list(String1) and is_list(String2) ->
+    validate2({Types, [String1, String2]});
 
-validate({Types, RawString}) when is_list(RawString) ->
-    validate2({Types, utf8_api:ustring(RawString)}).
+validate({Types, String}) when is_list(String) ->
+    validate2({Types, String}).
 
 validate2({Types, String}) when is_list(String) ->
     case wpart_valid:is_private(Types) of
@@ -116,7 +115,7 @@ check_max_length(String, Types) ->
 check_regexp(String, Types) ->
     case lists:keysearch(regexp, 1, Types) of
 	{value, {regexp, Regexp}} ->
-	    case re:run(String, Regexp) of
+	    case re:run(String, Regexp, [unicode]) of
 		{match, _} ->
 		    {ok, String};
 		nomatch ->
