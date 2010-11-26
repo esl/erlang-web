@@ -35,7 +35,8 @@ handle_call(#xmlElement{attributes = Attrs0}) ->
 
 build_html_tag(Id, Params, Default) ->
     Attrs0 = wpart:normalize_html_attrs(proplists:get_value(html_attrs, Params, [])),
-    Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
+	Format = proplists:get_value(format, Params, "HH:MM"),
+    Attrs = [{"name", Id}, {"format", Format}, {"id", Id} | proplists:delete("name", Attrs0)],
 
     get_html_tag(Attrs, Default).
 
