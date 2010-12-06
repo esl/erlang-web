@@ -21,9 +21,9 @@
 
 -export([out/1, arg_rewrite/1]).
 
--include("yaws_api.hrl").
--include("yaws.hrl").
--include("eptic.hrl").
+-include_lib("yaws/include/yaws_api.hrl").
+-include_lib("yaws/include/yaws.hrl").
+-include_lib("eptic/include/eptic.hrl").
 
 out(A) ->
     e_logger:register_pid(self()),

@@ -15,7 +15,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Krzysztof Goj <krzysztof.goj@erlang-solutions.com>
-%%% @doc Utility functions for date tuple <-> string conversion
+%%% @doc Utility functions for date tuple to string (and viceversa) conversion
 %%% This code is meant to be wrapped by wtypes, not to be used on it's own.
 %%% @end
 %%%-------------------------------------------------------------------

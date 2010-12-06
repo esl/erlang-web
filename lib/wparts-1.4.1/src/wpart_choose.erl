@@ -82,7 +82,7 @@ erl(Code1, Bindings) ->
     end.
 
 %%-------------------------------------------------------------------
-%% @spec first(Fun::fun(), List::list()) -> term() | []
+%% @spec first(Fun::fun(), List::list(), Acc::list()) -> term() | []
 %% @doc Returns the first element satisfying `Pred' or the empty list
 %% @end
 %%------------------------------------------------------------------- 
