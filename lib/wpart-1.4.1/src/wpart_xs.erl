@@ -132,7 +132,7 @@ entitify(B) ->
     entitify(B, []).
 entitify(<<>>, Acc) ->
     lists:reverse(Acc);
-entitify(<<34:8, Rest/binary>>, Acc) -> % double quote (&quot);
+entitify(<<34:8, Rest/binary>>, Acc) -> % double quote (&quot;)
     NewAcc = ["&#34;"|Acc],
     entitify(Rest, NewAcc);
 entitify(<<38:8, Rest/binary>>, Acc) -> % ampersand (&amp;)
