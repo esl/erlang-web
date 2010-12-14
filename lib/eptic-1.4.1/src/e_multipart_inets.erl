@@ -30,7 +30,7 @@
 
 get_multipart(Body, Boundary) ->
     Regexp = Boundary ++ "((\r\n)|(\-\-\r\n))",
-    {ok, Split} = regexp:split(Body, Regexp),
+    {ok, Split} = re:split(Body, Regexp),
     retrive_data(Split).
 
 terminate() ->
@@ -48,11 +48,11 @@ retrive_data([]) ->
 retrive_data([[] | Rest]) ->
     retrive_data(Rest);
 retrive_data(["Content-Disposition: form-data; " ++ Element | Rest]) ->
-    {match, HeaderStart, HeaderLen} = regexp:first_match(Element, ".*\r\n"),
+    {match, HeaderStart, HeaderLen} = re:first_match(Element, ".*\r\n"),
     HeaderString = string:substr(Element, HeaderStart, HeaderLen-2),
-    {ok, Fields} = regexp:split(HeaderString, "; "),
+    {ok, Fields} = re:split(HeaderString, "; "),
     Header = lists:foldl(fun(E, Acc) ->
-				 {ok, [Key, Value]} = regexp:split(E, "="),
+				 {ok, [Key, Value]} = re:split(E, "="),
 				 [{list_to_atom(Key), Value} | Acc]
 			 end, [], Fields),
     HeaderLength = HeaderStart+HeaderLen+2,
@@ -72,7 +72,7 @@ retrive_data(["Content-Disposition: form-data; " ++ Element | Rest]) ->
 		    [{Name, []} | retrive_data(Rest)];
 		{value, {filename, SFilename}} ->
 		    Filename0 = string:strip(SFilename, both, 34),
-		    Filename = case regexp:first_match(Content, "\r\n\r\n") of
+		    Filename = case re:first_match(Content, "\r\n\r\n") of
 				   {match, ContentS, _} ->
 				       save_file(Filename0, string:substr(Content, ContentS+4));
 				   nomatch ->
