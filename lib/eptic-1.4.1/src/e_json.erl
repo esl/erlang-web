@@ -118,6 +118,9 @@ string_to_json_string([34|T], Acc) -> % $"
     string_to_json_string(T, [34,$\\|Acc]);
 string_to_json_string([$ |T], Acc) ->
     string_to_json_string(T, [$ |Acc]);
+%% process unicode % or map to something like \uxxxx, not sure
+string_to_json_string([H|T], Acc) when H > 256 -> 
+    string_to_json_string(T, [binary_to_list(unicode:characters_to_binary([H]))|Acc]);
 string_to_json_string([H|T], Acc) ->
     string_to_json_string(T, [H|Acc]).
 

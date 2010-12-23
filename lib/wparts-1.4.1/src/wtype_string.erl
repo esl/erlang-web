@@ -56,14 +56,14 @@ validate({Types,String}) when is_list(String) ->
 			{ok, String} -> 
 			    case check_regexp(String, Types) of
 					{ok, String} ->
-                        case check_html(String, Types) of
-                            {ok, S} ->
-                                {ok, unicode:characters_to_list(list_to_binary(S))};
-                            Err ->
-                                Err
-                        end;
-					ErrorRegexp ->
-				  	  ErrorRegexp
+				    case check_html(String, Types) of
+					{ok, _} ->
+					    {ok, String};
+					Err ->
+					    Err
+				    end;
+				ErrorRegexp ->
+				    ErrorRegexp
 			    end;
 			ErrorMax -> 
 			    ErrorMax
@@ -76,7 +76,7 @@ validate({Types,String}) when is_list(String) ->
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
-            N = utf8_api:ulength(String),
+            N = length(String),
     	    if
 		N < Min ->
 		    {error, {too_short, String}};
@@ -90,7 +90,7 @@ check_min_length(String, Types) ->
 check_max_length(String, Types) ->
     case lists:keysearch(max_length, 1, Types) of
 	{value, {max_length, Max}} ->
-            N = utf8_api:ulength(String),
+            N = length(String),
 	    if
 		N > Max ->
 		    {error, {too_long, String}};
@@ -104,7 +104,7 @@ check_max_length(String, Types) ->
 check_regexp(String, Types) ->
     case lists:keysearch(regexp, 1, Types) of
 	{value, {regexp, Regexp}} ->
-	    case re:run(String, Regexp) of
+	    case re:run(String, Regexp, [unicode]) of
 		{match, _} ->
 		    {ok, String};
 		nomatch ->

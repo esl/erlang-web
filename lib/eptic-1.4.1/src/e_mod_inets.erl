@@ -192,29 +192,27 @@ create_headers([_ | Rest], Acc) ->
 %% @hidden
 -spec(parse_get/1 :: (string()) -> list(tuple())).	     
 parse_get(URL) ->
-    case string:chr(URL, $?) of
-	0 ->
-	    [];
-	Pos ->
-	    Get = string:tokens(string:sub_string(URL, Pos+1), [$&]),
-	    lists:map(fun(Pair) ->
-			      case string:tokens(Pair, [$=]) of
-				  [Key, Val] ->
-				      {Key, Val};
-				  [Key | _] ->
-				      {Key, ""}
-			      end
-		      end, Get)
-    end.
+    fix_charset(httpd:parse_query(URL)).
 
 -spec(parse_post/1 :: (string()) -> list(tuple())).	     
 parse_post(String) ->
     case fetch_boundary(String) of
 	{simple, Data} ->
-	    httpd:parse_query(Data);
+	    fix_charset(httpd:parse_query(Data));
 	{multipart, Boundary} ->
 	    e_multipart_inets:get_multipart(String, Boundary)
     end.
+
+%% @hidden
+%% this is a quick and dirty fix, the total solution should based on 
+%% "content-type=xxx;charset=yyy" property in request http header but 
+%% for now, erlang only has unicode/utf8 charset decoder, so...
+-spec(fix_charset/1 :: (list(tuple())) -> list(tuple())).
+fix_charset(In) ->
+    lists:map(fun
+		  ({Key, Val}) ->
+		      {Key, unicode:characters_to_list(list_to_binary(Val))}
+	      end, In).
 
 %% @hidden
 -spec(fetch_boundary/1 :: (string()) -> {simple, string()} | {multipart, string()}).	     
