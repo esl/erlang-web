@@ -53,8 +53,8 @@ validate({Types,Text}) when is_list(Text) ->
 		    case check_max_length(Text, Types) of
 			{ok, Text} ->
                 case check_html(Text, Types) of
-                    {ok, S} ->
-                        {ok, unicode:characters_to_list(list_to_binary(S))};
+                    {ok, _} ->
+                        {ok, Text};
                     Err ->
                         Err
                 end;
@@ -75,7 +75,7 @@ validate({Types, Text}) ->
 check_min_length(String, Types) ->
     case lists:keysearch(min_length, 1, Types) of
 	{value, {min_length, Min}} ->
-            X = utf8_api:ulength(String),
+            X = length(String),
 	    if
 		 X < Min ->
 		    {error, {too_short, String}};
@@ -89,7 +89,7 @@ check_min_length(String, Types) ->
 check_max_length(String, Types) ->
     case lists:keysearch(max_length, 1, Types) of
 	{value, {max_length, Max}} ->
-	    X = utf8_api:ulength(String),
+	    X = length(String),
             if
 		X > Max ->
 		    {error, {too_long, String}};

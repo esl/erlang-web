@@ -42,7 +42,7 @@ doctype()->
 %% @hidden
 -spec(template/1 :: (tuple() | list(tuple())) -> list(string()) | string()).
 template(#xmlElement{name = 'html'} = E) ->
-    ["<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+    [ %% "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n", %% buggy ie6
      doctype(),
      "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n",
      xslapply(fun template/1, E),
@@ -132,7 +132,7 @@ entitify(B) ->
     entitify(B, []).
 entitify(<<>>, Acc) ->
     lists:reverse(Acc);
-entitify(<<34:8, Rest/binary>>, Acc) -> % double quote (&quot);
+entitify(<<34:8, Rest/binary>>, Acc) -> % double quote (&quot;)
     NewAcc = ["&#34;"|Acc],
     entitify(Rest, NewAcc);
 entitify(<<38:8, Rest/binary>>, Acc) -> % ampersand (&amp;)
