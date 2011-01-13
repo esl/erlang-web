@@ -83,7 +83,7 @@ valid_cache(File) ->
 cache(File, wpart_xs) ->
     XML = case xmerl_scan:file(File, [{encoding, "utf-8"}]) of
         {error, Reason} ->
-            erlang:error(Reason);
+            erlang:error(Reason, [File, wpart_xs]);
         {XML3, _} ->
             XML3
     end,
@@ -98,7 +98,7 @@ cache(File, erlydtl_expander) ->
             ets:insert(?MODULE, {File, {date(), time()}, Mod}),
             Mod;
         {error, Reason} ->
-            erlang:error(Reason)
+            erlang:error(Reason, [File, erlydtl_expander])
     end;
-cache(_File, Expander) ->
-    erlang:error({unknown_expander, Expander}).
+cache(File, Expander) ->
+    erlang:error({unknown_expander, Expander}, [File, Expander]).
