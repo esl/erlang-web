@@ -21,7 +21,12 @@
 
 -export([do/1]).
 
+-ifdef(r14).
+-include_lib("inets/src/http_server/httpd.hrl").
+-else.
 -include_lib("inets/src/httpd.hrl").
+-endif.
+-include_lib("eptic/include/eptic.hrl").
 
 do(#mod{parsed_header = Headers} = A) ->
     e_logger:register_pid(self()),

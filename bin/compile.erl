@@ -47,12 +47,19 @@ make_basic() ->
     [code:add_path("lib/" ++ D ++ "/ebin") || D <- Dir],
 
     compile_e_annotation(),
+    Options = get_compiler_options(),
 
-    case make:all() of
+    case make:all(Options) of
 	up_to_date ->
 	    io:format("Compilation completed!~n");
 	error ->
 	    io:format("There were errors during the compilation!~n")
+    end.
+
+get_compiler_options() ->
+    case erlang:system_info(otp_release) > "R14" of
+	true -> [{d, r14}];
+	false -> []
     end.
 
 compile_e_annotation() ->

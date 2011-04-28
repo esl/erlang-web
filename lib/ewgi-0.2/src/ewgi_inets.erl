@@ -26,7 +26,11 @@
 
 -export([do/1]).
 
+-ifdef(r14).
+-include_lib("inets/src/http_server/httpd.hrl").
+-else.
 -include_lib("inets/src/httpd.hrl").
+-endif.
 -include_lib("ewgi.hrl").
 
 do(A) ->

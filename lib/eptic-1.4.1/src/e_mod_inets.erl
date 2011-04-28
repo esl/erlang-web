@@ -26,8 +26,11 @@
 
 -export([cookie_up/1, cookie_bind/1, cleanup/0]).
 -export([parse_post/1, parse_get/1, fetch_boundary/1, format_response/1]).
-
+-ifdef(r14).
+-include_lib("inets/src/http_server/httpd.hrl").
+-else.
 -include_lib("inets/src/httpd.hrl").
+-endif.
 -include_lib("eptic/include/eptic.hrl").
 
 %%====================================================================
