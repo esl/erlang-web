@@ -370,9 +370,14 @@ add_rule({Type, Regexp, Rule, Opts}) ->
 add_rule(Type, Regexp, Target, Opts) ->
     [{_, TypeRules}] = ets:lookup(?MODULE, Type),
     {ok, Compiled} = re:compile(Regexp),
-    
-    ets:insert(?MODULE, {Type, lists:append([{Type, Compiled, Target, Opts}], 
-					    TypeRules)}).
+    {ok, NamedRegexp} = re:compile("\\?<[A-Za-z_0-9]+>", [ungreedy]),
+    Entry = case get_all_names(Regexp, NamedRegexp) of
+                [] -> 
+                    {Type, Compiled, Target, Opts};
+                Names ->
+                    {Type, Compiled, Target, [{named_subpatterns, Names} | Opts]}
+            end,
+    ets:insert(?MODULE, {Type, lists:append([Entry], TypeRules)}).
 
 %% Patch by Zoltan Lajos Kis
 preprocess({dynamic, RouteString, ModFun, Options} = Org) ->
