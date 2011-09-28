@@ -18,7 +18,7 @@
 %%% @doc 
 %%% @end
 %%%-------------------------------------------------------------------
--module(wtype_bool).
+-module(wtype_multiselect).
 -behaviour(wtype).
 
 -export([handle_call/2, validate/1]).
@@ -35,21 +35,29 @@ handle_call(_Format, #xmlText{value=Val}) ->
 validate({Types, Val}) ->
     case wpart_valid:is_private(Types) of
 	true ->
-	    {ok, Val =/= undefined};
-        false ->
-	    case lists:keysearch(always, 1, Types) of
-		{_, {_, Bool}} ->
-		    if
-			Val == undefined, Bool == false ->
-			    {ok, false};
-			Val == undefined, Bool == true ->
-			    {error, {bad_bool_value, Val}};
-			Bool == false ->
-			    {error, {bad_bool_value, Val}};
-			true ->
-			    {ok, true}
-		    end;
-		_ ->
-		    {ok, Val =/= undefined}
-	    end
+	    {ok, Val};
+	false ->
+	    Val1 = format_val(Val),
+	    check_always(proplists:get_value(always, Types, []), Val1)
     end.
+
+-spec(check_always/2 :: (list(string()), list(string())) -> {ok, list(string())} | {error, {not_all_mandatory_fields_checked, list(string())}}).	     
+check_always([], Vals) ->
+    {ok, Vals};
+check_always(Always, Vals) ->
+    case lists:all(fun(Val) ->
+			   lists:member(Val, Vals)
+		   end, Always) of
+	true ->
+	    {ok, Vals};
+	false ->
+	    {error, {not_all_mandatory_fields_checked, Vals}}
+    end.
+
+-spec(format_val/1 :: (undefined | string() | list(string())) -> list(string())).	     
+format_val(undefined) ->
+    [];
+format_val(Val) when is_integer(hd(Val)) ->
+    [Val];
+format_val(Val) ->
+    Val.
