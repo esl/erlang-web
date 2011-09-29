@@ -48,8 +48,14 @@ build_html_tag(Id, Params, Default) ->
 					 {"preselected", Selected} |
 					 proplists:get_value(html_attrs, Params, [])]),
     Attrs = [{"name", Id}, {"id", Id} | proplists:delete("name", Attrs0)],
-    
-    get_html_tag(Attrs, Default).
+
+    D = case Default of
+	    Integer when is_integer(Integer) ->
+		[integer_to_list(Integer)];
+	    _ ->
+		Default
+	end,
+    get_html_tag(Attrs, D).
 
 build_html_tag(Name, Prefix, Params, Default) ->
     N = wpart_derived:generate_long_name(Prefix, Name),
@@ -123,7 +129,7 @@ get_html_tag(Attrs0, DefaultList) ->
 
 selected(Value, DefaultList, Preselected) ->
     lists:member(Value, DefaultList) orelse
-	lists:member(Value, Preselected).
+    	lists:member(Value, Preselected).
 
 load_tpl() ->
     wpart_gen:load_tpl(multilist_select,
