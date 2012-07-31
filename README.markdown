@@ -15,4 +15,3 @@ Some notable users of Erlang Web are:
  * [Erlang Factory website](http://www.erlang-factory.com/)
  * [*Erlang Programming* book's website](http://www.erlangprogramming.org/)
  * [Erlang Solutions website](http://www.erlang-solutions.com/)
- * [Erlang Web's own website](http://www.erlang-web.org)
