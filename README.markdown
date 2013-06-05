@@ -11,7 +11,6 @@ or [Django](http://www.djangoproject.com/).
 Some notable users of Erlang Web are:
 
  * Current version of [Erlang's official website](http://www.erlang.org)
- * [Try Erlang website](http://tryerlang.org)
  * [Erlang Factory website](http://www.erlang-factory.com/)
  * [*Erlang Programming* book's website](http://www.erlangprogramming.org/)
  * [Erlang Solutions website](http://www.erlang-solutions.com/)
