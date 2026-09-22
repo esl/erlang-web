@@ -1,8 +1,62 @@
-1.4.2
+2.0.0
 =====
+
+ * Upgrade bundled jQuery from 1.2.6 to 4.0.0 (full browser build), fixing
+   CVE-2011-4969 and incorporating subsequent upstream security fixes.
+   Source and checksum: lib/wparts-2.0.0/priv/JQUERY.md.
+ * Adapt autocomplete to the supported jQuery APIs and correct lookupLocal()
+   to access the autocomplete instance on the input element. Preserve plugin
+   entry points, options, callbacks, CSS classes and suggestion formatting.
+ * Bump eptic, wpart and wparts together to 2.0.0. This is a major release
+   because applications using the bundled jQuery may need JavaScript changes
+   and legacy browsers are no longer supported. Erlang APIs are unchanged.
 
  * wpart_my_primitive_type:load_tpl() is called automatically for
    all user-defined primitive types on application startup.
    - you don't have to do it yourself anymore
    - make sure that you implement load_tpl
      (it's required by wpart behaviour, anyway)
+
+Migration from 1.x
+-----------------
+
+1. Install the eptic-2.0.0, wpart-2.0.0 and wparts-2.0.0 directories together.
+   Update application-specific build/include paths and release specifications;
+   remove superseded framework directories from the runtime code path. Rebuild
+   the application and regenerate its boot/release files. Separately versioned
+   dependencies and the generated application's own version are unchanged.
+2. Review application-owned JavaScript and other plugins against the jQuery
+   upgrade guides, including intermediate releases:
+   https://jquery.com/upgrade-guide/
+   Removed APIs include $.browser, .size() and $.trim. Attribute/property,
+   selector, ready-handler and AJAX behavior have also changed since 1.2.6.
+   Migrate can be used temporarily while diagnosing application code, following
+   the upstream staged upgrade instructions; it is not bundled or required by
+   Erlang Web. Do not deploy intermediate vulnerable jQuery versions.
+3. Back up customized assets, then replace BOTH docroot/jquery.js and
+   docroot/jquery.autocomplete.js with their counterparts from
+   lib/wparts-2.0.0/priv/. Merge any local autocomplete customizations into the
+   updated plugin before deployment. Preserve script order: jQuery, plugin,
+   application initialization. Refresh any copied/customized autocomplete.tpl
+   from lib/wparts-2.0.0/priv/html/ and restart to reload framework templates.
+4. Deploy the paired assets together and invalidate browser/proxy/CDN caches
+   (or update asset cache keys). Check the served jQuery.fn.jquery is 4.0.0 and
+   exercise application autocomplete. bin/start.erl intentionally skips files
+   already present in docroot: rerunning setup alone does NOT upgrade them.
+
+Browser requirements follow jQuery 4.0:
+https://jquery.com/upgrade-guide/4.0/#browser-support
+IE 11; current and previous Chrome, Edge, Firefox and Safari; current Opera;
+current and two previous iOS Safari releases; current and previous Android.
+IE 10 and older and legacy Edge are no longer supported.
+
+Suggestion formatting still accepts trusted HTML, including formatItem output.
+This dependency upgrade does not make untrusted suggestion HTML safe.
+
+Validation and release gate
+--------------------------
+
+Browser regression instructions: lib/wparts-2.0.0/tests/browser/README.md.
+Recorded results and known baseline failures: doc/VALIDATION-2.0.0.md.
+Before publishing 2.0.0, rerun the original GitHub vulnerability scanner on the
+changed revision and record the successful result. Do not suppress the alert.

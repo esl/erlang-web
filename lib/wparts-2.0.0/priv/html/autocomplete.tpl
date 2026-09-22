@@ -1,7 +1,7 @@
 <script type="text/javascript">
 
 function lookupLocal(){
-	var oSuggest = $("#<% name %>").autocompleter;
+	var oSuggest = $("#<% name %>").get(0).autocompleter;
 
 	oSuggest.findValue();
 
